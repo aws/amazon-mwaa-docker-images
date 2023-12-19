@@ -1,0 +1,20 @@
+repos:
+  - repo: https://github.com/hhatto/autopep8
+    rev: v2.0.4
+    hooks:
+      - id: autopep8
+        args: ["--in-place", "--aggressive", "--aggressive"]
+
+  - repo: local
+    hooks:
+      - id: lint-bash
+        name: Lint Bash Scripts
+        entry: ./lint_bash.sh
+        language: script
+        types: [shell]
+
+      - id: lint-python
+        name: Lint Python Scripts
+        entry: ./lint_python.sh
+        language: script
+        types: [python]
