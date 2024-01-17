@@ -1,0 +1,66 @@
+FROM public.ecr.aws/amazonlinux/amazonlinux:2023
+
+# Versions
+ENV AIRFLOW_VERSION=2.8.0
+ENV AIRFLOW_AMAZON_PROVIDERS_VERSION=8.13.0
+ENV PYTHON_VERSION=3.11
+ENV AIRFLOW_USER_HOME=/usr/local/airflow
+ENV AIRFLOW_HOME=${AIRFLOW_USER_HOME}
+
+ENV PATH_DEFAULT=${PATH}
+ENV PATH_AIRFLOW_USER=${AIRFLOW_USER_HOME}/.local/bin:${PATH_DEFAULT}
+
+# Bootstrapping steps (root user - first pass)
+{% for filename, filepath in bootstrapping_scripts_root_firstpass %}
+COPY {{ filepath }} /{{ filename }}
+RUN chmod +x /{{ filename }} && /{{ filename }}
+RUN rm /{{ filename }}
+{% endfor %}
+
+# Bootstrapping steps (airflow user)
+{% for filename, filepath in bootstrapping_scripts_airflow %}
+USER root
+COPY {{ filepath }} /{{ filename }}
+RUN chmod +x /{{ filename }}
+ENV PATH=${PATH_AIRFLOW_USER}}
+USER airflow
+RUN /{{ filename }}
+ENV PATH=${PATH_DEFAULT}
+USER root
+RUN rm /{{ filename }}
+{% endfor %}
+
+# Bootstrapping steps (root user - second pass)
+# Put in these steps stuff that you want to execute as a root user
+# and also relies on the successful execution of the bootstrapping
+# steps of the 'airflow' user. For example, giving ownership of the
+# Airflow home user to the 'airflow' user, which requires having all
+# files.
+{% for filename, filepath in bootstrapping_scripts_root_secondpass %}
+COPY {{ filepath }} /{{ filename }}
+RUN chmod +x /{{ filename }} && /{{ filename }}
+RUN rm /{{ filename }}
+{% endfor %}
+
+# Create a volume for syncing files with the sidecar. The actual folder
+# is created by the `001-create-mwaa-dir.sh` script.
+VOLUME ["/usr/local/mwaa"]
+
+# TODO We should only expose this port if the comand is 'webserver'.
+EXPOSE 8080
+
+ENV PATH=${PATH_AIRFLOW_USER}}
+RUN unset PATH_DEFAULT
+RUN unset PATH_AIRFLOW_USER
+
+WORKDIR ${AIRFLOW_USER_HOME}
+
+COPY entrypoint.py /entrypoint.py
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+USER airflow
+
+ENTRYPOINT ["/entrypoint.sh"]
+
+CMD /bin/bash
