@@ -4,7 +4,7 @@ _This is a still work-in-progress and is likely to be updated during the early p
 
 This document contains the coding guidelines we follow in this repository. We follow the guidelines here strictly, so make sure your Pull Requests abide by them.
 
-To make it easier for developers to know the guidelines for what they are contributing, this document has multiple sections. Use the list below to jump to the section related to the code iny our Pull Request.
+To make it easier for developers to know the guidelines for the type of their contribution, this document has multiple sections. Use the list below to jump to the section related to the code you plan to submit.
 
 ## Table of Contents
 
@@ -14,7 +14,7 @@ To make it easier for developers to know the guidelines for what they are contri
 
 ## Bash Scripts
 
-For Bash scripts, we use [ShellCheck](https://www.shellcheck.net/) to help the developers common bugs and bad practices related to Bash scripts. We have GitHub workflows that execute ShellCheck on every Bash script in the repository, and fails if the code breaks any of its rules. To make it easier for the developer to test their code before publishing a PR, we have pre-commit hooks that automatically test your code. However, you need to setup `pre-commit` for the hooks to run. Check the README files for instructions.
+For Bash scripts, we use [ShellCheck](https://www.shellcheck.net/) to help the developers discover common bugs and bad practices related to Bash scripts. We have GitHub workflows that execute ShellCheck on every Bash script in the repository, and fails if the code breaks any of its rules. To make it easier for the developer to test their code before publishing a PR, we have pre-commit hooks that automatically test your code. However, you need to setup `pre-commit` for the hooks to run. Check the README files for instructions.
 
 ## Python Scripts
 

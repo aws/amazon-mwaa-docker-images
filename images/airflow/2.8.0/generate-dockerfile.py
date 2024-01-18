@@ -38,15 +38,15 @@ def main() -> None:
     # Template data
     data = {
         'bootstrapping_scripts_root_firstpass': [
-            (name, os.path.join('./bootstrap/01-root-firstpass', name))
+            os.path.join('/bootstrap/01-root-firstpass', name).strip()
             for name in sorted(os.listdir('./bootstrap/01-root-firstpass'))
         ],
         'bootstrapping_scripts_airflow': [
-            (name, os.path.join('./bootstrap/02-airflow', name))
+            os.path.join('/bootstrap/02-airflow', name).strip()
             for name in sorted(os.listdir('./bootstrap/02-airflow'))
         ],
         'bootstrapping_scripts_root_secondpass': [
-            (name, os.path.join('./bootstrap/03-root-secondpass', name))
+            os.path.join('/bootstrap/03-root-secondpass', name).strip()
             for name in sorted(os.listdir('./bootstrap/03-root-secondpass'))
         ],
     }

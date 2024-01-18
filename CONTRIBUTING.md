@@ -27,7 +27,8 @@ Contributions via pull requests are much appreciated. Before sending us a pull r
 1. You are working against the latest source on the _main_ branch.
 2. You check existing open, and recently merged, pull requests to make sure someone else hasn't addressed the problem already.
 3. You open an issue to discuss any significant work - we would hate for your time to be wasted.
-4. You have configured [`pre-commit`](https://pre-commit.com/). If you don't configure `pre-commit`, then you are considerably more likely to be pushing code that fails our GitHub workflows. To configure it, you can execute the following commands on the repository root:
+4. You have read our [CODING_GUIDELINES.md](CODING_GUIDELINES.md).
+5. You have configured [`pre-commit`](https://pre-commit.com/). If you don't configure `pre-commit`, then you are considerably more likely to be pushing code that fails our GitHub workflows. To configure it, you can execute the following commands on the repository root:
 
 ```
 pip install pre-commit
