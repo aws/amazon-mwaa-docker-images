@@ -5,6 +5,7 @@ ENV AIRFLOW_AMAZON_PROVIDERS_VERSION=8.13.0
 ENV AIRFLOW_USER_HOME=/usr/local/airflow
 ENV AIRFLOW_HOME=${AIRFLOW_USER_HOME}
 ENV AIRFLOW_VERSION=2.8.0
+ENV MWAA_HOME=/usr/local/mwaa
 ENV PYTHON_VERSION=3.11.7
 
 # We don't want those variables to stay in the final image, so we use ARG instead of ENV.
@@ -81,7 +82,7 @@ RUN rm -rf /bootstrap
 
 # Create a volume for syncing files with the sidecar. The actual folder
 # is created by the `001-create-mwaa-dir.sh` script.
-VOLUME ["/usr/local/mwaa"]
+VOLUME ["${MWAA_HOME}"]
 
 # TODO We should only expose this port if the comand is 'webserver'.
 EXPOSE 8080

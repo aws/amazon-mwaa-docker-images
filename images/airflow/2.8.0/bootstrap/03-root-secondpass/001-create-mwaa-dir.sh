@@ -1,4 +1,4 @@
 #!/bin/bash
 
-mkdir -p /usr/local/mwaa
-chown -R airflow: /usr/local/mwaa
+mkdir -p "${MWAA_HOME}"
+chown -R airflow: "${MWAA_HOME}"

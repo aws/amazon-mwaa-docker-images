@@ -3,7 +3,7 @@
 # the Jinja2-templated Dockerfile.j2 file, so you need to change that file
 # instead.
 #
-# This file was generated on 2024-01-18 19:40:10.545188
+# This file was generated on 2024-01-18 23:09:54.111286
 #
 
 FROM public.ecr.aws/amazonlinux/amazonlinux:2023
@@ -13,9 +13,10 @@ ENV AIRFLOW_AMAZON_PROVIDERS_VERSION=8.13.0
 ENV AIRFLOW_USER_HOME=/usr/local/airflow
 ENV AIRFLOW_HOME=${AIRFLOW_USER_HOME}
 ENV AIRFLOW_VERSION=2.8.0
+ENV MWAA_HOME=/usr/local/mwaa
 ENV PYTHON_VERSION=3.11.7
 
-# Temporarily environment variables (removed at the end of the Dockerfile)
+# We don't want those variables to stay in the final image, so we use ARG instead of ENV.
 ARG PATH_DEFAULT=${PATH}
 ARG PATH_AIRFLOW_USER=${AIRFLOW_USER_HOME}/.local/bin:${PATH_DEFAULT}
 ARG PYTHON_MD5_CHECKSUM=d96c7e134c35a8c46236f8a0e566b69c
@@ -101,25 +102,12 @@ RUN rm -rf /bootstrap
 
 # Create a volume for syncing files with the sidecar. The actual folder
 # is created by the `001-create-mwaa-dir.sh` script.
-VOLUME ["/usr/local/mwaa"]
+VOLUME ["${MWAA_HOME}"]
 
 # TODO We should only expose this port if the comand is 'webserver'.
 EXPOSE 8080
 
 ENV PATH=${PATH_AIRFLOW_USER}
-
-# # Unset temporary environment variables.
-# RUN unset \
-#     PATH_DEFAULT \
-#     PATH_AIRFLOW_USER \    
-#     PYTHON_MD5_CHECKSUM \    
-#     MARIADB_DOWNLOAD_BASE_URL \    
-#     MARIADB_RPM_COMMON \    
-#     MARIADB_RPM_COMMON_CHECKSUM \    
-#     MARIADB_RPM_DEVEL \    
-#     MARIADB_RPM_DEVEL_CHECKSUM \    
-#     MARIADB_RPM_SHARED \    
-#     MARIADB_RPM_SHARED_CHECKSUM   
 
 WORKDIR ${AIRFLOW_USER_HOME}
 
