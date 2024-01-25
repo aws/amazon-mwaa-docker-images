@@ -84,19 +84,19 @@ RUN rm -rf /bootstrap
 # is created by the `001-create-mwaa-dir.sh` script.
 VOLUME ["${MWAA_HOME}"]
 
-# TODO We should only expose this port if the comand is 'webserver'.
+# TODO We should only expose this port if the command is 'webserver'.
 EXPOSE 8080
 
 ENV PATH=${PATH_AIRFLOW_USER}
+ENV PYTHONPATH="/python"
 
 WORKDIR ${AIRFLOW_USER_HOME}
 
-COPY entrypoint.py /entrypoint.py
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+# Copy python files.
+COPY ./python /python
 
 USER airflow
 
-ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT ["python3", "-m", "mwaa.entrypoint"]
 
-CMD /bin/bash
+CMD shell

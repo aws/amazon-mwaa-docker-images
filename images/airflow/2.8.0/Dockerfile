@@ -3,7 +3,7 @@
 # the Jinja2-templated Dockerfile.j2 file, so you need to change that file
 # instead.
 #
-# This file was generated on 2024-01-18 23:09:54.111286
+# This file was generated on 2024-01-25 22:38:38.940576
 #
 
 FROM public.ecr.aws/amazonlinux/amazonlinux:2023
@@ -47,7 +47,7 @@ RUN /bootstrap/01-root-firstpass/004-create-airflow-user.sh
 
 RUN /bootstrap/01-root-firstpass/005-install-aws-cli.sh
 
-RUN /bootstrap/01-root-firstpass/999-install-needed-dnf-packages.sh
+RUN /bootstrap/01-root-firstpass/100-install-needed-dnf-packages.sh
 
 
 #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -90,7 +90,9 @@ USER root
 
 RUN /bootstrap/03-root-secondpass/001-create-mwaa-dir.sh
 
-RUN /bootstrap/03-root-secondpass/999-chown-airflow-folder.sh
+RUN /bootstrap/03-root-secondpass/100-chown-airflow-folder.sh
+
+RUN /bootstrap/03-root-secondpass/200-install-debugging-tools.sh
 
 
 #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -104,19 +106,19 @@ RUN rm -rf /bootstrap
 # is created by the `001-create-mwaa-dir.sh` script.
 VOLUME ["${MWAA_HOME}"]
 
-# TODO We should only expose this port if the comand is 'webserver'.
+# TODO We should only expose this port if the command is 'webserver'.
 EXPOSE 8080
 
 ENV PATH=${PATH_AIRFLOW_USER}
+ENV PYTHONPATH="/python"
 
 WORKDIR ${AIRFLOW_USER_HOME}
 
-COPY entrypoint.py /entrypoint.py
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+# Copy python files.
+COPY ./python /python
 
 USER airflow
 
-ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT ["python3", "-m", "mwaa.entrypoint"]
 
-CMD /bin/bash
+CMD shell
