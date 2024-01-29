@@ -1,0 +1,18 @@
+#!/bin/bash
+set -e
+
+# You can use this template to run the Docker Compose setup with your personal
+# AWS account. Create a copy of this file and fill in the placeholderss.
+
+export AWS_ACCOUNT_ID=<Your AWS Account>
+export AWS_REGION=<The AWS region you are using>
+export AWS_ACCESS_KEY_ID=<AWS Access Key>
+export AWS_SECRET_ACCESS_KEY=<AWS Secret Access Key>
+export AWS_SESSION_TOKEN=<AWS Session Token>
+
+export MWAA__SQS__QUEUE_URL="The URL of the SQS key to use with Celery>"
+
+# Build the Docker image
+./build.sh
+
+docker compose up 
