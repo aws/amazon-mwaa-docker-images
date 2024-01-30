@@ -18,7 +18,7 @@ def get_airflow_db_config() -> Dict:
 def get_airflow_celery_config() -> Dict:
     """
     Retrieves the environment variables required to set the necessary Airflow
-    configurations for using Celery (mostly under the "database" section, but
+    configurations for using Celery (mostly under the "celery" section, but
     other sections as well.)
     """
     return {

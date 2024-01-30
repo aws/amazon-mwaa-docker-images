@@ -3,7 +3,7 @@
 # the Jinja2-templated Dockerfile.j2 file, so you need to change that file
 # instead.
 #
-# This file was generated on 2024-01-25 22:38:38.940576
+# This file was generated on 2024-01-30 16:34:46.218794
 #
 
 FROM public.ecr.aws/amazonlinux/amazonlinux:2023
@@ -92,7 +92,7 @@ RUN /bootstrap/03-root-secondpass/001-create-mwaa-dir.sh
 
 RUN /bootstrap/03-root-secondpass/100-chown-airflow-folder.sh
 
-RUN /bootstrap/03-root-secondpass/200-install-debugging-tools.sh
+RUN /bootstrap/03-root-secondpass/200-devonly-install-dev-tools.sh
 
 
 #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -116,6 +116,8 @@ WORKDIR ${AIRFLOW_USER_HOME}
 
 # Copy python files.
 COPY ./python /python
+
+
 
 USER airflow
 
