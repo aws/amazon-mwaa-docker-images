@@ -25,9 +25,9 @@ def get_db_connection_string() -> str:
         ) = itemgetter(*env_vars_names)(os.environ)
     except Exception as e:
         raise RuntimeError(
-            'One or more of the required of the required environment ' +
-            'variables for configuring Postgres are not set. Please ' +
-            'ensure you set all the following environment variables: ' +
+            'One or more of the required environment variables for ' +
+            'configuring Postgres are not set. Please ensure you set all ' +
+            'all the following environment variables: ' +
             f'{", ".join(env_vars_names)}. This was the result of the ' +
             f'following exception: {e}')
 

@@ -1,3 +1,11 @@
+#
+# WARNING: Don't change this file manually. This file is auto-generated from
+# the Jinja2-templated Dockerfile.j2 file, so you need to change that file
+# instead.
+#
+# This file was generated on 2024-01-30 16:34:46.236417
+#
+
 FROM public.ecr.aws/amazonlinux/amazonlinux:2023
 
 # Environment variables
@@ -28,9 +36,19 @@ RUN chmod -R +x /bootstrap
 # BEGINNING marker for root user, first pass bootstrapping steps.
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-{% for filepath in bootstrapping_scripts_root_firstpass %}
-RUN {{ filepath }}
-{% endfor %}
+
+RUN /bootstrap/01-root-firstpass/001-init.sh
+
+RUN /bootstrap/01-root-firstpass/002-install-python.sh
+
+RUN /bootstrap/01-root-firstpass/003-install-mariadb.sh
+
+RUN /bootstrap/01-root-firstpass/004-create-airflow-user.sh
+
+RUN /bootstrap/01-root-firstpass/005-install-aws-cli.sh
+
+RUN /bootstrap/01-root-firstpass/100-install-needed-dnf-packages.sh
+
 
 #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 # END marker for root user, first pass bootstrapping steps.
@@ -46,9 +64,9 @@ RUN {{ filepath }}
 USER airflow
 ENV PATH=${PATH_AIRFLOW_USER} 
 
-{% for filepath in bootstrapping_scripts_airflow %}
-RUN {{ filepath }}
-{% endfor %}
+
+RUN /bootstrap/02-airflow/001-install-airflow.sh
+
 
 # Revert the PATH and user.
 ENV PATH=${PATH_DEFAULT}
@@ -69,9 +87,11 @@ USER root
 # giving ownership of the Airflow home user to the 'airflow' user requires the
 # the folder to be fully setup first.
 
-{% for filepath in bootstrapping_scripts_root_secondpass %}
-RUN {{ filepath }}
-{% endfor %}
+
+RUN /bootstrap/03-root-secondpass/001-create-mwaa-dir.sh
+
+RUN /bootstrap/03-root-secondpass/100-chown-airflow-folder.sh
+
 
 #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 # END marker for root user, second pass bootstrapping steps.
@@ -95,32 +115,8 @@ WORKDIR ${AIRFLOW_USER_HOME}
 # Copy python files.
 COPY ./python /python
 
-{% if build_type == 'standard' %}
-{# This is the standard build type. it is what customer uses.#}
-USER airflow
 
-ENTRYPOINT ["python3", "-m", "mwaa.entrypoint"]
 
-CMD shell
-{% elif build_type == 'explorer' %}
-{#
-The 'explorer' build type is almost identical to the 'standard' build type but
-it doesn't include the entrypoint. This is useful for debugging purposes to run
-the image and look around its content without starting airflow, which might
-require further setup.
-#}
-USER airflow
-
-ENTRYPOINT ["/bin/bash"]
-{% elif build_type == 'explorer-privileged' %}
-{#
-This is similar to the 'explorer' build type, but additionally uses the root
-user, giving the user of this Docker image elevated permissions.  The user can,
-thus, install packages, remove packages, or anything else.
-#}
 USER root
 
 ENTRYPOINT ["/bin/bash"]
-{% else %}
-{{ raise("Invalid build type.") }}
-{% endif %}
