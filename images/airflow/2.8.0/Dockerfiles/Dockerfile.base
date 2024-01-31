@@ -3,13 +3,14 @@
 # the Jinja2-templated Dockerfile.j2 file, so you need to change that file
 # instead.
 #
-# This file was generated on 2024-01-31 02:49:24.646162
+# This file was generated on 2024-01-31 20:02:12.330369
 #
 
 FROM public.ecr.aws/amazonlinux/amazonlinux:2023
 
 # Environment variables
 ENV AIRFLOW_AMAZON_PROVIDERS_VERSION=8.13.0
+ENV AIRFLOW_CONSTRAINTS_FILE="https://raw.githubusercontent.com/apache/airflow/constraints-2.8.0/constraints-3.11.txt"
 ENV AIRFLOW_USER_HOME=/usr/local/airflow
 ENV AIRFLOW_HOME=${AIRFLOW_USER_HOME}
 ENV AIRFLOW_VERSION=2.8.0
@@ -17,8 +18,10 @@ ENV MWAA_HOME=/usr/local/mwaa
 ENV PYTHON_VERSION=3.11.7
 
 # We don't want those variables to stay in the final image, so we use ARG instead of ENV.
+ARG AIRFLOW_USER_LOCAL_PATH=${AIRFLOW_USER_HOME}/.local
+ARG AIRFLOW_USER_LOCAL_BIN_PATH=${AIRFLOW_USER_LOCAL_PATH}/bin
 ARG PATH_DEFAULT=${PATH}
-ARG PATH_AIRFLOW_USER=${AIRFLOW_USER_HOME}/.local/bin:${PATH_DEFAULT}
+ARG PATH_AIRFLOW_USER=${AIRFLOW_USER_LOCAL_BIN_PATH}:${PATH_DEFAULT}
 ARG PYTHON_MD5_CHECKSUM=d96c7e134c35a8c46236f8a0e566b69c
 ARG MARIADB_DOWNLOAD_BASE_URL=https://mirror.mariadb.org/yum/11.1/fedora38-amd64/rpms
 ARG MARIADB_RPM_COMMON=MariaDB-common-11.1.2-1.fc38.x86_64.rpm
@@ -52,6 +55,12 @@ RUN /bootstrap/01-root-firstpass/100-install-needed-dnf-packages.sh
 # END marker for root user, first pass bootstrapping steps.
 #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
+# Copy airflow user's bin/ directory before starting the bootstrapping steps for
+# airflow user.
+COPY ./bin/airflow-user $AIRFLOW_USER_LOCAL_BIN_PATH
+RUN chmod -R +x ${AIRFLOW_USER_LOCAL_BIN_PATH}/* && \
+  chown -R airflow: ${AIRFLOW_USER_LOCAL_PATH}
+
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 # > BEGINNING marker for airflow user bootstrapping steps.
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -60,7 +69,7 @@ RUN /bootstrap/01-root-firstpass/100-install-needed-dnf-packages.sh
 USER airflow
 ENV PATH=${PATH_AIRFLOW_USER} 
 
-RUN /bootstrap/02-airflow/001-install-airflow.sh
+RUN /bootstrap/02-airflow/001-install-required-pip-packages.sh
 
 # Revert the PATH and user.
 ENV PATH=${PATH_DEFAULT}
