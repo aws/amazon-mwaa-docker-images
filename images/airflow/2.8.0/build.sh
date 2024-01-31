@@ -1,10 +1,13 @@
 #!/bin/bash
 set -e
 
-python3 generate-dockerfile.py
+# Generate the Dockerfiles from the templates.
+python3 generate-dockerfiles.py
 
-#!/bin/bash
+# Build the base image.
+docker build -f ./Dockerfiles/Dockerfile.base -t amazon-mwaa/airflow:2.8.0-base ./
 
+# Build the derivatives.
 for dev in "True" "False"; do
     for build_type in "standard" "explorer" "explorer-privileged"; do
         dockerfile_name="Dockerfile"
