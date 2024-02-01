@@ -7,14 +7,8 @@ repos:
 
   - repo: local
     hooks:
-      - id: lint-bash
-        name: Lint Bash Scripts
-        entry: ./lint_bash.sh
+      - id: quality-checks
+        name: Code Quality Checks
+        entry: ./quality-checks/run_all.py
         language: script
         types: [shell]
-
-      - id: lint-python
-        name: Lint Python Scripts
-        entry: ./lint_python.sh
-        language: script
-        types: [python]
