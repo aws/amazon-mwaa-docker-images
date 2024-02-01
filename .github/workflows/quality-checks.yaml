@@ -1,0 +1,23 @@
+name: Quality Checks Workflow
+
+on: [push, pull_request]
+
+jobs:
+  quality_checks:
+    name: Quality Checks Job
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code...
+        uses: actions/checkout@v2
+
+      - name: Set up Python...
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.12"
+
+      - name: Install required Python packages...
+        run: pip install flake8
+
+      - name: Run quality checks...
+        run: ./quality-checks/run_all.py
