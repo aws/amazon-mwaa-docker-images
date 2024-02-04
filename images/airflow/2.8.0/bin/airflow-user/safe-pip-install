@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Define an array of required packages
+# TODO Remove this and use requirements.txt.
 REQUIRED_PACKAGES=(
     "apache-airflow-providers-amazon[aiobotocore]==${AIRFLOW_AMAZON_PROVIDERS_VERSION}"
     "apache-airflow[celery,statsd]==${AIRFLOW_VERSION}"

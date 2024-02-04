@@ -1,3 +1,5 @@
+"""A sample DAG."""
+
 # Python imports
 from datetime import datetime, timedelta
 
@@ -6,7 +8,7 @@ from airflow import DAG
 from airflow.decorators import task
 
 with DAG(
-    dag_id='hello_world_dag',
+    dag_id="hello_world_dag",
     schedule_interval=timedelta(minutes=1),
     dagrun_timeout=timedelta(minutes=5),
     start_date=datetime(2024, 1, 1),
@@ -15,7 +17,8 @@ with DAG(
 ) as dag:
 
     @task(task_id="print_task")
-    def hello_world():
+    def hello_world() -> None:
+        """print_task prints a Hello World message."""
         print("Hello, World!")
 
     hello_world()

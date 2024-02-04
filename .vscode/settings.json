@@ -1,0 +1,21 @@
+{
+  "files.exclude": {
+    "**/.DS_Store": true,
+    "**/.conda": true,
+    "**/.git": true,
+    "**/.ruff_cache": true,
+    "**/.venv": true,
+    "**/Thumbs.db": true,
+    "**/venv": true
+  },
+  "search.exclude": {
+    "**/.DS_Store": true,
+    "**/.conda": true,
+    "**/.git": true,
+    "**/.ruff_cache": true,
+    "**/.venv": true,
+    "**/Thumbs.db": true,
+    "**/venv": true
+  },
+  "python.defaultInterpreterPath": "./venv/bin/python"
+}
