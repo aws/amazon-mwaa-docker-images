@@ -25,14 +25,15 @@ def get_db_connection_string() -> str:
         ) = itemgetter(*env_vars_names)(os.environ)
     except Exception as e:
         raise RuntimeError(
-            'One or more of the required environment variables for ' +
-            'configuring Postgres are not set. Please ensure you set all ' +
-            'all the following environment variables: ' +
-            f'{", ".join(env_vars_names)}. This was the result of the ' +
-            f'following exception: {e}')
+            "One or more of the required environment variables for "
+            "configuring Postgres are not set. Please ensure you set all "
+            "all the following environment variables: "
+            f'{", ".join(env_vars_names)}. This was the result of the '
+            f"following exception: {e}"
+        )
 
     protocol = "postgresql+psycopg2"
     creds = f"{postgres_user}:{postgres_password}"
     addr = f"{postgres_host}:{postgres_port}"
     # TODO We need to do what is the necessary to enforce 'require'.
-    return f'{protocol}://{creds}@{addr}/{postgres_db}?sslmode=prefer'
+    return f"{protocol}://{creds}@{addr}/{postgres_db}?sslmode=prefer"

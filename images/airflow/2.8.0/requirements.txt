@@ -1,0 +1,6 @@
+apache-airflow-providers-amazon[aiobotocore]==8.13.0
+apache-airflow[celery,statsd]==2.8.0
+celery[sqs]
+psycopg2
+pycurl
+watchtower
