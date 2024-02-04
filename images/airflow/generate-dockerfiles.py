@@ -16,40 +16,27 @@ understanding of the working mechanism of this.
 import os
 import sys
 from datetime import datetime
+from typing import Any, List
+from pathlib import Path
 
 try:
     from jinja2 import Environment, FileSystemLoader
 except ImportError:
-    print('''
+    print(
+        """
 jinja2 pip library is required. Please install it with:
 
 pip3 install jinja2
-'''.strip())
+""".strip()
+    )
     sys.exit(1)
 
 
-def raise_helper(msg) -> None:
+def raise_helper(msg: str) -> None:
     """
     Helper method to enable Jinja2 templates to raise an exception.
     """
     raise RuntimeError(msg)
-
-
-def is_dev_bootstrapping_step(bootstrap_filename: str) -> bool:
-    """
-    Determines whether the given bootstrap filename is supposed to run only in
-    development images. This is decided based on the prefix "devonly-" in the
-    filename directly following the index prefix (the numbers at the
-    beginning.) For example, the file `200-devonly-install-dev-tools.sh`
-    matches this criteria and will be only executed for building development
-    images.
-
-    :param bootstrap_filename: The name of the bootstrapping file.
-
-    :return True or False.
-    """
-    comps = bootstrap_filename.split('-')
-    return len(comps) > 1 and comps[1] == 'devonly'
 
 
 def remove_repeated_empty_lines(text: str) -> str:
@@ -64,7 +51,7 @@ def remove_repeated_empty_lines(text: str) -> str:
     """
     lines = text.split(os.linesep)  # Split the text into lines
     previous_line_empty = False  # Track if the previous line was empty
-    cleaned_lines = []
+    cleaned_lines: List[str] = []
 
     for line in lines:
         # Check if the current line is empty
@@ -84,19 +71,20 @@ def remove_repeated_empty_lines(text: str) -> str:
     return cleaned_text
 
 
-def generate_dockerfile(template: str,
-                        output_file: str,
-                        data: dict[str, str]) -> None:
+def generate_dockerfile(
+    image_root_dir: Path, template_filename: str, output_file: str, data: dict[str, Any]
+) -> None:
     # Load Dockerfile Jinja template.
-    file_loader = FileSystemLoader('.')
-    env = Environment(loader=file_loader)
-    env.globals['raise'] = raise_helper
-    template = env.get_template(template)
+    file_loader = FileSystemLoader(image_root_dir)
+    env = Environment(loader=file_loader, autoescape=True)
+    env.globals["raise"] = raise_helper  # type: ignore
+    template = env.get_template(template_filename)
 
     # Render the template and generate the Dockerfile
     output = template.render(data)
-    with open(os.path.join('./Dockerfiles', output_file), 'w') as f:
-        f.write(f'''
+    with open(os.path.join(image_root_dir, "Dockerfiles", output_file), "w") as f:
+        f.write(
+            f"""
 #
 # WARNING: Don't change this file manually. This file is auto-generated from
 # the Jinja2-templated Dockerfile.j2 file, so you need to change that file
@@ -104,41 +92,44 @@ def generate_dockerfile(template: str,
 #
 # This file was generated on {datetime.now()}
 #
-    '''.strip())
+    """.strip()
+        )
         f.write(os.linesep)
         f.write(os.linesep)
         f.write(remove_repeated_empty_lines(output))
 
 
-def generate_base_dockerfile() -> None:
+def generate_base_dockerfile(image_root_dir: Path) -> None:
+    """Generate the Dockerfile.base file based on the Dockerfile.base.j2
+    template."""
     # Template data
     data = {
-        'bootstrapping_scripts_root_firstpass': [
-            os.path.join('/bootstrap/01-root-firstpass', name).strip()
-            for name in sorted(os.listdir('./bootstrap/01-root-firstpass'))
-            if not is_dev_bootstrapping_step(name) or dev is True
+        "bootstrapping_scripts_root_firstpass": [
+            os.path.join("/bootstrap/01-root-firstpass", file.name)
+            for file in (image_root_dir / "bootstrap/01-root-firstpass").iterdir()
+            if file.is_file()
         ],
-        'bootstrapping_scripts_airflow': [
-            os.path.join('/bootstrap/02-airflow', name).strip()
-            for name in sorted(os.listdir('./bootstrap/02-airflow'))
-            if not is_dev_bootstrapping_step(name) or dev is True
+        "bootstrapping_scripts_airflow": [
+            os.path.join("/bootstrap/02-airflow", file.name)
+            for file in (image_root_dir / "bootstrap/02-airflow").iterdir()
+            if file.is_file()
         ],
-        'bootstrapping_scripts_root_secondpass': [
-            os.path.join('/bootstrap/03-root-secondpass', name).strip()
-            for name in sorted(os.listdir('./bootstrap/03-root-secondpass'))
-            if not is_dev_bootstrapping_step(name) or dev is True
+        "bootstrapping_scripts_root_secondpass": [
+            os.path.join("/bootstrap/03-root-secondpass", file.name)
+            for file in (image_root_dir / "bootstrap/03-root-secondpass").iterdir()
+            if file.is_file()
         ],
     }
 
-    template_name = 'Dockerfile.base.j2'
-    dockerfile_name = 'Dockerfile.base'
-    generate_dockerfile(template_name, dockerfile_name, data)
+    template_name = "Dockerfile.base.j2"
+    dockerfile_name = "Dockerfile.base"
+    generate_dockerfile(image_root_dir, template_name, dockerfile_name, data)
 
 
-def generate_derivative_dockerfiles(build_type: str = 'standard',
-                                    dev: bool = False) -> None:
-    """
-    Generate a Dockerfile based on the given build arguments.
+def generate_derivative_dockerfiles(
+    image_root_dir: Path, build_type: str = "standard", dev: bool = False
+) -> None:
+    """Generate a Dockerfile based on the given build arguments.
 
     :param build_type: Specifies the build type. This can have the following
       values:
@@ -157,32 +148,50 @@ def generate_derivative_dockerfiles(build_type: str = 'standard',
       e.g. editors, sudo, etc.
     """
 
-    template_name = 'Dockerfile.derivatives.j2'
-    dockerfile_name = 'Dockerfile'
-    if build_type != 'standard':
-        dockerfile_name = f'{dockerfile_name}-{build_type}'
+    template_name = "Dockerfile.derivatives.j2"
+    dockerfile_name = "Dockerfile"
+    if build_type != "standard":
+        dockerfile_name = f"{dockerfile_name}-{build_type}"
     if dev:
-        dockerfile_name = f'{dockerfile_name}-dev'
+        dockerfile_name = f"{dockerfile_name}-dev"
     data = {
-        'bootstrapping_scripts_dev': [
-            os.path.join('/bootstrap-dev', name).strip()
-            for name in sorted(os.listdir('./bootstrap-dev'))
-        ] if dev else [],
-        'build_type': build_type,
+        "bootstrapping_scripts_dev": (
+            [
+                os.path.join("/bootstrap-dev", file.name)
+                for file in (image_root_dir / "bootstrap-dev").iterdir()
+                if file.is_file()
+            ]
+            if dev
+            else []
+        ),
+        "build_type": build_type,
     }
 
-    generate_dockerfile(template_name, dockerfile_name, data)
+    generate_dockerfile(image_root_dir, template_name, dockerfile_name, data)
 
 
-if __name__ == '__main__':
+def generate_airflow_dockerfiles(image_root_dir: Path):
     # Generate the base Dockerfile file (Dockerfile.base).
-    generate_base_dockerfile()
+    generate_base_dockerfile(image_root_dir)
 
     # Generate the derivative Dockerfiles (multiple Dockerfiles based on
     # the build arguments.)
     for dev in [True, False]:
-        for build_type in ['standard', 'explorer', 'explorer-privileged']:
-            generate_derivative_dockerfiles(build_type=build_type, dev=dev)
+        for build_type in ["standard", "explorer", "explorer-privileged"]:
+            generate_derivative_dockerfiles(
+                image_root_dir, build_type=build_type, dev=dev
+            )
+
+
+def main():
+    for x in Path(__file__).parent.iterdir():
+        if not x.is_dir():
+            continue
+        generate_airflow_dockerfiles(x)
+
+
+if __name__ == "__main__":
+    main()
 else:
-    print('This module cannot be imported.')
+    print("This module cannot be imported.")
     sys.exit(1)

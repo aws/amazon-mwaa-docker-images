@@ -9,11 +9,36 @@ if [[ "$PWD" != "$REPO_ROOT" ]]; then
     exit 1
 fi
 
-# Lint all Python files
-echo "Running Flake8 on Python files..."
-if ! flake8 .; then
-    echo "Flake8 linting failed."
-    exit 1
-else
-    echo "Flake8 linting passed."
-fi
+check_dir() {
+    local dir=$1  # Directory to work in
+    local venv_dir="${dir}/.venv"  # virtual environment path
+
+    echo "Checking directory ${dir}."
+
+    # Check if virtualenv exists, if not create it and install dependencies
+    if [[ ! -d "$venv_dir" ]]; then
+        echo "Virtual environment doesn't exist at ${venv_dir}. Please run the script ./create_venvs.py."
+        exit 1
+    fi
+
+    # shellcheck source=/dev/null
+    source "${venv_dir}/bin/activate"
+    # Run ruff and Pyright
+    echo "Running ruff..."
+    ruff "${dir}"
+    echo "Running Pyright..."
+    pyright "${dir}"
+    deactivate
+
+    echo
+}
+
+# Main repo setup and checks
+check_dir "."
+
+# Setup and checks for each Docker image under ./images/airflow
+for image_dir in ./images/airflow/*; do
+    if [[ -d "$image_dir" ]]; then
+        check_dir "$image_dir"
+    fi
+done

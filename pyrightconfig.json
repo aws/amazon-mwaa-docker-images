@@ -1,0 +1,14 @@
+{
+  "include": ["./"],
+  "exclude": [
+    "**/__pycache__",
+    "**/.venv",
+    // We ignore the ./images folder since it contains Docker images that
+    // have their own different Python packages and thus require runs.
+    "./images"
+  ],
+  "strict": ["./"],
+  "pythonVersion": "3.11",
+  "pythonPlatform": "All",
+  "typeCheckingMode": "strict"
+}

@@ -9,7 +9,7 @@ import boto3
 from mwaa.config.aws import get_aws_region
 
 
-def _change_protocol_to_sqs(url) -> str:
+def _change_protocol_to_sqs(url: str) -> str:
     """
     Make the given SQS endpoint Celery friendly by setting the URL protocol
     to sqs://.
@@ -22,25 +22,23 @@ def _change_protocol_to_sqs(url) -> str:
     parsed_url = urlparse(url)
 
     # Check if the scheme was missing and was defaulted to 'http'
-    if parsed_url.netloc == '':
+    if parsed_url.netloc == "":
         # Scheme is missing, netloc is actually part of the path.
         # See the documentation for urlparse() if you don't understand the
         # reasoning.
         new_netloc = parsed_url.path
-        new_path = ''
+        new_path = ""
     else:
         # Scheme is present.
         new_netloc = parsed_url.netloc
         new_path = parsed_url.path
 
-    return urlunparse(parsed_url._replace(
-        scheme='sqs',
-        netloc=new_netloc,
-        path=new_path
-    ))
+    return urlunparse(
+        parsed_url._replace(scheme="sqs", netloc=new_netloc, path=new_path)
+    )
 
 
-def _get_sqs_default_endpoint():
+def _get_sqs_default_endpoint() -> str:
     """
     Retrieves the default SQS endpoint for the current AWS region.
     """
@@ -49,7 +47,7 @@ def _get_sqs_default_endpoint():
     session = boto3.Session(region_name=get_aws_region())
 
     # Create an SQS client from this session
-    sqs = session.client('sqs')
+    sqs = session.client("sqs")
 
     # Return the endpoint URL
     return sqs.meta.endpoint_url
@@ -63,12 +61,11 @@ def get_sqs_endpoint() -> str:
     used.
     """
     return _change_protocol_to_sqs(
-        os.environ.get('MWAA__SQS__CUSTOM_ENDPOINT')
-        or _get_sqs_default_endpoint()
+        os.environ.get("MWAA__SQS__CUSTOM_ENDPOINT") or _get_sqs_default_endpoint()
     )
 
 
-def _get_queue_name_from_url(queue_url) -> str:
+def _get_queue_name_from_url(queue_url: str) -> str:
     """
     Extracts the queue name from an Amazon SQS queue URL.
 
@@ -78,16 +75,15 @@ def _get_queue_name_from_url(queue_url) -> str:
     """
     try:
         # Validate the protocol.
-        if not queue_url.startswith("http://") and \
-                not queue_url.startswith("https://"):
+        if not queue_url.startswith("http://") and not queue_url.startswith("https://"):
             raise ValueError(
-                f"URL {queue_url} is should start with http:// or https://")
+                f"URL {queue_url} is should start with http:// or https://"
+            )
 
-        parts = queue_url.split('/')
+        parts = queue_url.split("/")
 
         if len(parts) < 2:
-            raise ValueError(
-                f"URL {queue_url} is invalid.")
+            raise ValueError(f"URL {queue_url} is invalid.")
 
         return parts[-1]
     except Exception as e:
@@ -98,10 +94,10 @@ def get_sqs_queue_url() -> str:
     """
     Retrieves the URL of the SQS queue specified for use with Celery.
     """
-    env_var_name = 'MWAA__SQS__QUEUE_URL'
+    env_var_name = "MWAA__SQS__QUEUE_URL"
     if env_var_name not in os.environ:
         raise RuntimeError(
-            "The name of the SQS queue to use should be specified in an " +
+            "The name of the SQS queue to use should be specified in an "
             f"environment variable called '{env_var_name}.'"
         )
     return os.environ.get(env_var_name)  # type: ignore
