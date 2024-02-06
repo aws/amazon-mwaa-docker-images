@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # Ensure the script is being executed while being in the repo root.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -13,7 +14,7 @@ check_dir() {
     local dir=$1  # Directory to work in
     local venv_dir="${dir}/.venv"  # virtual environment path
 
-    echo "Checking directory ${dir}."
+    echo "Checking directory \"${dir}\"..."
 
     # Check if virtualenv exists, if not create it and install dependencies
     if [[ ! -d "$venv_dir" ]]; then

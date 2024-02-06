@@ -129,6 +129,23 @@ def create_www_user(environ: dict[str, str]) -> None:
         raise RuntimeError(f"Failed to create user. Error: {response.stderr}")
 
 
+def install_user_requirements(environ: dict[str, str]) -> None:
+    requirements_file = environ.get("MWAA__CORE__REQUIREMENTS_PATH")
+    print(f"MWAA__CORE__REQUIREMENTS_PATH = {requirements_file}")
+    if requirements_file and os.path.isfile(requirements_file):
+        print(f"Installing user requirements from {requirements_file}...")
+        subprocess.run(
+            [
+                "safe-pip-install",
+                "-r",
+                str(requirements_file),
+            ],
+            check=True,
+        )
+    else:
+        print("No user requirements to install.")
+
+
 def export_env_variables(environ: dict[str, str]) -> None:
     # Get the home directory of the current user
     home_dir = os.path.expanduser("~")
@@ -178,6 +195,7 @@ def main() -> None:
 
     airflow_db_init(environ)
     create_www_user(environ)
+    install_user_requirements(environ)
 
     # Export the environment variables to .bashrc and .bash_profile to enable
     # users to run a shell on the container and have the necessary environment

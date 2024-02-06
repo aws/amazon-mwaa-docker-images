@@ -12,6 +12,9 @@ x-airflow-common: &airflow-common
     AWS_REGION: ${AWS_REGION}
     AWS_DEFAULT_REGION: ${AWS_REGION}
 
+    # Core configuration
+    MWAA__CORE__REQUIREMENTS_PATH: "/usr/local/airflow/requirements/requirements.txt"
+
     # Database configuration
     MWAA__DB__POSTGRES_HOST: "postgres"
     MWAA__DB__POSTGRES_PORT: "5432"
@@ -25,6 +28,7 @@ x-airflow-common: &airflow-common
   volumes:
     - ./dags:/usr/local/airflow/dags
     - ./plugins:/usr/local/airflow/plugins
+    - ./requirements:/usr/local/airflow/requirements
   depends_on: &airflow-common-depends-on
     postgres:
       condition: service_healthy
