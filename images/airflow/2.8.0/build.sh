@@ -2,7 +2,10 @@
 set -e
 
 # Generate the Dockerfiles from the templates.
-python3 generate-dockerfiles.py
+# shellcheck source=/dev/null
+source "../../../.venv/bin/activate"
+python3 ../generate-dockerfiles.py
+deactivate
 
 # Build the base image.
 docker build -f ./Dockerfiles/Dockerfile.base -t amazon-mwaa/airflow:2.8.0-base ./

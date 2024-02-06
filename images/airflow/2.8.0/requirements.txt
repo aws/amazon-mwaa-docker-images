@@ -3,4 +3,7 @@ apache-airflow[celery,statsd]==2.8.0
 celery[sqs]
 psycopg2
 pycurl
+pyright
+ruff
+sqlalchemy-stubs
 watchtower
