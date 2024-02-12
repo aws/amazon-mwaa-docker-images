@@ -8,6 +8,15 @@
     "**/Thumbs.db": true,
     "**/venv": true
   },
+  "files.watcherExclude": {
+    "**/.DS_Store": true,
+    "**/.conda": true,
+    "**/.git": true,
+    "**/.ruff_cache": true,
+    "**/.venv": true,
+    "**/Thumbs.db": true,
+    "**/venv": true
+  },
   "search.exclude": {
     "**/.DS_Store": true,
     "**/.conda": true,
@@ -17,5 +26,5 @@
     "**/Thumbs.db": true,
     "**/venv": true
   },
-  "python.defaultInterpreterPath": "./venv/bin/python"
+  "python.defaultInterpreterPath": "./.venv/bin/python"
 }
