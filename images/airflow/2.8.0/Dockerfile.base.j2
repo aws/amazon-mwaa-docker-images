@@ -1,11 +1,15 @@
 FROM public.ecr.aws/amazonlinux/amazonlinux:2023
 
 # Environment variables
-ENV AIRFLOW_AMAZON_PROVIDERS_VERSION=8.13.0
-ENV AIRFLOW_CONSTRAINTS_FILE="https://raw.githubusercontent.com/apache/airflow/constraints-2.8.0/constraints-3.11.txt"
+
+# Temporarily downgrading to 2.7.2 to make it easier to test the Docker image
+# within Amazon MWAA since 2.7.2 is a version we support.
+ENV AIRFLOW_VERSION=2.7.2
+ENV AIRFLOW_AMAZON_PROVIDERS_VERSION=8.7.1
+
+ENV AIRFLOW_CONSTRAINTS_FILE="https://raw.githubusercontent.com/apache/airflow/constraints-2.7.2/constraints-3.11.txt"
 ENV AIRFLOW_USER_HOME=/usr/local/airflow
 ENV AIRFLOW_HOME=${AIRFLOW_USER_HOME}
-ENV AIRFLOW_VERSION=2.8.0
 ENV MWAA_HOME=/usr/local/mwaa
 ENV PYTHON_VERSION=3.11.7
 
@@ -96,8 +100,13 @@ EXPOSE 8080
 
 ENV PATH=${PATH_AIRFLOW_USER}
 ENV PYTHONPATH="/python"
+ENV PYTHONUNBUFFERED=1
 
 WORKDIR ${AIRFLOW_USER_HOME}
 
 # Copy python files.
 COPY ./python /python
+
+# TODO Move this to the bin folder under airflow's home folder.
+COPY healthcheck.sh /healthcheck.sh
+RUN chmod +x /healthcheck.sh
