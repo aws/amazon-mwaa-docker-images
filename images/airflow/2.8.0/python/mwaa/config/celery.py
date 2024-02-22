@@ -7,7 +7,7 @@ from airflow.providers.celery.executors.default_celery import DEFAULT_CELERY_CON
 
 # Our import
 from mwaa.config.aws import get_aws_region
-from mwaa.config.sqs import get_sqs_queue_name, get_sqs_queue_url
+from mwaa.config.sqs import get_sqs_queue_name, get_sqs_queue_url, should_use_ssl
 
 
 def create_celery_config() -> dict[str, Any]:
@@ -23,7 +23,7 @@ def create_celery_config() -> dict[str, Any]:
         "broker_transport_options": {
             **celery_config["broker_transport_options"],
             "predefined_queues": {get_sqs_queue_name(): {"url": get_sqs_queue_url()}},
-            "is_secure": True,
+            "is_secure": should_use_ssl(),
             "region": get_aws_region(),
         },
     }

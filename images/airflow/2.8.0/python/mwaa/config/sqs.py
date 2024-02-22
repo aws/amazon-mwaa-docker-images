@@ -38,7 +38,7 @@ def _change_protocol_to_sqs(url: str) -> str:
     )
 
 
-def _get_sqs_default_endpoint() -> str:
+def get_sqs_default_endpoint() -> str:
     """
     Retrieves the default SQS endpoint for the current AWS region.
     """
@@ -61,7 +61,7 @@ def get_sqs_endpoint() -> str:
     used.
     """
     return _change_protocol_to_sqs(
-        os.environ.get("MWAA__SQS__CUSTOM_ENDPOINT") or _get_sqs_default_endpoint()
+        os.environ.get("MWAA__SQS__CUSTOM_ENDPOINT") or get_sqs_default_endpoint()
     )
 
 
@@ -108,3 +108,23 @@ def get_sqs_queue_name() -> str:
     Retrieves the name of the SQS queue specified for use with Celery.
     """
     return _get_queue_name_from_url(get_sqs_queue_url())
+
+
+def should_create_queue() -> bool:
+    """
+    Determine whether the SQS queue should be created or not.
+
+    :return: True or False.
+    """
+    return os.environ.get("MWAA__SQS__CREATE_QUEUE", "false").lower() == "true"
+
+
+def should_use_ssl() -> bool:
+    """
+    Determines whether to use SSL when communicating with SQS or not. This
+    configuration is expected to be true when connecting to AWS SQS, and false
+    when connecting to elasticmq.
+
+    :return: True or False.
+    """
+    return os.environ.get("MWAA__SQS__USE_SSL", "true").lower() == "true"
