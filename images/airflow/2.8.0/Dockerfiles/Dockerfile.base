@@ -3,14 +3,15 @@
 # the Jinja2-templated Dockerfile.j2 file, so you need to change that file
 # instead.
 #
-# This file was generated on 2024-02-12 01:56:33.018473
+# This file was generated on 2024-02-22 19:42:44.924226
 #
 
 FROM public.ecr.aws/amazonlinux/amazonlinux:2023
 
 # Environment variables
 
-# Temporarily downgrading to 2.7.2 to make it easier to test using it internally.
+# Temporarily downgrading to 2.7.2 to make it easier to test the Docker image
+# within Amazon MWAA since 2.7.2 is a version we support.
 ENV AIRFLOW_VERSION=2.7.2
 ENV AIRFLOW_AMAZON_PROVIDERS_VERSION=8.7.1
 

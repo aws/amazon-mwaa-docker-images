@@ -15,12 +15,18 @@ from typing import Any, Callable, TypeVar, cast
 
 
 # 3rd party imports
+import boto3
+from botocore.exceptions import ClientError
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 
 # Our imports
 from mwaa.config.airflow import get_airflow_config
 from mwaa.config.database import get_db_connection_string
+from mwaa.config.sqs import (
+    get_sqs_queue_name,
+    should_create_queue,
+)
 
 
 def abort(err_msg: str, exit_code: int = 1) -> None:
@@ -129,6 +135,31 @@ def create_www_user(environ: dict[str, str]) -> None:
         raise RuntimeError(f"Failed to create user. Error: {response.stderr}")
 
 
+@db_lock(1357)
+def create_queue() -> None:
+    if not should_create_queue():
+        return
+    queue_name = get_sqs_queue_name()
+    endpoint = os.environ.get("MWAA__SQS__CUSTOM_ENDPOINT")
+    sqs = boto3.client("sqs", endpoint_url=endpoint)  # type: ignore
+    try:
+        # Try to get the queue URL to check if it exists
+        sqs.get_queue_url(QueueName=queue_name)["QueueUrl"]
+        print(f"Queue {queue_name} already exists.")
+    except ClientError as e:
+        # If the queue does not exist, create it
+        if (
+            e.response.get("Error", {}).get("Code")
+            == "AWS.SimpleQueueService.NonExistentQueue"
+        ):
+            response = sqs.create_queue(QueueName=queue_name)
+            queue_url = response["QueueUrl"]
+            print(f"Queue created: {queue_url}")
+        else:
+            # If there is a different error, raise it
+            raise e
+
+
 def install_user_requirements(environ: dict[str, str]) -> None:
     requirements_file = environ.get("MWAA__CORE__REQUIREMENTS_PATH")
     print(f"MWAA__CORE__REQUIREMENTS_PATH = {requirements_file}")
@@ -195,6 +226,7 @@ def main() -> None:
 
     airflow_db_init(environ)
     create_www_user(environ)
+    create_queue()
     install_user_requirements(environ)
 
     # Export the environment variables to .bashrc and .bash_profile to enable

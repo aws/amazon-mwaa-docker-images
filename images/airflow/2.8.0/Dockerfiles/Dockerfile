@@ -3,7 +3,7 @@
 # the Jinja2-templated Dockerfile.j2 file, so you need to change that file
 # instead.
 #
-# This file was generated on 2024-02-12 01:56:33.029839
+# This file was generated on 2024-02-22 19:42:44.935774
 #
 
 FROM amazon-mwaa/airflow:2.8.0-base

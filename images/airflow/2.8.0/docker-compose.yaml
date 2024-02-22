@@ -2,7 +2,6 @@ version: "3.8"
 
 x-airflow-common: &airflow-common
   image: amazon-mwaa/airflow:2.8.0
-  container_name: mwaa-280-db
   restart: always
   environment:
     # AWS credentials
@@ -23,7 +22,10 @@ x-airflow-common: &airflow-common
     MWAA__DB__POSTGRES_DB: "airflow"
 
     # SQS configuration
-    MWAA__SQS__QUEUE_URL: ${MWAA__SQS__QUEUE_URL}
+    MWAA__SQS__CREATE_QUEUE: True
+    MWAA__SQS__CUSTOM_ENDPOINT: http://sqs:9324
+    MWAA__SQS__QUEUE_URL: http://sqs:9324/000000000000/celery-queue
+    MWAA__SQS__USE_SSL: False
 
   volumes:
     - ./dags:/usr/local/airflow/dags
@@ -31,6 +33,8 @@ x-airflow-common: &airflow-common
     - ./requirements:/usr/local/airflow/requirements
   depends_on: &airflow-common-depends-on
     postgres:
+      condition: service_healthy
+    sqs:
       condition: service_healthy
 
 services:
@@ -54,22 +58,20 @@ services:
     expose:
       - 5432
 
-  # TODO Support a local SQS server to allow the user to use this Docker Compose file without a real AWS account.
-  #
-  # sqs:
-  #   image: softwaremill/elasticmq:latest
-  #   healthcheck:
-  #     # https://github.com/softwaremill/elasticmq/issues/776#issuecomment-1582527921
-  #     test: ["CMD-SHELL", "wget -q -S -O - 127.0.0.1:9324/?Action=ListQueues"]
-  #     interval: 10s
-  #     retries: 5
-  #     start_period: 5s
-  #   ports:
-  #     - 9324:9324
-  #     - 9325:9325
-  #   expose:
-  #     - 9324
-  #     - 9325
+  sqs:
+    image: softwaremill/elasticmq:latest
+    healthcheck:
+      # https://github.com/softwaremill/elasticmq/issues/776#issuecomment-1582527921
+      test: ["CMD-SHELL", "wget -q -S -O - 127.0.0.1:9324/?Action=ListQueues"]
+      interval: 10s
+      retries: 5
+      start_period: 5s
+    ports:
+      - 9324:9324
+      - 9325:9325
+    expose:
+      - 9324
+      - 9325
 
   # TODO Create a local CloudWatch endpoint to allow the customer to use this Docker Compose file without a real AWS account.
   # TODO Create a local CloudWatch Metrics endpoint to allow the customer to use this Docker Compose file without a real AWS account.
