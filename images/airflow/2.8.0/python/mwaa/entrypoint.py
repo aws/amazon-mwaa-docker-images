@@ -29,7 +29,13 @@ from mwaa.config.sqs import (
 )
 
 
-def abort(err_msg: str, exit_code: int = 1) -> None:
+def abort(err_msg: str, exit_code: int = 1):
+    """
+    Print an error message and then exit the process with the given exit code.
+
+    :param err_msg: The error message to print before exiting.
+    :param exit_code: The exit code.
+    """
     print(err_msg)
     sys.exit(exit_code)
 
@@ -44,15 +50,27 @@ AVAILABLE_COMMANDS = [
 ]
 
 
-def verify_versions() -> None:
-    major, minor, micro, *_ = sys.version_info
-    assert os.environ["PYTHON_VERSION"] == f"{major}.{minor}.{micro}"
-
-
 F = TypeVar("F", bound=Callable[..., Any])
 
 
 def db_lock(lock_id: int, timeout: int = 300 * 1000) -> Callable[[F], F]:
+    """
+    Generate a decorator that can be used to protect a function by a database lock.
+
+    This is useful when a function needs to be protected against multiple simultaneous
+    executions. For example, during Airflow database initialization, we want to make
+    sure that only one process is doing it. Since normal lock mechanisms only apply to
+    the same process, a database lock becomes a viable solution.
+
+    :param lock_id: A unique ID for the lock. When multiple processes try to use the
+      same lock ID, only one process will be granted the lock at one time. However,
+      if the processes have different lock IDs, they will be granted the locks at the
+      same time.
+    :param timeout: The maximum time the process is allowed to hold the lock. After this
+      time expires, the lock is automatically released.
+    
+    :returns A decorator that can be applied to a function to protect it with a DB lock.
+    """
     def decorator(func: F) -> F:
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             func_name: str = func.__name__
@@ -60,12 +78,14 @@ def db_lock(lock_id: int, timeout: int = 300 * 1000) -> Callable[[F], F]:
                 get_db_connection_string()  # Assuming this is defined elsewhere
             )
             print(f"Obtaining lock for {func_name}...")
-            with db_engine.connect() as conn:
+            with db_engine.connect() as conn: # type: ignore
                 try:
-                    conn.execute(
+                    conn.execute( # type: ignore
                         text("SET LOCK_TIMEOUT to :timeout"), {"timeout": timeout}
                     )
-                    conn.execute(text("SELECT pg_advisory_lock(:id)"), {"id": lock_id})
+                    conn.execute( # type: ignore
+                        text("SELECT pg_advisory_lock(:id)"), {"id": lock_id}
+                        )
                     print(f"Obtained lock for {func_name}.")
 
                     try:
@@ -80,8 +100,10 @@ def db_lock(lock_id: int, timeout: int = 300 * 1000) -> Callable[[F], F]:
                     )
                 finally:
                     print(f"Releasing lock for {func_name}...")
-                    conn.execute(text("SET LOCK_TIMEOUT TO DEFAULT"))
-                    conn.execute(
+                    conn.execute( # type: ignore
+                        text("SET LOCK_TIMEOUT TO DEFAULT")
+                        )
+                    conn.execute( # type: ignore
                         text("SELECT pg_advisory_unlock(:id)"), {"id": lock_id}
                     )
                     print(f"Released lock for {func_name}")
@@ -92,7 +114,19 @@ def db_lock(lock_id: int, timeout: int = 300 * 1000) -> Callable[[F], F]:
 
 
 @db_lock(1234)
-def airflow_db_init(environ: dict[str, str]) -> None:
+def airflow_db_init(environ: dict[str, str]):
+    """
+    Initialize Airflow database.
+
+    Before Airflow can be used, a call to `airflow db migrate` must be done. This
+    function does this. This function is called in the entrypoint to make sure that,
+    for any Airflow component, the database is initialized before it starts.
+
+    This function uses a DB lock to make sure that no two processes execute this
+    function at the same time.
+
+    :param environ: A dictionary containing the environment variables.
+    """
     print("Calling 'airflow db migrate' to initialize the database.")
     response = subprocess.run(
         ["airflow db migrate"], shell=True, check=True, text=True, env=environ
@@ -103,7 +137,19 @@ def airflow_db_init(environ: dict[str, str]) -> None:
 
 
 @db_lock(5678)
-def create_www_user(environ: dict[str, str]) -> None:
+def create_airflow_user(environ: dict[str, str]):
+    """
+    Create the 'airflow' user.
+
+    To be able to login to the webserver, you need a user. This function creates a user
+    with default credentials.
+
+    Notice that this should only be used in development context. In production, other
+    means need to be employed to create users with strong passwords. Alternatively, with
+    MWAA setup, a plugin is employed to integrate with IAM (not implemented yet.)
+
+    :param environ: A dictionary containing the environment variables.
+    """
     print("Calling 'airflow users create' to create the webserver user.")
     response = subprocess.run(
         " ".join(
@@ -137,6 +183,13 @@ def create_www_user(environ: dict[str, str]) -> None:
 
 @db_lock(1357)
 def create_queue() -> None:
+    """
+    Create the SQS required by Celery.
+
+    In our setup, we use SQS as the backend for Celery. Usually, this should be created
+    before hand. However, sometimes you might want to create the SQS queue during
+    startup. One such example is when using the elasticmq server as a mock SQS server.
+    """
     if not should_create_queue():
         return
     queue_name = get_sqs_queue_name()
@@ -160,7 +213,18 @@ def create_queue() -> None:
             raise e
 
 
-def install_user_requirements(environ: dict[str, str]) -> None:
+def install_user_requirements(environ: dict[str, str]):
+    """
+    Install user requirements.
+
+    User requirements should be placed in a requirements.txt file and the environment
+    variable `MWAA__CORE__REQUIREMENTS_PATH` should be set to the location of that file.
+    In a Docker Compose setup, you would usually want to create a volume that maps a
+    requirements.txt file in the host machine somewhere in the container, and then set
+    the `MWAA__CORE__REQUIREMENTS_PATH` accordingly.
+
+    :param environ: A dictionary containing the environment variables.
+    """
     requirements_file = environ.get("MWAA__CORE__REQUIREMENTS_PATH")
     print(f"MWAA__CORE__REQUIREMENTS_PATH = {requirements_file}")
     if requirements_file and os.path.isfile(requirements_file):
@@ -177,7 +241,19 @@ def install_user_requirements(environ: dict[str, str]) -> None:
         print("No user requirements to install.")
 
 
-def export_env_variables(environ: dict[str, str]) -> None:
+def export_env_variables(environ: dict[str, str]):
+    """
+    Export the environment variables to .bashrc and .bash_profile.
+
+    For Aiflow to function properly, a bunch of enviornment variables needs to be
+    defined, which we do in the entrypoint. However, during development, a need might
+    arise for bashing into the Docker container and doing some debugging, e.g. running
+    a bunch of Airflow CLI commands. This won't be possible if the necessary environment
+    variables are not defined, which is the case unless we have them defined in the
+    .bashrc/.bash_profile files. This function does exactly that.
+
+    :param environ: A dictionary containing the environment variables to export.
+    """
     # Get the home directory of the current user
     home_dir = os.path.expanduser("~")
     bashrc_path = os.path.join(home_dir, ".bashrc")
@@ -200,8 +276,7 @@ def export_env_variables(environ: dict[str, str]) -> None:
 
 
 def main() -> None:
-    """Entrypoint of the script."""
-
+    """Start execution of the script."""
     try:
         (
             _,
@@ -225,7 +300,7 @@ def main() -> None:
     environ = {**os.environ, **get_airflow_config()}
 
     airflow_db_init(environ)
-    create_www_user(environ)
+    create_airflow_user(environ)
     create_queue()
     install_user_requirements(environ)
 

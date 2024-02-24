@@ -10,6 +10,8 @@ if [[ "$PWD" != "$REPO_ROOT" ]]; then
     exit 1
 fi
 
+status=0
+
 check_dir() {
     local dir=$1  # Directory to work in
     local venv_dir="${dir}/.venv"  # virtual environment path
@@ -26,9 +28,11 @@ check_dir() {
     source "${venv_dir}/bin/activate"
     # Run ruff and Pyright
     echo "Running ruff..."
-    ruff "${dir}"
+    ruff "${dir}" || status=1
     echo "Running Pyright..."
-    pyright "${dir}"
+    pyright "${dir}" || status=1
+    echo "Running pydocstyle..."
+    pydocstyle "${dir}" || status=1
     deactivate
 
     echo
@@ -43,3 +47,5 @@ for image_dir in ./images/airflow/*; do
         check_dir "$image_dir"
     fi
 done
+
+exit $status
