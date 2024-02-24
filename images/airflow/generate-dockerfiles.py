@@ -192,6 +192,7 @@ def generate_airflow_dockerfiles(image_root_dir: Path):
 
 
 def main():
+    """Start execution of the script."""
     for x in Path(__file__).parent.iterdir():
         if not x.is_dir():
             continue

@@ -1,3 +1,4 @@
+"""Contain functions for retrieving Airflow SQS-related configuration."""
 # Python imports
 import os
 from urllib.parse import urlparse, urlunparse
@@ -11,14 +12,14 @@ from mwaa.config.aws import get_aws_region
 
 def _change_protocol_to_sqs(url: str) -> str:
     """
-    Make the given SQS endpoint Celery friendly by setting the URL protocol
-    to sqs://.
+    Make the given SQS endpoint Celery-friendly by setting the URL protocol to sqs://.
 
     Notice that there is no such thing as SQS protocol, but this is the
     URL convention that Celery uses to understand that the given URL is for
     an SQS queue.
-    """
 
+    :returns The Celery-friendly SQS endpoint.
+    """
     parsed_url = urlparse(url)
 
     # Check if the scheme was missing and was defaulted to 'http'
@@ -40,9 +41,10 @@ def _change_protocol_to_sqs(url: str) -> str:
 
 def get_sqs_default_endpoint() -> str:
     """
-    Retrieves the default SQS endpoint for the current AWS region.
-    """
+    Retrieve the default SQS endpoint for the current AWS region.
 
+    :returns The endpoint.
+    """
     # Create a session with the specified region
     session = boto3.Session(region_name=get_aws_region())
 
@@ -55,10 +57,13 @@ def get_sqs_default_endpoint() -> str:
 
 def get_sqs_endpoint() -> str:
     """
-    Retrieves the SQS endpoint to communicate with. The user can specify the
-    endpoint via the optional `MWAA_CONFIG__CUSTOM_SQS_ENDPOINT` environment
-    variable. Otherwise, the default endpoint for the current AWS region is
+    Retrieve the SQS endpoint to communicate with.
+    
+    The user can specify the endpoint via the `MWAA_CONFIG__CUSTOM_SQS_ENDPOINT`
+    environment variable. Otherwise, the default endpoint for the current AWS region is
     used.
+
+    :returns The SQS endpoint.
     """
     return _change_protocol_to_sqs(
         os.environ.get("MWAA__SQS__CUSTOM_ENDPOINT") or get_sqs_default_endpoint()
@@ -67,11 +72,11 @@ def get_sqs_endpoint() -> str:
 
 def _get_queue_name_from_url(queue_url: str) -> str:
     """
-    Extracts the queue name from an Amazon SQS queue URL.
+    Extract the queue name from an Amazon SQS queue URL.
 
     :param queue_url: The URL of the SQS queue.
 
-    :return: The name of the queue or None if the URL is invalid.
+    :returns The name of the queue or None if the URL is invalid.
     """
     try:
         # Validate the protocol.
@@ -92,7 +97,9 @@ def _get_queue_name_from_url(queue_url: str) -> str:
 
 def get_sqs_queue_url() -> str:
     """
-    Retrieves the URL of the SQS queue specified for use with Celery.
+    Retrieve the URL of the SQS queue specified for use with Celery.
+
+    :returns The queue URL.
     """
     env_var_name = "MWAA__SQS__QUEUE_URL"
     if env_var_name not in os.environ:
@@ -105,7 +112,9 @@ def get_sqs_queue_url() -> str:
 
 def get_sqs_queue_name() -> str:
     """
-    Retrieves the name of the SQS queue specified for use with Celery.
+    Retrieve the name of the SQS queue specified for use with Celery.
+
+    :returns The queue name.
     """
     return _get_queue_name_from_url(get_sqs_queue_url())
 
@@ -121,9 +130,11 @@ def should_create_queue() -> bool:
 
 def should_use_ssl() -> bool:
     """
-    Determines whether to use SSL when communicating with SQS or not. This
-    configuration is expected to be true when connecting to AWS SQS, and false
-    when connecting to elasticmq.
+    Determine whether to use SSL when communicating with SQS or not.
+    
+    This configuration is expected to be true when connecting to AWS SQS, as it enforces
+    the use of SQS. On the otherhand, when using elasticmq, which doesn't support SSL,
+    this should be set to false.
 
     :return: True or False.
     """

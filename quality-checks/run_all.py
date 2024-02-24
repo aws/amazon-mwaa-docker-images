@@ -1,4 +1,5 @@
 #!/bin/python3
+"""Run all quality check scripts under the quality-checks/ folder."""
 import os
 import subprocess
 import sys
@@ -11,9 +12,7 @@ from typing import List
 # TODO Remove support of Amazon Linux 2 from this package as soon as possible, as we
 # shouldn't be relying on an EOLed Python version.
 def prefix_output(file: str, process: subprocess.Popen) -> None:  # type: ignore
-    """
-    Prefix each line of output with the filename.
-    """
+    """Prefix each line of output with the filename."""
     if not process.stdout:  # type: ignore
         raise RuntimeError("Process doesn't have an stdout stream.")
     for line in process.stdout:  # type: ignore
@@ -21,10 +20,7 @@ def prefix_output(file: str, process: subprocess.Popen) -> None:  # type: ignore
 
 
 def verify_in_repo_root() -> None:
-    """
-    Verifies that the script is being executed from within the repository
-    root. Exits with non-zero code if that's not the case.
-    """
+    """Verify the script is executed from the repository root, or exit with non-zero."""
     # Determine the script's directory and the parent directory (which should
     # be <repo root>)
     script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -41,9 +37,7 @@ def verify_in_repo_root() -> None:
 
 
 def main() -> None:
-    """
-    Script entrypoint.
-    """
+    """Start execution of the script."""
     verify_in_repo_root()
 
     quality_checks_dir = "./quality-checks/"

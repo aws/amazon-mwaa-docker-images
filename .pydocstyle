@@ -1,0 +1,2 @@
+[pydocstyle]
+match_dir = ^(?!.venv|images).*$

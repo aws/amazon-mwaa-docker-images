@@ -1,4 +1,11 @@
 #!/bin/python3
+"""
+This module verifies there are no direct use of "pip install" in the code.
+
+Direct use of "pip install" could easily result in broken Airflow dependencies. As such,
+we always want to use a special script, safe-pip-install, which ensure Airflow and its
+dependencies are protected.
+"""
 import os
 import sys
 
@@ -9,7 +16,7 @@ EMJOI_CROSS_MARK = "\u274C"
 
 def check_file_for_pip_install(filepath: str) -> bool:
     """
-    Checks if the file contains 'pip install'.
+    Check if the file contains 'pip install'.
 
     :param filepath: The path of the file to check.
 
@@ -24,8 +31,7 @@ def check_file_for_pip_install(filepath: str) -> bool:
 
 def verify_no_pip_install(directory: str) -> bool:
     """
-    Recursively searches through the directory tree and verifies that there
-    are no direct use of `pip install`.
+    Verify there is no direct use of `pip install` in the directory tree.
 
     :param directory: The directory to scan.
 
@@ -52,10 +58,7 @@ def verify_no_pip_install(directory: str) -> bool:
 
 
 def verify_in_repo_root() -> None:
-    """
-    Verifies that the script is being executed from within the repository
-    root. Exits with non-zero code if that's not the case.
-    """
+    """Verify the script is executed from the repository root, or exit with non-zero."""
     # Determine the script's directory and the parent directory (which should
     # be <repo root>)
     script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -72,6 +75,7 @@ def verify_in_repo_root() -> None:
 
 
 def main() -> None:
+    """Start execution of the script."""
     verify_in_repo_root()
 
     if verify_no_pip_install("./"):

@@ -1,3 +1,4 @@
+"""Contain functions for retrieving Airflow database-related configuration."""
 import os
 import json
 from operator import itemgetter
@@ -6,7 +7,7 @@ from typing import Tuple
 
 def get_db_credentials() -> Tuple[str, str]:
     """
-    Retrieves database credentials from environment variables.
+    Retrieve database credentials from environment variables.
 
     This function looks for database credentials in two possible locations within the
     environment variables:
@@ -23,23 +24,12 @@ def get_db_credentials() -> Tuple[str, str]:
     If neither method finds the credentials, a RuntimeError is raised indicating the
     absence of necessary environment variables for database connection.
 
-    Returns:
-        Tuple[str, str]: A tuple containing the PostgreSQL username and password.
+    :returns Tuple[str, str]: A tuple containing the PostgreSQL username and password.
 
-    Raises:
-        RuntimeError: If neither MWAA__DB__CREDENTIALS nor MWAA__DB__POSTGRES_USER and
-        MWAA__DB__POSTGRES_PASSWORD environment variables are set, indicating that the
-        database credentials are not provided.
-
-    Example:
-        To use this function, ensure that the required environment variables are set in
-        your environment before calling it. Then, you can retrieve the credentials as
-        follows:
-
-        >>> user, password = get_db_credentials()
-        >>> print(f"Username: {user}, Password: {password}")
+    :raises RuntimeError If neither MWAA__DB__CREDENTIALS nor MWAA__DB__POSTGRES_USER
+    and MWAA__DB__POSTGRES_PASSWORD environment variables are set, indicating that the
+    database credentials are not provided.
     """
-
     if "MWAA__DB__CREDENTIALS" in os.environ:
         print("Reading database credentilas from MWAA__DB__CREDENTIALS.")
         db_secrets = json.loads(os.environ["MWAA__DB__CREDENTIALS"])
@@ -67,10 +57,12 @@ def get_db_credentials() -> Tuple[str, str]:
 
 def get_db_connection_string() -> str:
     """
-    Retrieves the connection string to use for communicating with metadata
-    database.
-    """
+    Retrieve the connection string for communicating with metadata database.
 
+    :returns The connection string.
+
+    :raises RuntimeError if the required environment variables are not set.
+    """
     env_vars_names = [
         "MWAA__DB__POSTGRES_HOST",
         "MWAA__DB__POSTGRES_PORT",
