@@ -67,12 +67,14 @@ def get_db_connection_string() -> str:
         "MWAA__DB__POSTGRES_HOST",
         "MWAA__DB__POSTGRES_PORT",
         "MWAA__DB__POSTGRES_DB",
+        "MWAA__DB__POSTGRES_SSLMODE",
     ]
     try:
         (
             postgres_host,
             postgres_port,
             postgres_db,
+            postgres_sslmode,
         ) = itemgetter(*env_vars_names)(os.environ)
         (postgres_user, postgres_password) = get_db_credentials()
     except Exception as e:
@@ -84,8 +86,11 @@ def get_db_connection_string() -> str:
             f"following exception: {e}"
         )
 
+    if not postgres_sslmode:
+        postgres_sslmode = 'require'
+
     protocol = "postgresql+psycopg2"
     creds = f"{postgres_user}:{postgres_password}"
     addr = f"{postgres_host}:{postgres_port}"
     # TODO We need to do what is the necessary to enforce 'require'.
-    return f"{protocol}://{creds}@{addr}/{postgres_db}?sslmode=prefer"
+    return f"{protocol}://{creds}@{addr}/{postgres_db}?sslmode={postgres_sslmode}"

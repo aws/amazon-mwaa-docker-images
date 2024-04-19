@@ -34,8 +34,8 @@ def get_airflow_celery_config() -> Dict[str, str]:
         "AIRFLOW__CELERY__CELERY_CONFIG_OPTIONS": celery_config_module_path,
         "AIRFLOW__CELERY__RESULT_BACKEND": f"db+{get_db_connection_string()}",
         "AIRFLOW__CELERY__WORKER_ENABLE_REMOTE_CONTROL": "False",
-        "AIRFLOW__CORE__EXECUTOR": "CeleryExecutor",
         # Not a Celery config per-se, but is used by the Celery executor.
+        "AIRFLOW__CORE__EXECUTOR": "CeleryExecutor",
         "AIRFLOW__OPERATORS__DEFAULT_QUEUE": get_sqs_queue_name(),
     }
 

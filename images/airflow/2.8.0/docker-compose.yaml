@@ -1,7 +1,7 @@
 version: "3.8"
 
 x-airflow-common: &airflow-common
-  image: amazon-mwaa/airflow:2.8.0
+  image: amazon-mwaa/airflow:2.9.0
   restart: always
   environment:
     # AWS credentials
@@ -20,6 +20,7 @@ x-airflow-common: &airflow-common
     MWAA__DB__POSTGRES_USER: "airflow"
     MWAA__DB__POSTGRES_PASSWORD: "airflow"
     MWAA__DB__POSTGRES_DB: "airflow"
+    MWAA__DB__POSTGRES_SSLMODE: "prefer"
 
     # SQS configuration
     MWAA__SQS__CREATE_QUEUE: True

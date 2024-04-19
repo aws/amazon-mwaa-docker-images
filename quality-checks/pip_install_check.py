@@ -8,13 +8,22 @@ dependencies are protected.
 """
 import os
 import sys
+from pathlib import Path
 
 
 EMJOI_CHECK_MARK_BUTTON = "\u2705"
 EMJOI_CROSS_MARK = "\u274C"
 
 
-def check_file_for_pip_install(filepath: str) -> bool:
+# List of files that are allowed to use `pip install` directly, instead of
+# `safe-pip-install`.
+PIP_INSTALL_ALLOWLIST = [
+    # Bootstrap steps that install Python will usually include updating `pip`
+    # itself so they need to make direct use of `pip`.
+    'images/airflow/*/bootstrap/*/*-install-python.sh',
+]
+
+def check_file_for_pip_install(filepath: Path) -> bool:
     """
     Check if the file contains 'pip install'.
 
@@ -24,12 +33,12 @@ def check_file_for_pip_install(filepath: str) -> bool:
     """
     with open(filepath, "r") as file:
         for line in file:
-            if "pip install" in line:
+            if "pip install" in line or "pip3 install" in line:
                 return False
     return True
 
 
-def verify_no_pip_install(directory: str) -> bool:
+def verify_no_pip_install(directory: Path) -> bool:
     """
     Verify there is no direct use of `pip install` in the directory tree.
 
@@ -38,21 +47,21 @@ def verify_no_pip_install(directory: str) -> bool:
     :returns True if the verification succeeds, otherwise False.
     """
     # Check if the directory exists
-    if not os.path.isdir(directory):
+    if not directory.is_dir():
         print(f"The directory {directory} does not exist.")
         return True
 
-    # Walk through the directory tree
+    # Walk through the shell scripts in the directory tree.
     ret_code = True
-    for root, _dirs, files in os.walk(directory):
-        for filename in files:
-            if filename.endswith(".sh"):  # Check for bash scripts
-                filepath = os.path.join(root, filename)
-                if check_file_for_pip_install(filepath):
-                    print(f"{EMJOI_CHECK_MARK_BUTTON} {filepath}")
-                else:
-                    print(f"{EMJOI_CROSS_MARK} {filepath}.")
-                    ret_code = False
+    for filepath in directory.glob('**/*.sh'):
+        if any(filepath.match(p) for p in PIP_INSTALL_ALLOWLIST):
+            print(f"Ignoring {filepath} since it is in the allowlist.")
+            continue
+        if check_file_for_pip_install(filepath):
+            print(f"{EMJOI_CHECK_MARK_BUTTON} {filepath}")
+        else:
+            print(f"{EMJOI_CROSS_MARK} {filepath}.")
+            ret_code = False
 
     return ret_code
 
@@ -78,7 +87,7 @@ def main() -> None:
     """Start execution of the script."""
     verify_in_repo_root()
 
-    if verify_no_pip_install("./"):
+    if verify_no_pip_install(Path("./images/airflow")):
         sys.exit(0)
     else:
         print(

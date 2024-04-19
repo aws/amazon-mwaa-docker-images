@@ -53,7 +53,7 @@ AVAILABLE_COMMANDS = [
 F = TypeVar("F", bound=Callable[..., Any])
 
 
-def db_lock(lock_id: int, timeout: int = 300 * 1000) -> Callable[[F], F]:
+def db_lock(lock_id: int, timeout_ms: int = 300 * 1000) -> Callable[[F], F]:
     """
     Generate a decorator that can be used to protect a function by a database lock.
 
@@ -66,8 +66,8 @@ def db_lock(lock_id: int, timeout: int = 300 * 1000) -> Callable[[F], F]:
       same lock ID, only one process will be granted the lock at one time. However,
       if the processes have different lock IDs, they will be granted the locks at the
       same time.
-    :param timeout: The maximum time the process is allowed to hold the lock. After this
-      time expires, the lock is automatically released.
+    :param timeout_ms: The maximum time, in milliseconds, the process is allowed to hold 
+      the lock. After this time expires, the lock is automatically released.
     
     :returns A decorator that can be applied to a function to protect it with a DB lock.
     """
@@ -75,13 +75,13 @@ def db_lock(lock_id: int, timeout: int = 300 * 1000) -> Callable[[F], F]:
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             func_name: str = func.__name__
             db_engine: Engine = create_engine(
-                get_db_connection_string()  # Assuming this is defined elsewhere
+                get_db_connection_string()
             )
             print(f"Obtaining lock for {func_name}...")
             with db_engine.connect() as conn: # type: ignore
                 try:
                     conn.execute( # type: ignore
-                        text("SET LOCK_TIMEOUT to :timeout"), {"timeout": timeout}
+                        text("SET LOCK_TIMEOUT to :timeout"), {"timeout": timeout_ms}
                     )
                     conn.execute( # type: ignore
                         text("SELECT pg_advisory_lock(:id)"), {"id": lock_id}
@@ -93,7 +93,7 @@ def db_lock(lock_id: int, timeout: int = 300 * 1000) -> Callable[[F], F]:
                     except Exception as e:
                         abort(
                             f"Failed while executing {func_name}. " + f"Error: {e}."
-                        )  # Assuming abort is defined elsewhere
+                        )
                 except Exception as e:
                     abort(
                         f"Failed to obtain DB lock for {func_name}. " + f"Error: {e}."

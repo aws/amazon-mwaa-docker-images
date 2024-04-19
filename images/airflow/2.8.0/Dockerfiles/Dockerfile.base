@@ -3,30 +3,27 @@
 # the Jinja2-templated Dockerfile.j2 file, so you need to change that file
 # instead.
 #
-# This file was generated on 2024-02-22 19:42:44.924226
+# This file was generated on 2024-04-19 02:30:48.348008
 #
 
 FROM public.ecr.aws/amazonlinux/amazonlinux:2023
 
 # Environment variables
 
-# Temporarily downgrading to 2.7.2 to make it easier to test the Docker image
-# within Amazon MWAA since 2.7.2 is a version we support.
-ENV AIRFLOW_VERSION=2.7.2
-ENV AIRFLOW_AMAZON_PROVIDERS_VERSION=8.7.1
+ENV AIRFLOW_VERSION=2.9.0
 
-ENV AIRFLOW_CONSTRAINTS_FILE="https://raw.githubusercontent.com/apache/airflow/constraints-2.7.2/constraints-3.11.txt"
+ENV AIRFLOW_CONSTRAINTS_FILE="https://raw.githubusercontent.com/apache/airflow/constraints-2.9.0/constraints-3.11.txt"
 ENV AIRFLOW_USER_HOME=/usr/local/airflow
 ENV AIRFLOW_HOME=${AIRFLOW_USER_HOME}
 ENV MWAA_HOME=/usr/local/mwaa
-ENV PYTHON_VERSION=3.11.7
+ENV PYTHON_VERSION=3.11.9
 
 # We don't want those variables to stay in the final image, so we use ARG instead of ENV.
 ARG AIRFLOW_USER_LOCAL_PATH=${AIRFLOW_USER_HOME}/.local
 ARG AIRFLOW_USER_LOCAL_BIN_PATH=${AIRFLOW_USER_LOCAL_PATH}/bin
 ARG PATH_DEFAULT=${PATH}
 ARG PATH_AIRFLOW_USER=${AIRFLOW_USER_LOCAL_BIN_PATH}:${PATH_DEFAULT}
-ARG PYTHON_MD5_CHECKSUM=d96c7e134c35a8c46236f8a0e566b69c
+ARG PYTHON_MD5_CHECKSUM=22ea467e7d915477152e99d5da856ddc
 ARG MARIADB_DOWNLOAD_BASE_URL=https://mirror.mariadb.org/yum/11.1/fedora38-amd64/rpms
 ARG MARIADB_RPM_COMMON=MariaDB-common-11.1.2-1.fc38.x86_64.rpm
 ARG MARIADB_RPM_COMMON_CHECKSUM=e87371d558efa97724f3728fb214cf19

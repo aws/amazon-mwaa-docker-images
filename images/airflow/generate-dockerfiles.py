@@ -101,7 +101,17 @@ def generate_dockerfile(
 
 def generate_base_dockerfile(image_root_dir: Path) -> None:
     """Generate the Dockerfile.base file based on the Dockerfile.base.j2
-    template."""
+    template.
+
+    We generate multiple Docker images for different purposes, as explained below under
+    the documentation of `generate_derivative_dockerfiles`. However, these derivative
+    images actually share most of the setup. So, to reduce build time and avoid
+    duplication, we generate a "base" Docker image, and then derive the rest of the
+    images from them.
+
+    :param image_root_dir: The root directory of the Docker image, i.e. where the
+      `Dockerfile` resides.
+    """
     # Template data
     data = {
         "bootstrapping_scripts_root_firstpass": sorted(
