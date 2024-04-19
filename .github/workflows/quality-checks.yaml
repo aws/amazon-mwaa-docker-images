@@ -17,8 +17,8 @@ jobs:
           # gcc, libcurl-devel: For compiling pycurl (required for our Airflow setup.)
           # gzip: Requiring by actions/checkout@v2 to gunzip the source code.
           # postgresql-devel: Required for our Airflow setup.
-          # python3-devel: Required for building some Python modules, e.g. pycurl.
-          # python3: Self explanatory.
+          # python3.11-devel: Required for building some Python modules, e.g. pycurl.
+          # python3.11: Self explanatory.
           # tar, wget, xz: For downloading and extracting ShellCheck
           dnf update -y
           dnf install -y \
@@ -26,8 +26,8 @@ jobs:
             gzip \
             libcurl-devel \
             postgresql-devel \
-            python3 \
-            python3-devel \
+            python3.11 \
+            python3.11-devel \
             tar \
             wget \
             xz
@@ -40,7 +40,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Create the necessary Python virtual environments...
-        run: python3 ./create_venvs.py
+        run: python3.11 ./create_venvs.py
 
       - name: Run quality checks...
-        run: python3 ./quality-checks/run_all.py
+        run: python3.11 ./quality-checks/run_all.py

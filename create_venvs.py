@@ -21,9 +21,10 @@ from pathlib import Path
 
 def verify_python_version():
     """Check if the current Python version is at least 3.9."""
-    _major, minor, *_ = sys.version_info
-    if minor < 9:
-        print("Python 3.9 or higher is required.")
+    major, minor, *_ = sys.version_info
+
+    if major != 3 or minor < 11:
+        print("Python 3.11 or higher is required.")
         sys.exit(1)
 
 

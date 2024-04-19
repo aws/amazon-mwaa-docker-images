@@ -2,7 +2,7 @@
 
 # Define an array of required packages
 REQUIRED_PACKAGES=(
-    "apache-airflow-providers-amazon[aiobotocore]==${AIRFLOW_AMAZON_PROVIDERS_VERSION}"
+    "apache-airflow-providers-amazon[aiobotocore]"
     "apache-airflow[celery,statsd]==${AIRFLOW_VERSION}"
     "celery[sqs]"
     psycopg2

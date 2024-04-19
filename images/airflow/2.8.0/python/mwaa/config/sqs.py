@@ -79,7 +79,9 @@ def _get_queue_name_from_url(queue_url: str) -> str:
     :returns The name of the queue or None if the URL is invalid.
     """
     try:
-        # Validate the protocol.
+        # Validate the protocol (to flag accidentally passing of sqs://
+        # protocol which is just a Celery convention, rather than an
+        # actual protocol.)
         if not queue_url.startswith("http://") and not queue_url.startswith("https://"):
             raise ValueError(
                 f"URL {queue_url} is should start with http:// or https://"
