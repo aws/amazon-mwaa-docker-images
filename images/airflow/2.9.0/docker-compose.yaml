@@ -1,14 +1,16 @@
 version: "3.8"
 
 x-airflow-common: &airflow-common
-  image: amazon-mwaa/airflow:2.9.0
+  image: amazon-mwaa-docker-images/airflow:2.9.0
   restart: always
   environment:
+    # AWS credentials
     AWS_ACCESS_KEY_ID: "FAKE_AWS_ACCESS_KEY_ID"
     AWS_SECRET_ACCESS_KEY: "FAKE_AWS_SECRET_ACCESS_KEY"
     AWS_SESSION_TOKEN: "FAKE_AWS_SESSION_TOKEN"
     AWS_REGION: "us-west-2"
     AWS_DEFAULT_REGION: "us-west-2"
+
     # Core configuration
     MWAA__CORE__REQUIREMENTS_PATH: "/usr/local/airflow/requirements/requirements.txt"
 

@@ -92,6 +92,7 @@ RUN rm -rf /bootstrap
 # is created by the `001-create-mwaa-dir.sh` script.
 VOLUME ["${MWAA_HOME}"]
 
+# Expose the web server port
 # TODO We should only expose this port if the command is 'webserver'.
 EXPOSE 8080
 
