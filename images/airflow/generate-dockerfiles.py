@@ -2,13 +2,13 @@
 Generate a Dockerfile based on the Jinja2-templated Dockerfile.j2 file.
 
 Dockerfile is very limited in nature, with just primitive commands. This
-usually results in Dockerfiles becoming lengthy, repetetive, and error prone,
+usually results in Dockerfiles becoming lengthy, repetitive, and error prone,
 resulting in quality degradation. To work around this limitation, we use Jinja2
-templating engine which offers a lot of futures, e.g. if statements, for loops,
+template engine which offers a lot of futures, e.g. if statements, for loops,
 etc., and enable integration with Python (via data variables) resulting in a
 way more powerful Dockerfile.
 
-When exectued, this script takes the Dockerfile.j2 and pass it to Jinja2 engine
+When executed, this script takes the Dockerfile.j2 and pass it to Jinja2 engine
 to produce a Dockerfile. The reader is referred to the code below for a better
 understanding of the working mechanism of this.
 """
