@@ -18,7 +18,7 @@ x-airflow-common: &airflow-common
     MWAA__DB__POSTGRES_USER: "airflow"
     MWAA__DB__POSTGRES_PASSWORD: "airflow"
     MWAA__DB__POSTGRES_DB: "airflow"
-    MWAA__DB__POSTGRES_SSLMODE: "prefer"
+    MWAA__DB__POSTGRES_SSLMODE: "require"
 
     # SQS configuration
     MWAA__SQS__CREATE_QUEUE: True
