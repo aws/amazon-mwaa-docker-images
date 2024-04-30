@@ -3,7 +3,7 @@
 # the Jinja2-templated Dockerfile.j2 file, so you need to change that file
 # instead.
 #
-# This file was generated on 2024-04-19 02:30:48.348008
+# This file was generated on 2024-04-25 22:57:09.602276
 #
 
 FROM public.ecr.aws/amazonlinux/amazonlinux:2023
@@ -104,6 +104,7 @@ RUN rm -rf /bootstrap
 # is created by the `001-create-mwaa-dir.sh` script.
 VOLUME ["${MWAA_HOME}"]
 
+# Expose the web server port
 # TODO We should only expose this port if the command is 'webserver'.
 EXPOSE 8080
 
