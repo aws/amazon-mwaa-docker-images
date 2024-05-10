@@ -15,11 +15,10 @@ x-airflow-common: &airflow-common
     MWAA__CORE__REQUIREMENTS_PATH: "/usr/local/airflow/requirements/requirements.txt"
 
     # Database configuration
+    MWAA__DB__CREDENTIALS: '{"username": "airflow", "password": "airflow"}'
+    MWAA__DB__POSTGRES_DB: "airflow"
     MWAA__DB__POSTGRES_HOST: "postgres"
     MWAA__DB__POSTGRES_PORT: "5432"
-    MWAA__DB__POSTGRES_USER: "airflow"
-    MWAA__DB__POSTGRES_PASSWORD: "airflow"
-    MWAA__DB__POSTGRES_DB: "airflow"
     MWAA__DB__POSTGRES_SSLMODE: "prefer"
 
     # SQS configuration
@@ -100,6 +99,11 @@ services:
     <<: *airflow-common
     command: worker
     container_name: mwaa-280-worker
+
+  metrics-server:
+    image: fake-statsd-server
+    ports:
+      - 8125:8125
 
 volumes:
   postgres-db-volume:

@@ -1,8 +1,13 @@
 """Contain functions for retrieving Airflow database-related configuration."""
-import os
+
 import json
+import logging
+import os
 from operator import itemgetter
 from typing import Tuple
+
+
+logger = logging.getLogger(__name__)
 
 
 def get_db_credentials() -> Tuple[str, str]:
@@ -31,7 +36,7 @@ def get_db_credentials() -> Tuple[str, str]:
     database credentials are not provided.
     """
     if "MWAA__DB__CREDENTIALS" in os.environ:
-        print("Reading database credentilas from MWAA__DB__CREDENTIALS.")
+        logger.info("Reading database credentials from MWAA__DB__CREDENTIALS.")
         db_secrets = json.loads(os.environ["MWAA__DB__CREDENTIALS"])
         postgres_user = db_secrets["username"]
         postgres_password = db_secrets["password"]
@@ -39,8 +44,8 @@ def get_db_credentials() -> Tuple[str, str]:
         "MWAA__DB__POSTGRES_USER" in os.environ
         and "MWAA__DB__POSTGRES_PASSWORD" in os.environ
     ):
-        print(
-            "Reading database credentilas from MWAA__DB__POSTGRES_USER/ "
+        logger.info(
+            "Reading database credentials from MWAA__DB__POSTGRES_USER/"
             "MWAA__DB__POSTGRES_USER environment variables."
         )
         postgres_user = os.environ["MWAA__DB__POSTGRES_USER"]
@@ -87,10 +92,9 @@ def get_db_connection_string() -> str:
         )
 
     if not postgres_sslmode:
-        postgres_sslmode = 'require'
+        postgres_sslmode = "require"
 
     protocol = "postgresql+psycopg2"
     creds = f"{postgres_user}:{postgres_password}"
     addr = f"{postgres_host}:{postgres_port}"
-    # TODO We need to do what is the necessary to enforce 'require'.
     return f"{protocol}://{creds}@{addr}/{postgres_db}?sslmode={postgres_sslmode}"
