@@ -5,9 +5,9 @@ x-airflow-common: &airflow-common
   restart: always
   environment:
     # AWS credentials
-    AWS_ACCESS_KEY_ID: "FAKE_AWS_ACCESS_KEY_ID"
-    AWS_SECRET_ACCESS_KEY: "FAKE_AWS_SECRET_ACCESS_KEY"
-    AWS_SESSION_TOKEN: "FAKE_AWS_SESSION_TOKEN"
+    AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+    AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+    AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN}
     AWS_REGION: "us-west-2"
     AWS_DEFAULT_REGION: "us-west-2"
 
@@ -26,6 +26,24 @@ x-airflow-common: &airflow-common
     MWAA__SQS__CUSTOM_ENDPOINT: http://sqs:9324
     MWAA__SQS__QUEUE_URL: http://sqs:9324/000000000000/celery-queue
     MWAA__SQS__USE_SSL: False
+
+    # Logging configuration.
+    # Uncomment these lines and add your log groups details if you want to publish logs to CloudWatch.
+    # MWAA__LOGGING__AIRFLOW_DAG_PROCESSING_LOGS_ENABLED: true
+    # MWAA__LOGGING__AIRFLOW_DAG_PROCESSING_LOG_GROUP_ARN: arn:aws:logs:<region>:<account>:log-group:<log_group_name>
+    # MWAA__LOGGING__AIRFLOW_DAG_PROCESSING_LOG_LEVEL: INFO
+    # MWAA__LOGGING__AIRFLOW_SCHEDULER_LOGS_ENABLED: true
+    # MWAA__LOGGING__AIRFLOW_SCHEDULER_LOG_GROUP_ARN: arn:aws:logs:<region>:<account>:log-group:<log_group_name>
+    # MWAA__LOGGING__AIRFLOW_SCHEDULER_LOG_LEVEL: INFO
+    # MWAA__LOGGING__AIRFLOW_TASK_LOGS_ENABLED: true
+    # MWAA__LOGGING__AIRFLOW_TASK_LOG_GROUP_ARN: arn:aws:logs:<region>:<account>:log-group:<log_group_name>
+    # MWAA__LOGGING__AIRFLOW_TASK_LOG_LEVEL: INFO
+    # MWAA__LOGGING__AIRFLOW_WEBSERVER_LOGS_ENABLED: true
+    # MWAA__LOGGING__AIRFLOW_WEBSERVER_LOG_GROUP_ARN: arn:aws:logs:<region>:<account>:log-group:<log_group_name>
+    # MWAA__LOGGING__AIRFLOW_WEBSERVER_LOG_LEVEL: INFO
+    # MWAA__LOGGING__AIRFLOW_WORKER_LOGS_ENABLED: true
+    # MWAA__LOGGING__AIRFLOW_WORKER_LOG_GROUP_ARN: arn:aws:logs:<region>:<account>:log-group:<log_group_name>
+    # MWAA__LOGGING__AIRFLOW_WORKER_LOG_LEVEL: INFO
 
   volumes:
     - ./dags:/usr/local/airflow/dags
