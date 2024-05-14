@@ -10,7 +10,7 @@ However, at this point, this repository is still under development.
 
 ## Using the Airflow Image
 
-Currently, Airflow v2.9.0 is supported. Future versions in parity with Amazon MWAA will be added.
+Currently, Airflow v2.9.1 is supported. Future versions in parity with Amazon MWAA will be added.
 
 To experiment with the image using a vanilla Docker setup, follow these steps:
 
@@ -25,10 +25,10 @@ To experiment with the image using a vanilla Docker setup, follow these steps:
 python3 create_venvs.py
 ```
 
-3. Build the Airflow v2.9.0 Docker image using:
+3. Build the Airflow v2.9.1 Docker image using:
 
 ```
-cd <amazon-mwaa-docker-images path>/images/airflow/2.9.0
+cd <amazon-mwaa-docker-images path>/images/airflow/2.9.1
 ./run.sh
 ```
 
