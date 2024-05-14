@@ -1,18 +1,10 @@
-#
-# WARNING: Don't change this file manually. This file is auto-generated from
-# the Jinja2-templated Dockerfile.j2 file, so you need to change that file
-# instead.
-#
-# This file was generated on 2024-04-25 22:57:09.602276
-#
-
 FROM public.ecr.aws/amazonlinux/amazonlinux:2023
 
 # Environment variables
 
-ENV AIRFLOW_VERSION=2.9.0
+ENV AIRFLOW_VERSION=2.9.1
 
-ENV AIRFLOW_CONSTRAINTS_FILE="https://raw.githubusercontent.com/apache/airflow/constraints-2.9.0/constraints-3.11.txt"
+ENV AIRFLOW_CONSTRAINTS_FILE="https://raw.githubusercontent.com/apache/airflow/constraints-2.9.1/constraints-3.11.txt"
 ENV AIRFLOW_USER_HOME=/usr/local/airflow
 ENV AIRFLOW_HOME=${AIRFLOW_USER_HOME}
 ENV MWAA_HOME=/usr/local/mwaa
@@ -40,17 +32,9 @@ RUN chmod -R +x /bootstrap
 # BEGINNING marker for root user, first pass bootstrapping steps.
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-RUN /bootstrap/01-root-firstpass/001-init.sh
-
-RUN /bootstrap/01-root-firstpass/002-install-python.sh
-
-RUN /bootstrap/01-root-firstpass/003-install-mariadb.sh
-
-RUN /bootstrap/01-root-firstpass/004-create-airflow-user.sh
-
-RUN /bootstrap/01-root-firstpass/005-install-aws-cli.sh
-
-RUN /bootstrap/01-root-firstpass/100-install-needed-dnf-packages.sh
+{% for filepath in bootstrapping_scripts_root_firstpass %}
+RUN {{ filepath }}
+{% endfor %}
 
 #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 # END marker for root user, first pass bootstrapping steps.
@@ -70,7 +54,9 @@ RUN chmod -R +x ${AIRFLOW_USER_LOCAL_BIN_PATH}/* && \
 USER airflow
 ENV PATH=${PATH_AIRFLOW_USER} 
 
-RUN /bootstrap/02-airflow/001-install-required-pip-packages.sh
+{% for filepath in bootstrapping_scripts_airflow %}
+RUN {{ filepath }}
+{% endfor %}
 
 # Revert the PATH and user.
 ENV PATH=${PATH_DEFAULT}
@@ -79,6 +65,8 @@ USER root
 #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 # > END marker for airflow user bootstrapping steps.
 #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 # BEGINNING marker for root user, second pass bootstrapping steps.
@@ -89,9 +77,9 @@ USER root
 # giving ownership of the Airflow home user to the 'airflow' user requires the
 # the folder to be fully setup first.
 
-RUN /bootstrap/03-root-secondpass/001-create-mwaa-dir.sh
-
-RUN /bootstrap/03-root-secondpass/100-chown-airflow-folder.sh
+{% for filepath in bootstrapping_scripts_root_secondpass %}
+RUN {{ filepath }}
+{% endfor %}
 
 #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 # END marker for root user, second pass bootstrapping steps.

@@ -26,8 +26,8 @@ aws ecr get-login-password --region "${AWS_REGION}" | docker login --username AW
 
 for dev in "True" "False"; do
     for build_type in "standard" "explorer" "explorer-privileged"; do
-        tag_name="amazon-mwaa-docker-images/airflow:2.9.0"
-        target_tag_name="${ecr_uri}:airflow-2.9.0"
+        tag_name="amazon-mwaa-docker-images/airflow:2.9.1"
+        target_tag_name="${ecr_uri}:airflow-2.9.1"
 
         if [[ "$build_type" != "standard" ]]; then
             tag_name="${tag_name}-${build_type}"
