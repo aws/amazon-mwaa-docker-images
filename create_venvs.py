@@ -7,11 +7,12 @@ virtual environments:
 - One virtual environment at the root package.
 - One per each Docker image
 
-Those environments are used for many tasks, most importantly allow the IDE to use the 
+Those environments are used for many tasks, most importantly allow the IDE to use the
 right Python environment for the different folders in this repository. This is necessary
 since the Python packages required to develop the different Airflow versions are
 different from the packages that we need for the various scripts in this repository.
 """
+
 import os
 import subprocess
 import sys

@@ -1,26 +1,15 @@
 """Contain functions for building Airflow configuration."""
+
 from typing import Dict
 
 from mwaa.config.database import get_db_connection_string
 from mwaa.config.sqs import get_sqs_endpoint, get_sqs_queue_name
 
 
-def get_airflow_db_config() -> Dict[str, str]:
-    """
-    Retrieve the environment variables for Airflow's "database" configuration section.
-    
-    :returns A dictionary containing the environment variables.
-    """
-    conn_string = get_db_connection_string()
-    return {
-        "AIRFLOW__DATABASE__SQL_ALCHEMY_CONN": conn_string,
-    }
-
-
 def get_airflow_celery_config() -> Dict[str, str]:
     """
     Retrieve the environment variables required for Celery executor.
-    
+
     The required environment variables are mostly under the "celery" section, but
     other sections as well.
 
@@ -34,7 +23,7 @@ def get_airflow_celery_config() -> Dict[str, str]:
         "AIRFLOW__CELERY__CELERY_CONFIG_OPTIONS": celery_config_module_path,
         "AIRFLOW__CELERY__RESULT_BACKEND": f"db+{get_db_connection_string()}",
         "AIRFLOW__CELERY__WORKER_ENABLE_REMOTE_CONTROL": "False",
-        # Not a Celery config per-se, but is used by the Celery executor.
+        # These two are not Celery configs per-se, but are used by the Celery executor.
         "AIRFLOW__CORE__EXECUTOR": "CeleryExecutor",
         "AIRFLOW__OPERATORS__DEFAULT_QUEUE": get_sqs_queue_name(),
     }
@@ -51,6 +40,34 @@ def get_airflow_core_config() -> Dict[str, str]:
     }
 
 
+def get_airflow_db_config() -> Dict[str, str]:
+    """
+    Retrieve the environment variables for Airflow's "database" configuration section.
+
+    :returns A dictionary containing the environment variables.
+    """
+    conn_string = get_db_connection_string()
+    return {
+        "AIRFLOW__DATABASE__SQL_ALCHEMY_CONN": conn_string,
+    }
+
+
+def get_airflow_metrics_config() -> Dict[str, str]:
+    """
+    Retrieve the environment variables for Airflow's "database" configuration section.
+
+    :returns A dictionary containing the environment variables.
+    """
+    return {
+        "AIRFLOW__METRICS__STATSD_ON": "True",
+        "AIRFLOW__METRICS__STATSD_HOST": "localhost",
+        "AIRFLOW__METRICS__STATSD_PORT": "8125",
+        "AIRFLOW__METRICS__STATSD_PREFIX": "airflow",
+        "AIRFLOW__METRICS__METRICS_BLOCK_LIST": "",
+        "AIRFLOW__METRICS__METRICS_ALLOW_LIST": "",
+    }
+
+
 def get_airflow_config() -> Dict[str, str]:
     """
     Retrieve the environment variables required to set Airflow configurations.
@@ -58,7 +75,8 @@ def get_airflow_config() -> Dict[str, str]:
     :returns A dictionary containing the environment variables.
     """
     return {
+        **get_airflow_celery_config(),
         **get_airflow_core_config(),
         **get_airflow_db_config(),
-        **get_airflow_celery_config(),
+        **get_airflow_metrics_config(),
     }

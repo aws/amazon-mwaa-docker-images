@@ -1,4 +1,5 @@
 """Contain functions for retrieving Airflow SQS-related configuration."""
+
 # Python imports
 import os
 from urllib.parse import urlparse, urlunparse
@@ -58,7 +59,7 @@ def get_sqs_default_endpoint() -> str:
 def get_sqs_endpoint() -> str:
     """
     Retrieve the SQS endpoint to communicate with.
-    
+
     The user can specify the endpoint via the `MWAA_CONFIG__CUSTOM_SQS_ENDPOINT`
     environment variable. Otherwise, the default endpoint for the current AWS region is
     used.
@@ -133,7 +134,7 @@ def should_create_queue() -> bool:
 def should_use_ssl() -> bool:
     """
     Determine whether to use SSL when communicating with SQS or not.
-    
+
     This configuration is expected to be true when connecting to AWS SQS, as it enforces
     the use of SQS. On the otherhand, when using elasticmq, which doesn't support SSL,
     this should be set to false.

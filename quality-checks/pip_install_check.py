@@ -6,13 +6,14 @@ Direct use of "pip install" could easily result in broken Airflow dependencies. 
 we always want to use a special script, safe-pip-install, which ensure Airflow and its
 dependencies are protected.
 """
+
 import os
 import sys
 from pathlib import Path
 
 
 EMJOI_CHECK_MARK_BUTTON = "\u2705"
-EMJOI_CROSS_MARK = "\u274C"
+EMJOI_CROSS_MARK = "\u274c"
 
 
 # List of files that are allowed to use `pip install` directly, instead of
@@ -20,8 +21,9 @@ EMJOI_CROSS_MARK = "\u274C"
 PIP_INSTALL_ALLOWLIST = [
     # Bootstrap steps that install Python will usually include updating `pip`
     # itself so they need to make direct use of `pip`.
-    'images/airflow/*/bootstrap/*/*-install-python.sh',
+    "images/airflow/*/bootstrap/*/*-install-python.sh",
 ]
+
 
 def check_file_for_pip_install(filepath: Path) -> bool:
     """
@@ -53,7 +55,7 @@ def verify_no_pip_install(directory: Path) -> bool:
 
     # Walk through the shell scripts in the directory tree.
     ret_code = True
-    for filepath in directory.glob('**/*.sh'):
+    for filepath in directory.glob("**/*.sh"):
         if any(filepath.match(p) for p in PIP_INSTALL_ALLOWLIST):
             print(f"Ignoring {filepath} since it is in the allowlist.")
             continue

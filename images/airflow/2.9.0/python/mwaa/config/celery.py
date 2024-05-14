@@ -1,4 +1,5 @@
 """Contain functions for retrieving Airflow Celery-related configuration."""
+
 # Python imports
 import copy
 from typing import Any
@@ -14,7 +15,7 @@ from mwaa.config.sqs import get_sqs_queue_name, get_sqs_queue_url, should_use_ss
 def create_celery_config() -> dict[str, Any]:
     """
     Generate the configuration that will be passed to Celery.
-    
+
     This is used in the "celery" section of the Airflow configuration.
 
     :returns A dictionary containing the Celery configuration.

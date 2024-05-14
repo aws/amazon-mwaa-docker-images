@@ -1,11 +1,12 @@
 """Contain a function for retrieving AWS-related configuration."""
+
 import os
 
 
 def get_aws_region() -> str:
     """
     Retrieve the AWS region the container should communicate with.
-    
+
     This is assumed to be available in either the AWS_REGION or AWS_DEFAULT_REGION
     environment variables, checked respectively.
 
