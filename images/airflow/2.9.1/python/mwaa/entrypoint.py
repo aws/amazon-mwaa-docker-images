@@ -51,6 +51,7 @@ AVAILABLE_COMMANDS = [
     "worker",
     "triggerer",
     "shell",
+    "resetdb",
     "spy",
 ]
 
@@ -71,6 +72,20 @@ async def airflow_db_init(environ: dict[str, str]):
     """
     logger.info("Calling 'airflow db migrate' to initialize the database.")
     await run_command("airflow db migrate", env=environ)
+
+
+@with_db_lock(4321)
+async def airflow_db_reset(environ: dict[str, str]):
+    """
+    Reset Airflow metadata database.
+
+    This function resets the Airflow metadata database. It is called when the `resetdb`
+    command is specified.
+
+    :param environ: A dictionary containing the environment variables.
+    """
+    logger.info("Resetting Airflow metadata database.")
+    await run_command("airflow db reset --yes", env=environ)
 
 
 @with_db_lock(5678)
@@ -238,6 +253,11 @@ async def main() -> None:
                 time.sleep(1)
         case "worker":
             os.execlpe("airflow", "airflow", "celery", "worker", environ)
+        case "resetdb":
+            # Perform the resetdb functionality
+            await airflow_db_reset(environ)
+            # After resetting the db, initialize it again
+            await airflow_db_init(environ)
         case _:
             os.execlpe("airflow", "airflow", command, environ)
 
