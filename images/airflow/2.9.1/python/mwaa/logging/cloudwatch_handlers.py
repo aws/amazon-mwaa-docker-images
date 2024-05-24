@@ -30,17 +30,20 @@ class BaseLogHandler(logging.Handler):
     Shared functionality across our internal CloudWatch log handlers.
     """
 
-    def __init__(self, log_group_arn: str, enabled: bool):
+    def __init__(self, log_group_arn: str, kms_key_arn: str | None, enabled: bool):
         """
         Initialize the instance.
 
         Arguments:
             log_group_arn - The ARN of the log group where logs will be published.
+            kms_key_arn - The ARN of the KMS key to use when creating the log group
+              if necessary.
             enabled - Whether this handler is actually enabled, or just does nothing.
               This makes it easier to control enabling and disabling logging without
               much changes to the logging configuration.
         """
         self.log_group_arn = log_group_arn
+        self.kms_key_arn = kms_key_arn
         self.enabled = enabled
         if not self.enabled:
             self._print(
@@ -112,7 +115,13 @@ class BaseLogHandler(logging.Handler):
         logs_client: CloudWatchLogsClient = boto3.client("logs")  # type: ignore
         try:
             self._print(f"Creating log group {self.log_group_name}...")
-            logs_client.create_log_group(logGroupName=self.log_group_name)
+
+            if self.kms_key_arn:
+                logs_client.create_log_group(
+                    logGroupName=self.log_group_name, kmsKeyId=self.kms_key_arn
+                )
+            else:
+                logs_client.create_log_group(logGroupName=self.log_group_name)
             self._print(f"Log group {self.log_group_name} created successfully.")
             return True
         except logs_client.exceptions.ResourceAlreadyExistsException:
@@ -187,9 +196,10 @@ class TaskLogHandler(BaseLogHandler, CloudwatchTaskHandler):
         self,
         base_log_folder: str,
         log_group_arn: str,
+        kms_key_arn: str | None,
         enabled: bool,
     ):
-        BaseLogHandler.__init__(self, log_group_arn, enabled)
+        BaseLogHandler.__init__(self, log_group_arn, kms_key_arn, enabled)
         CloudwatchTaskHandler.__init__(
             self,
             log_group_arn=log_group_arn,
@@ -242,8 +252,24 @@ class DagProcessorManagerLogHandler(BaseLogHandler):
     [2] https://github.com/apache/airflow/blob/2.9.1/airflow/dag_processing/processor.py#L69
     """
 
-    def __init__(self, log_group_arn: str, stream_name: str, enabled: bool):
-        super().__init__(log_group_arn, enabled)
+    def __init__(
+        self, log_group_arn: str, kms_key_arn: str, stream_name: str, enabled: bool
+    ):
+        """
+        Initialize the instance.
+
+        Arguments:
+            log_group_arn - The ARN of the log group where logs will be published.
+            kms_key_arn - The ARN of the KMS key to use when creating the log group
+              if necessary.
+            stream_name - The name of the stream under which logs will be published.
+            enabled - Whether this handler is actually enabled, or just does nothing.
+              This makes it easier to control enabling and disabling logging without
+              much changes to the logging configuration.
+
+        [1] https://airflow.apache.org/docs/apache-airflow/2.9.1/configurations-ref.html#config-logging-log-processor-filename-template
+        """
+        super().__init__(log_group_arn, kms_key_arn, enabled)
         self.create_watchtower_handler(stream_name, "DAGProcessorManager")
 
     def _print(self, msg: str):
@@ -265,22 +291,30 @@ class DagProcessingLogHandler(BaseLogHandler):
     documentation on the latter class for more information.
     """
 
-    def __init__(self, log_group_arn: str, enabled: bool, stream_name_template: str):
+    def __init__(
+        self,
+        log_group_arn: str,
+        kms_key_arn: str | None,
+        stream_name_template: str,
+        enabled: bool,
+    ):
         """
         Initialize the instance.
 
         Arguments:
             log_group_arn - The ARN of the log group where logs will be published.
-            enabled - Whether this handler is actually enabled, or just does nothing.
-              This makes it easier to control enabling and disabling logging without
-              much changes to the logging configuration.
+            kms_key_arn - The ARN of the KMS key to use when creating the log group
+              if necessary.
             stream_name_template - The template to use for generating the stream name.
               Currently, in the config.py file, we pass the
               "[logging] LOG_PROCESSOR_FILENAME_TEMPLATE" Airflow configuration [1].
+            enabled - Whether this handler is actually enabled, or just does nothing.
+              This makes it easier to control enabling and disabling logging without
+              much changes to the logging configuration.
 
         [1] https://airflow.apache.org/docs/apache-airflow/2.9.1/configurations-ref.html#config-logging-log-processor-filename-template
         """
-        super().__init__(log_group_arn, enabled)
+        super().__init__(log_group_arn, kms_key_arn, enabled)
 
         self.stream_name_template, self.filename_jinja_template = parse_template_string(
             stream_name_template
@@ -346,11 +380,28 @@ class SubprocessLogHandler(BaseLogHandler):
     def __init__(
         self,
         log_group_arn: str,
+        kms_key_arn: str,
         stream_name_prefix: str,
-        subprocess_name: str,
+        logs_source: str,
         enabled: bool,
     ):
-        super().__init__(log_group_arn, enabled)
+        """
+        Initialize the instance.
+
+        Arguments:
+            log_group_arn - The ARN of the log group where logs will be published.
+            kms_key_arn - The ARN of the KMS key to use when creating the log group
+              if necessary.
+            stream_name_prefix - The template to use for generating the stream name.
+              Currently, in the config.py file, we pass the
+              "[logging] LOG_PROCESSOR_FILENAME_TEMPLATE" Airflow configuration [1].
+            logs_source - A string identifying the source the logs are coming from, e.g.
+              "scheduler". This is used when publishing metrics about logging.
+            enabled - Whether this handler is actually enabled, or just does nothing.
+              This makes it easier to control enabling and disabling logging without
+              much changes to the logging configuration.
+        """
+        super().__init__(log_group_arn, kms_key_arn, enabled)
         hostname = socket.gethostname()
         epoch = time.time()
         # Use hostname and epoch timestamp as a combined primary key for stream name.
@@ -359,4 +410,4 @@ class SubprocessLogHandler(BaseLogHandler):
         # not guaranteed unique and may be reused so include an epoch for uniqueness and
         # easy sorting chronologically.
         _stream_name = "%s_%s_%s.log" % (stream_name_prefix, hostname, epoch)
-        self.create_watchtower_handler(_stream_name, subprocess_name)
+        self.create_watchtower_handler(_stream_name, logs_source)

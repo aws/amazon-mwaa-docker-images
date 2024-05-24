@@ -26,6 +26,10 @@ def _qualified_name(cls: type) -> str:
     return f"{module}.{qualname}"
 
 
+def _get_kms_key_arn():
+    return os.environ.get("MWAA__CORE__KMS_KEY_ARN", None)
+
+
 def _get_mwaa_logging_env_vars(source: str):
     log_group_arn = os.environ.get(
         f"MWAA__LOGGING__AIRFLOW_{source.upper()}_LOG_GROUP_ARN", None
@@ -55,6 +59,7 @@ def _configure_task_logging():
             "filters": ["mask_secrets"],
             "base_log_folder": str(os.path.expanduser(BASE_LOG_FOLDER)),
             "log_group_arn": log_group_arn,
+            "kms_key_arn": _get_kms_key_arn(),
             "enabled": logging_enabled,
         }
         LOGGING_CONFIG["loggers"]["airflow.task"].update(
@@ -74,6 +79,7 @@ def _configure_dag_processing_logging():
             "class": _qualified_name(cloudwatch_handlers.DagProcessorManagerLogHandler),
             "formatter": "airflow",
             "log_group_arn": log_group_arn,
+            "kms_key_arn": _get_kms_key_arn(),
             "stream_name": os.path.basename(DAG_PROCESSOR_MANAGER_LOG_LOCATION),
             "enabled": logging_enabled,
         }
@@ -88,6 +94,7 @@ def _configure_dag_processing_logging():
             "class": _qualified_name(cloudwatch_handlers.DagProcessingLogHandler),
             "formatter": "airflow",
             "log_group_arn": log_group_arn,
+            "kms_key_arn": _get_kms_key_arn(),
             "stream_name_template": PROCESSOR_FILENAME_TEMPLATE,
             "enabled": logging_enabled,
         }
@@ -104,16 +111,17 @@ def _configure_subprocesses_logging(
     log_level: str,
     logging_enabled: bool,
 ):
-    handler_name = f"mwaa_{subprocess_name}"
-    logger_name = f"mwaa.{subprocess_name}"
+    handler_name = f"mwaa_{subprocess_name.lower()}"
+    logger_name = f"mwaa.{subprocess_name.lower()}"
     if log_group_arn is not None:
         LOGGING_CONFIG["handlers"][handler_name] = {
             "class": _qualified_name(cloudwatch_handlers.SubprocessLogHandler),
             "formatter": "airflow",
             "filters": ["mask_secrets"],
             "log_group_arn": log_group_arn,
-            "stream_name_prefix": subprocess_name,
-            "subprocess_name": subprocess_name,
+            "kms_key_arn": _get_kms_key_arn(),
+            "stream_name_prefix": subprocess_name.lower(),
+            "logs_source": subprocess_name,
             "enabled": logging_enabled,
         }
         # Setup CloudWatch logging.
@@ -127,7 +135,7 @@ def _configure_subprocesses_logging(
 def _configure():
     _configure_task_logging()
     _configure_dag_processing_logging()
-    for comp in ["worker", "scheduler", "webserver"]:
+    for comp in ["Worker", "Scheduler", "WebServer"]:
         args = _get_mwaa_logging_env_vars(comp)
         _configure_subprocesses_logging(comp, *args)
         _configure_subprocesses_logging(f"{comp}_requirements", *args)
