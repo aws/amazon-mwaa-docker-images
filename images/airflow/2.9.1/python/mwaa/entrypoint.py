@@ -210,6 +210,12 @@ def export_env_variables(environ: dict[str, str]):
 
 
 def run_airflow_command(cmd: str, environ: Dict[str, str]):
+    """
+    Run the given Airflow command in a subprocess.
+
+    :param cmd - The command to run, e.g. "worker".
+    :param environ: A dictionary containing the environment variables.
+    """
     logger = logging.getLogger(f"mwaa.{cmd}")
     args = ["celery", "worker"] if cmd == "worker" else [cmd]
     worker = Subprocess(cmd=["airflow", *args], env=environ, logger=logger)

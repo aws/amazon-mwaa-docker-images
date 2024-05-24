@@ -1,3 +1,12 @@
+"""
+This module contains the Subprocess class which we use manage subprocesses.
+
+The Subprocess class is used for running Airflow components, e.g. scheduler, installing
+requirements, and potentially other use cases requiring a sub-process. This class
+supports capturing output from the sub-process and sending them to a Python logger. It
+helps support CloudWatch Logs integration.
+"""
+
 # Python imports
 from enum import Enum
 from subprocess import Popen
@@ -18,6 +27,18 @@ SIGTERM_TIMEOUT_SECONDS = 90
 
 
 class ProcessStatus(Enum):
+    """
+    An enum that represents the status of a process.
+
+    The status can be one of the following:
+    - FINISHED_WITH_NO_MORE_LOGS: The process has finished and there are no more logs to
+      read.
+    - FINISHED_WITH_LOG_READ: The process has finished but there are still logs that we
+      need to read.
+    - RUNNING_WITH_NO_LOG_READ: The process is running but there are no logs to read.
+    - RUNNING_WITH_LOG_READ: The process is running and we read some logs from it.
+    """
+
     FINISHED_WITH_NO_MORE_LOGS = 0
     FINISHED_WITH_LOG_READ = 1
     RUNNING_WITH_NO_LOG_READ = 2
@@ -28,6 +49,8 @@ logger = logging.getLogger(__name__)
 
 
 class Subprocess:
+    """A class for running sub-processes, monitoring them, and capturing their logs."""
+
     def __init__(
         self,
         *,
@@ -36,6 +59,14 @@ class Subprocess:
         logger: logging.Logger = logger,
         tee_logs: bool = False,
     ):
+        """
+        Initialize the Subprocess object.
+
+        :param cmd: the command to run.
+        :param env: A dictionary containing the environment variables to pass.
+        :param logger: The logger object to use to publish logs coming from the process.
+        :param tee_logs: Whether to also tee logs, which is useful during debugging.
+        """
         self.cmd = cmd
         self.env = env
         # TODO Should we use a different default logger?
@@ -44,6 +75,12 @@ class Subprocess:
         self.tee_logs = tee_logs
 
     def start(self):
+        """
+        Start the subprocess.
+
+        This method enters a loop that monitors the process and captures its
+        logs until the process finishes.
+        """
         try:
             self.process = self._start_process()
 
@@ -73,8 +110,6 @@ class Subprocess:
             # shutdowns the worker.
 
     def _start_process(self) -> Popen[Any]:
-        """Start a new subprocess and return it"""
-
         print(f"Starting new subprocess for command '{self.cmd}'...")
         process = subprocess.Popen(
             self.cmd,
@@ -98,7 +133,13 @@ class Subprocess:
         return process
 
     def _capture_output_line_from_process(self, process: Popen[Any]):
-        """Read log lines from the Airflow process and upload them to Cloudwatch"""
+        """
+        Read log lines from the Airflow process and upload them to CloudWatch.
+
+        :param process: The process to read lines from.
+
+        :return: The process status. See ProcessStatus enum for the possible values.
+        """
         if not process.stdout:
             # TODO - Is this the right exception to throw?
             raise RuntimeError("Process stdout is empty")

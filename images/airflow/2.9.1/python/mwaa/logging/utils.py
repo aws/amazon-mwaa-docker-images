@@ -1,3 +1,5 @@
+"""A module containing various utility functions related to logging."""
+
 # Python imports
 from functools import wraps
 from typing import Callable, Any, TypeVar
@@ -5,6 +7,13 @@ import time
 
 
 def parse_arn(log_group_arn: str):
+    """
+    Extract the log group and region name from a log group ARN.
+
+    :param log_group_arn: The ARN of the log group.
+
+    :return: A tuple containing the log group name and the region name.
+    """
     try:
         split_arn = log_group_arn.split(":")
         log_group = split_arn[6]
@@ -23,28 +32,20 @@ def throttle(
     log_throttling_msg: bool = False,
 ) -> Callable[[F], F]:
     """
-    A decorator that limits the rate at which a function can be called. If the function
+    Add a throttling functionality to a function.
+
+    This decorator limits the rate at which a function can be called. If the function
     is called more than once within the specified number of seconds, it will be
     throttled and will not execute again until the time limit has passed.
 
-    Args:
-        seconds (float): The number of seconds to wait between function calls.
-        log_throttling_msg (bool): If true, a message will be printed in case the call
-          to the function gets throttled. If false, the function will be silently
-          throttled. You probably want to set this to True if a function is not called
-          frequently, and thus will not result in log pollution. However, for a functions
-          that gets called fairly regularly, it is better to set this to False.
+    :param seconds (float): The number of seconds to wait between function calls.
+    :param log_throttling_msg (bool): If true, a message will be printed in case the
+      call to the function gets throttled. If false, the function will be silently
+      throttled. You probably want to set this to True if a function is not called
+      frequently, and thus will not result in log pollution. However, for a functions
+      that gets called fairly regularly, it is better to set this to False.
 
-    Returns:
-        Callable[[F], F]: A decorated function that will enforce the throttling.
-
-    Example:
-        @throttle(5)
-        def my_function():
-            print("Function executed!")
-
-        my_function()  # Function executed!
-        my_function()  # Throttling: please wait 4.98 more seconds before calling my_function.
+    :return A decorated function that will enforce the throttling.
     """
 
     def decorator(func: F) -> F:

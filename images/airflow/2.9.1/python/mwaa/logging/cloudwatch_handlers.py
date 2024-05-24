@@ -1,3 +1,12 @@
+"""
+This module contain multiple log handlers to support integration with CloudWatch Logs.
+
+It contains the BaseLogHandler class, which has some common functionality needed by
+all of the handlers. It also contains a couple other handlers for different log
+categories, e.g. TaskLogHandler for handling task logs, SubprocessLogHandler for
+handling scheduler/worker/etc logs, and so on.
+"""
+
 # Python imports
 import logging
 import os
@@ -26,9 +35,7 @@ ERROR_REPORTING_WAIT_SECONDS = 60
 
 
 class BaseLogHandler(logging.Handler):
-    """
-    Shared functionality across our internal CloudWatch log handlers.
-    """
+    """Shared functionality across our internal CloudWatch log handlers."""
 
     def __init__(self, log_group_arn: str, kms_key_arn: str | None, enabled: bool):
         """
@@ -69,7 +76,7 @@ class BaseLogHandler(logging.Handler):
         use_queues: bool = True,
     ):
         """
-        Creates the underlying Watchtower handler that we use to publish logs.
+        Create the underlying Watchtower handler that we use to publish logs.
 
         Arguments:
             stream_name - The name of the log stream to publish logs under.
@@ -80,7 +87,6 @@ class BaseLogHandler(logging.Handler):
               desired for efficiency, but can have certain problems when used with
               multiprocessing. Use with extra care.
         """
-
         logs_client: CloudWatchLogsClient = boto3.client("logs")  # type: ignore
 
         if self.enabled:
@@ -97,9 +103,7 @@ class BaseLogHandler(logging.Handler):
         self.logs_source = logs_source
 
     def close(self):
-        """
-        Closes the Watchtower CloudWatchLogHandler
-        """
+        """Close the log handler (by closing the underlying log handler)."""
         if self.handler is not None:
             self.handler.close()
             self.handler = None
@@ -139,7 +143,7 @@ class BaseLogHandler(logging.Handler):
     @throttle(ERROR_REPORTING_WAIT_SECONDS)
     def _report_logging_error(self, msg: str):
         """
-        Reports an error related to logging.
+        Report an error related to logging.
 
         This method is used to report an error related to logging, along with the
         stack information to aid with debugging. This method is throttled to avoid
@@ -157,12 +161,11 @@ class BaseLogHandler(logging.Handler):
 
     def emit(self, record: logging.LogRecord):
         """
-        Emit log records through the Watchtower CloudWatchLogHandler
+        Emit log records.
 
         Arguments:
             record - The log record to emit.
         """
-
         if self.handler:
             try:
                 self._ensure_log_group_exists()
@@ -172,9 +175,7 @@ class BaseLogHandler(logging.Handler):
                 self._report_logging_error("Failed to emit log record.")
 
     def flush(self):
-        """
-        Flush remaining log records.
-        """
+        """Flush remaining log records."""
         if not self.handler:
             return
         try:
@@ -185,9 +186,7 @@ class BaseLogHandler(logging.Handler):
 
 
 class TaskLogHandler(BaseLogHandler, CloudwatchTaskHandler):
-    """
-    A log handler used for Airflow task logs.
-    """
+    """A log handler used for Airflow task logs."""
 
     # this option is required to be able to serve triggerer logs
     trigger_should_wrap = True
@@ -199,14 +198,38 @@ class TaskLogHandler(BaseLogHandler, CloudwatchTaskHandler):
         kms_key_arn: str | None,
         enabled: bool,
     ):
+        """
+        Initialize the instance.
+
+        :param log_group_arn - The ARN of the log group where logs will be published.
+        :param kms_key_arn - The ARN of the KMS key to use when creating the log group
+            if necessary.
+        :param enabled - Whether this handler is actually enabled, or just does nothing.
+            This makes it easier to control enabling and disabling logging without
+            much changes to the logging configuration.
+        """
         BaseLogHandler.__init__(self, log_group_arn, kms_key_arn, enabled)
         CloudwatchTaskHandler.__init__(
             self,
             log_group_arn=log_group_arn,
-            base_log_folder=base_log_folder,
+            base_log_folder="",  # We only push to CloudWatch Logs.
         )
 
     def set_context(self, ti: TaskInstance, *, identifier: str | None = None) -> None:
+        """
+        Provide context to the logger.
+
+        This method is called by Airflow to provide the necessary context to configure
+        the handler. In this case, Airflow is passing us the task instance the logs
+        are for.
+
+        :param ti: The task instance generating the logs.
+        :param identifier: Airflow uses this when relaying exceptional messages to task
+        logs from a context other than task itself. We ignore this parameter in this
+        handler, i.e. those exceptional messages will go to the same log stream.
+        """
+        # TODO Consider making use of the 'identifier' argument:
+        # https://github.com/aws/amazon-mwaa-docker-images/issues/57
         logs_client: CloudWatchLogsClient = boto3.client("logs")  # type: ignore
 
         if self.enabled:
@@ -273,13 +296,11 @@ class DagProcessorManagerLogHandler(BaseLogHandler):
         self.create_watchtower_handler(stream_name, "DAGProcessorManager")
 
     def _print(self, msg: str):
-        """
-        The PM logger is not started in the same way that the Web Server, Scheduler,
-        Worker are (which are standalone processes we start/control), the PM process is
-        started from within Airflow code.  All of the output from that process is
-        captured and fed to logging.  So if the logger itself emits logs, it creates a
-        cycle.
-        """
+        # The DAG processing loggers are not started in the same way that the Web
+        # Server, Scheduler, Worker are (which are standalone processes we start and
+        # control). Instead, the DAG Processor is started from within Airflow code.  All
+        # of the output from that process is captured and fed to logging. So if the
+        # logger itself emits logs, it creates a cycle.
         pass
 
 
@@ -322,8 +343,13 @@ class DagProcessingLogHandler(BaseLogHandler):
 
     def set_context(self, filename: str):
         """
-        Provide filename context to airflow task handler.
-        :param filename: filename in which the dag is located
+        Provide context to the logger.
+
+        This method is called by Airflow to provide the necessary context to configure
+        the handler. In this case, Airflow is passing us the name of the DAG file being
+        processed.
+
+        :param filename: The name of the DAG file being processed.
         """
         stream_name = self._render_filename(filename)
         self.create_watchtower_handler(
@@ -350,13 +376,11 @@ class DagProcessingLogHandler(BaseLogHandler):
         return "scheduler_" + formatted_filename
 
     def _print(self, msg: str):
-        """
-        The DAG Processor logger is not started in the same way that the Web
-        Server, Scheduler, Worker are (which are standalone processes we
-        start/control), the DAG Processor is started from within Airflow code.
-        All of the output from that process is captured and fed to logging.
-        So if the logger itself emits logs, it creates a cycle.
-        """
+        # The DAG processing loggers are not started in the same way that the Web
+        # Server, Scheduler, Worker are (which are standalone processes we start and
+        # control). Instead, the DAG Processor is started from within Airflow code.  All
+        # of the output from that process is captured and fed to logging. So if the
+        # logger itself emits logs, it creates a cycle.
         pass
 
 
