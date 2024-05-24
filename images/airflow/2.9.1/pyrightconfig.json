@@ -4,5 +4,6 @@
   "strict": ["./"],
   "pythonVersion": "3.11",
   "pythonPlatform": "All",
-  "typeCheckingMode": "strict"
+  "typeCheckingMode": "strict",
+  "stubPath": "python/typestubs"
 }

@@ -17,8 +17,8 @@ pycurl
 watchtower
 # Additional packages for development
 # NOTE: Like above, we don't specify the version here.
-boto3-stubs
-botocore-stubs
+boto3-stubs[logs]
+boto3-stubs[sqs]
 jinja2
 pydocstyle
 pyright

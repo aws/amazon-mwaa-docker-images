@@ -54,7 +54,7 @@ def get_airflow_db_config() -> Dict[str, str]:
 
 def get_airflow_metrics_config() -> Dict[str, str]:
     """
-    Retrieve the environment variables for Airflow's "database" configuration section.
+    Retrieve the environment variables for Airflow's "metrics" configuration section.
 
     :returns A dictionary containing the environment variables.
     """
@@ -68,6 +68,17 @@ def get_airflow_metrics_config() -> Dict[str, str]:
     }
 
 
+def get_airflow_logging_config() -> Dict[str, str]:
+    """
+    Retrieve the environment variables for Airflow's "logging" configuration section.
+
+    :returns A dictionary containing the environment variables.
+    """
+    return {
+        "AIRFLOW__LOGGING__LOGGING_CONFIG_CLASS": "mwaa.logging.config.LOGGING_CONFIG",
+    }
+
+
 def get_airflow_config() -> Dict[str, str]:
     """
     Retrieve the environment variables required to set Airflow configurations.
@@ -78,5 +89,6 @@ def get_airflow_config() -> Dict[str, str]:
         **get_airflow_celery_config(),
         **get_airflow_core_config(),
         **get_airflow_db_config(),
+        **get_airflow_logging_config(),
         **get_airflow_metrics_config(),
     }

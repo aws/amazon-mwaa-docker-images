@@ -5,6 +5,8 @@ REQUIRED_PACKAGES=(
     "apache-airflow-providers-amazon[aiobotocore]"
     "apache-airflow[celery,statsd]==${AIRFLOW_VERSION}"
     "celery[sqs]"
+    "boto3-stubs[logs]"
+    "boto3-stubs[sqs]"
     psycopg2
     pycurl
     watchtower

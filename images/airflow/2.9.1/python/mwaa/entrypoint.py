@@ -10,13 +10,15 @@ after setting up the necessary configurations.
 # reason for needing this is that typically a `logger` object is defined at the top
 # of the module and is used through out it. So, if we import a module before logging
 # is setup, its `logger` object will not have the right setup.
-
 # ruff: noqa: E402
-from mwaa.logging_setup import setup_logging
-
-setup_logging()
+# fmt: off
+import logging.config
+from mwaa.logging.config import LOGGING_CONFIG
+logging.config.dictConfig(LOGGING_CONFIG)
+# fmt: on
 
 # Python imports
+from typing import Dict
 import asyncio
 import logging
 import os
@@ -32,6 +34,7 @@ from mwaa.config.sqs import (
     get_sqs_queue_name,
     should_create_queue,
 )
+from mwaa.utils.process_manager import Subprocess
 from mwaa.utils.cmd import run_command
 from mwaa.utils.dblock import with_db_lock
 
@@ -206,6 +209,19 @@ def export_env_variables(environ: dict[str, str]):
         bash_profile.writelines(env_vars_to_append)
 
 
+def run_airflow_command(cmd: str, environ: Dict[str, str]):
+    """
+    Run the given Airflow command in a subprocess.
+
+    :param cmd - The command to run, e.g. "worker".
+    :param environ: A dictionary containing the environment variables.
+    """
+    logger = logging.getLogger(f"mwaa.{cmd}")
+    args = ["celery", "worker"] if cmd == "worker" else [cmd]
+    worker = Subprocess(cmd=["airflow", *args], env=environ, logger=logger)
+    worker.start()
+
+
 async def main() -> None:
     """Start execution of the script."""
     try:
@@ -227,7 +243,7 @@ async def main() -> None:
     logger.info(f"Warming a Docker container for an Airflow {command}.")
 
     # Add the necessary environment variables.
-    environ = {**os.environ, **get_airflow_config()}
+    environ = {**os.environ, **get_airflow_config(), "MWAA_COMMAND": command}
 
     # IMPORTANT NOTE: The level for this should stay "DEBUG" to avoid logging customer
     # custom environment variables, which potentially contains sensitive credentials,
@@ -251,15 +267,13 @@ async def main() -> None:
         case "spy":
             while True:
                 time.sleep(1)
-        case "worker":
-            os.execlpe("airflow", "airflow", "celery", "worker", environ)
         case "resetdb":
             # Perform the resetdb functionality
             await airflow_db_reset(environ)
             # After resetting the db, initialize it again
             await airflow_db_init(environ)
         case _:
-            os.execlpe("airflow", "airflow", command, environ)
+            run_airflow_command(command, environ)
 
 
 if __name__ == "__main__":

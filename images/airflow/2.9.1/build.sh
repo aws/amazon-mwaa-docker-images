@@ -1,6 +1,13 @@
 #!/bin/bash
 set -e
 
+# Check if 'podman' is available, otherwise use 'docker'
+if command -v podman &> /dev/null; then
+    CONTAINER_RUNTIME="podman"
+else
+    CONTAINER_RUNTIME="docker"
+fi
+
 # Generate the Dockerfiles from the templates.
 # shellcheck source=/dev/null
 source "../../../.venv/bin/activate"
@@ -8,7 +15,7 @@ python3 ../generate-dockerfiles.py
 deactivate
 
 # Build the base image.
-docker build -f ./Dockerfiles/Dockerfile.base -t amazon-mwaa-docker-images/airflow:2.9.1-base ./
+$CONTAINER_RUNTIME build -f ./Dockerfiles/Dockerfile.base -t amazon-mwaa-docker-images/airflow:2.9.1-base ./
 
 # Build the derivatives.
 for dev in "True" "False"; do
@@ -26,6 +33,6 @@ for dev in "True" "False"; do
             tag_name="${tag_name}-dev"
         fi
 
-        docker build -f "./Dockerfiles/${dockerfile_name}" -t "${tag_name}" ./
+        $CONTAINER_RUNTIME build -f "./Dockerfiles/${dockerfile_name}" -t "${tag_name}" ./
     done
 done
