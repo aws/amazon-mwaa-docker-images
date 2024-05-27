@@ -90,7 +90,7 @@ def _configure_task_logging():
 
 def _configure_dag_processing_logging():
     log_group_arn, log_level, logging_enabled = _get_mwaa_logging_env_vars(
-        "dag_processing"
+        "dagprocessor"
     )
     if log_group_arn is not None:
         # Setup CloudWatch logging for DAG Processor Manager.
@@ -130,8 +130,8 @@ def _configure_subprocesses_logging(
     log_level: str,
     logging_enabled: bool,
 ):
-    handler_name = f"mwaa_{subprocess_name.lower()}"
-    logger_name = f"mwaa.{subprocess_name.lower()}"
+    logger_name = MWAA_LOGGERS[subprocess_name.lower()]
+    handler_name = logger_name.replace(".", "_")
     if log_group_arn is not None:
         LOGGING_CONFIG["handlers"][handler_name] = {
             "class": _qualified_name(cloudwatch_handlers.SubprocessLogHandler),
@@ -154,10 +154,33 @@ def _configure_subprocesses_logging(
 def _configure():
     _configure_task_logging()
     _configure_dag_processing_logging()
-    for comp in ["Worker", "Scheduler", "WebServer"]:
+    # We run a standalone DAG Processor but we don't create a special logger for it
+    # because Airflow already has a dedicated logger for it, so we just use that when
+    # we run the "dag-processor" Airflow command.
+    for comp in ["Worker", "Scheduler", "WebServer", "Triggerer"]:
         args = _get_mwaa_logging_env_vars(comp)
         _configure_subprocesses_logging(comp, *args)
         _configure_subprocesses_logging(f"{comp}_requirements", *args)
 
+
+SCHEDULER_LOGGER_NAME = "mwaa.scheduler"
+SCHEDULER_REQUIREMENTS_LOGGER_NAME = "mwaa.scheduler_requirements"
+TRIGGERER_LOGGER_NAME = "mwaa.triggerer"
+TRIGGERER_REQUIREMENTS_LOGGER_NAME = "mwaa.triggerer_requirements"
+WEBSERVER_LOGGER_NAME = "mwaa.webserver"
+WEBSERVER_REQUIREMENTS_LOGGER_NAME = "mwaa.webserver_requirements"
+WORKER_LOGGER_NAME = "mwaa.worker"
+WORKER_REQUIREMENTS_LOGGER_NAME = "mwaa.worker_requirements"
+
+MWAA_LOGGERS = {
+    "scheduler": SCHEDULER_LOGGER_NAME,
+    "scheduler_requirements": SCHEDULER_REQUIREMENTS_LOGGER_NAME,
+    "triggerer": TRIGGERER_LOGGER_NAME,
+    "triggerer_requirements": TRIGGERER_REQUIREMENTS_LOGGER_NAME,
+    "webserver": WEBSERVER_LOGGER_NAME,
+    "webserver_requirements": WEBSERVER_REQUIREMENTS_LOGGER_NAME,
+    "worker": WORKER_LOGGER_NAME,
+    "worker_requirements": WORKER_REQUIREMENTS_LOGGER_NAME,
+}
 
 _configure()

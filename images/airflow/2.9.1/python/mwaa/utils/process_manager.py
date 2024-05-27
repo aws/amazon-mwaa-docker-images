@@ -33,10 +33,14 @@ class ProcessStatus(Enum):
     The status can be one of the following:
     - FINISHED_WITH_NO_MORE_LOGS: The process has finished and there are no more logs to
       read.
-    - FINISHED_WITH_LOG_READ: The process has finished but there are still logs that we
-      need to read.
-    - RUNNING_WITH_NO_LOG_READ: The process is running but there are no logs to read.
-    - RUNNING_WITH_LOG_READ: The process is running and we read some logs from it.
+    - FINISHED_WITH_LOG_READ: The process has finished but a log was recently read,
+      meaning there are potentially more logs that need to be read.
+    - RUNNING_WITH_NO_LOG_READ: The process is running but no log was read in the latest
+      attempt to read logs, thus a sleep is required before attempting to read more
+      logs to avoid spiking the CPU.
+    - RUNNING_WITH_LOG_READ: The process is running and a log was read in the latest
+      attempt, thus we should continue trying to read more logs to avoid delaying
+      logs publishing.
     """
 
     FINISHED_WITH_NO_MORE_LOGS = 0
@@ -57,7 +61,6 @@ class Subprocess:
         cmd: List[str],
         env: Dict[str, str] = {**os.environ},
         logger: logging.Logger = logger,
-        tee_logs: bool = False,
     ):
         """
         Initialize the Subprocess object.
@@ -65,21 +68,26 @@ class Subprocess:
         :param cmd: the command to run.
         :param env: A dictionary containing the environment variables to pass.
         :param logger: The logger object to use to publish logs coming from the process.
-        :param tee_logs: Whether to also tee logs, which is useful during debugging.
         """
         self.cmd = cmd
         self.env = env
         # TODO Should we use a different default logger?
         self.logger = logger if logger else logging.getLogger(__name__)
         self.process: Popen[Any] | None = None
-        self.tee_logs = tee_logs
 
-    def start(self):
+    def start(self, auto_enter_execution_loop: bool = True):
         """
         Start the subprocess.
 
-        This method enters a loop that monitors the process and captures its
-        logs until the process finishes.
+        If auto_enter_execution_loop is set to True, this method enters a loop that
+        monitors the process and captures its logs until the process finishes and there
+        are no more logs to capture.
+
+        :param auto_enter_execution_loop: If True, this method will automatically enter
+          into execution loop and will not exit until the process finishes. If False,
+          the caller will be responsible for entering the loop. The latter case is
+          useful if the caller wants to run multiple sub-processes and have them run in
+          parallel.
         """
         try:
             self.process = self._start_process()
@@ -91,23 +99,49 @@ class Subprocess:
 
             atexit.register(cleanup)
 
-            process_status = ProcessStatus.RUNNING_WITH_NO_LOG_READ
+            self.process_status = ProcessStatus.RUNNING_WITH_NO_LOG_READ
 
-            while not process_status == ProcessStatus.FINISHED_WITH_NO_MORE_LOGS:
-                process_status = self._capture_output_line_from_process(self.process)
-
-                if process_status == ProcessStatus.RUNNING_WITH_NO_LOG_READ:
-                    # There are no pending logs in the process, so we sleep for a while
-                    # to avoid getting into a continuous execution that spikes the CPU
-                    # and impacts the Airflow process.
-                    time.sleep(1)
+            if auto_enter_execution_loop:
+                while self.execution_loop_iter():
+                    if self.process_status == ProcessStatus.RUNNING_WITH_NO_LOG_READ:
+                        # There are no pending logs in the process, so we sleep for a while
+                        # to avoid getting into a continuous execution that spikes the CPU
+                        # and impacts the Airflow process.
+                        time.sleep(1)
         except Exception as ex:
-            print(f"Unexpected error occurred in console logging: {ex}")
+            print(
+                "Unexpected error occurred while trying to start a process "
+                f"for command '{self.cmd}': {ex}"
+            )
             exc_type, exc_value, exc_traceback = sys.exc_info()
             traceback.print_exception(exc_type, exc_value, exc_traceback)
 
             # TODO Create a handler that can be used to hook the code that gracefully
             # shutdowns the worker.
+
+    def execution_loop_iter(self):
+        """
+        Execute a single iteration of the execution loop.
+
+        The execution loop is a loop that continuously monitors the status of the
+        process and captures logs if any. This method executes a single iteration and
+        exit, expecting the caller to repeatedly call this method until it returns
+        `False`, meaning that the process has exited and there are no more logs to
+        ingest.
+
+        :return: True if the process is still running and/or there are more logs to read.
+        """
+        if not self.process:
+            raise RuntimeError("Process is not started")
+
+        if self.process_status == ProcessStatus.FINISHED_WITH_NO_MORE_LOGS:
+            # The process has finished and there are no more logs to read so we
+            # just return False so the caller stop looping.
+            return False
+
+        self.process_status = self._capture_output_line_from_process(self.process)
+
+        return self.process_status != ProcessStatus.FINISHED_WITH_NO_MORE_LOGS
 
     def _start_process(self) -> Popen[Any]:
         print(f"Starting new subprocess for command '{self.cmd}'...")
@@ -150,8 +184,6 @@ class Subprocess:
         if line:
             # Send the log to the logger.
             self.logger.info(line.decode("utf-8"))
-            if self.tee_logs:
-                print(line.decode("utf-8"))
             return (
                 ProcessStatus.FINISHED_WITH_LOG_READ
                 if process_finished
@@ -186,3 +218,41 @@ class Subprocess:
             )
             os.kill(process.pid, signal.SIGKILL)
         print("Process killed. Return code %s" % process.returncode)
+
+
+def run_subprocesses(subprocesses: List[Subprocess]):
+    """
+    Run the given subprocesses in parallel.
+
+    This utility function is useful if you want to have multiple processes running in
+    parallel and you want to make sure that you ingest logs from all of them in
+    parallel. This works by calling the start() method of each subprocess with a False
+    value for the auto_enter_execution_loop parameter. This will result into starting
+    the process but not monitoring its logs. The caller would then need to manually call
+    the loop() method to ingest logs, which is what we do here for all processes.
+
+    :param subprocesses: A list of Subprocess objects to run in parallel.
+    """
+    for s in subprocesses:
+        s.start(False)  # False since we want to run the subprocesses in parallel
+
+    read_some_logs = True
+    while len(subprocesses) > 0:
+        read_some_logs = False
+        finished_processes: List[Subprocess] = []
+        for s in subprocesses:
+            if not s.execution_loop_iter():
+                finished_processes.append(s)
+            if s.process_status in [
+                ProcessStatus.FINISHED_WITH_LOG_READ,
+                ProcessStatus.RUNNING_WITH_LOG_READ,
+            ]:
+                read_some_logs = True
+
+        # Remove finished processes from the list of running processes.
+        subprocesses = [s for s in subprocesses if s not in finished_processes]
+
+        if not read_some_logs:
+            # We didn't read any logs from any process. Sleep for a bit so we don't
+            # enter into a tight loop that spikes the CPU.
+            time.sleep(1)

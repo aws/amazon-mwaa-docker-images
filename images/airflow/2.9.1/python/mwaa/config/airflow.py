@@ -52,6 +52,17 @@ def get_airflow_db_config() -> Dict[str, str]:
     }
 
 
+def get_airflow_logging_config() -> Dict[str, str]:
+    """
+    Retrieve the environment variables for Airflow's "logging" configuration section.
+
+    :returns A dictionary containing the environment variables.
+    """
+    return {
+        "AIRFLOW__LOGGING__LOGGING_CONFIG_CLASS": "mwaa.logging.config.LOGGING_CONFIG",
+    }
+
+
 def get_airflow_metrics_config() -> Dict[str, str]:
     """
     Retrieve the environment variables for Airflow's "metrics" configuration section.
@@ -68,14 +79,14 @@ def get_airflow_metrics_config() -> Dict[str, str]:
     }
 
 
-def get_airflow_logging_config() -> Dict[str, str]:
+def get_airflow_scheduler_config() -> Dict[str, str]:
     """
-    Retrieve the environment variables for Airflow's "logging" configuration section.
+    Retrieve the environment variables for Airflow's "scheduler" configuration section.
 
     :returns A dictionary containing the environment variables.
     """
     return {
-        "AIRFLOW__LOGGING__LOGGING_CONFIG_CLASS": "mwaa.logging.config.LOGGING_CONFIG",
+        "AIRFLOW__SCHEDULER__STANDALONE_DAG_PROCESSOR": "True",
     }
 
 
@@ -91,4 +102,5 @@ def get_airflow_config() -> Dict[str, str]:
         **get_airflow_db_config(),
         **get_airflow_logging_config(),
         **get_airflow_metrics_config(),
+        **get_airflow_scheduler_config(),
     }
