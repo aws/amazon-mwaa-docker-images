@@ -13,12 +13,18 @@ after setting up the necessary configurations.
 # ruff: noqa: E402
 # fmt: off
 import logging.config
-from mwaa.logging.config import LOGGING_CONFIG
+from mwaa.logging.config import (
+    LOGGING_CONFIG,
+    SCHEDULER_LOGGER_NAME,
+    TRIGGERER_LOGGER_NAME,
+    WEBSERVER_LOGGER_NAME,
+    WORKER_LOGGER_NAME,
+)
 logging.config.dictConfig(LOGGING_CONFIG)
 # fmt: on
 
 # Python imports
-from typing import Dict
+from typing import Dict, List
 import asyncio
 import logging
 import os
@@ -34,9 +40,11 @@ from mwaa.config.sqs import (
     get_sqs_queue_name,
     should_create_queue,
 )
-from mwaa.utils.process_manager import Subprocess
+from mwaa.logging.config import MWAA_LOGGERS
+from mwaa.logging.loggers import CompositeLogger
 from mwaa.utils.cmd import run_command
 from mwaa.utils.dblock import with_db_lock
+from mwaa.utils.process_manager import Subprocess, run_subprocesses
 
 
 # Usually, we pass the `__name__` variable instead as that defaults to the
@@ -150,7 +158,7 @@ def create_queue() -> None:
             raise e
 
 
-async def install_user_requirements(environ: dict[str, str]):
+async def install_user_requirements(cmd: str, environ: dict[str, str]):
     """
     Install user requirements.
 
@@ -166,11 +174,23 @@ async def install_user_requirements(environ: dict[str, str]):
     logger.info(f"MWAA__CORE__REQUIREMENTS_PATH = {requirements_file}")
     if requirements_file and os.path.isfile(requirements_file):
         logger.info(f"Installing user requirements from {requirements_file}...")
-        await run_command(
-            f"safe-pip-install -r {str(requirements_file)}",
-            stdout_logging_method=logger.info,
-            stderr_logging_method=logger.error,
+
+        worker = Subprocess(
+            cmd=["safe-pip-install", "-r", requirements_file],
+            env=environ,
+            logger=CompositeLogger(
+                "requirements_composite_logging",  # name can be anything unused.
+                # We use a set to avoid double logging to console if the user doesn't
+                # use CloudWatch for logging.
+                *set(
+                    [
+                        logging.getLogger(MWAA_LOGGERS.get(f"{cmd}_requirements")),
+                        logger,
+                    ]
+                ),
+            ),
         )
+        worker.start()
     else:
         logger.info("No user requirements to install.")
 
@@ -209,6 +229,25 @@ def export_env_variables(environ: dict[str, str]):
         bash_profile.writelines(env_vars_to_append)
 
 
+def create_airflow_subprocess(
+    args: List[str], environ: Dict[str, str], logger_name: str
+):
+    """
+    Create a subprocess for an Airflow command.
+
+    Notice that while this function creates the sub-process, it will not start it.
+    So, the caller is responsible for starting it.
+
+    :param args - The arguments to pass to the Airflow CLI.
+    :param environ - A dictionary containing the environment variables.
+    :param logger_name - The name of the logger to use for capturing the generated logs.
+
+    :returns The created subprocess.
+    """
+    logger: logging.Logger = logging.getLogger(logger_name)
+    return Subprocess(cmd=["airflow", *args], env=environ, logger=logger)
+
+
 def run_airflow_command(cmd: str, environ: Dict[str, str]):
     """
     Run the given Airflow command in a subprocess.
@@ -216,10 +255,47 @@ def run_airflow_command(cmd: str, environ: Dict[str, str]):
     :param cmd - The command to run, e.g. "worker".
     :param environ: A dictionary containing the environment variables.
     """
-    logger = logging.getLogger(f"mwaa.{cmd}")
-    args = ["celery", "worker"] if cmd == "worker" else [cmd]
-    worker = Subprocess(cmd=["airflow", *args], env=environ, logger=logger)
-    worker.start()
+    match cmd:
+        case "scheduler":
+            run_subprocesses(
+                [
+                    create_airflow_subprocess(
+                        [airflow_cmd], environ=environ, logger_name=logger_name
+                    )
+                    for airflow_cmd, logger_name in [
+                        ("scheduler", SCHEDULER_LOGGER_NAME),
+                        # Airflow has a dedicated logger for the DAG Processor Manager
+                        # So we just use it
+                        ("dag-processor", "airflow.processor_manager"),
+                        ("triggerer", TRIGGERER_LOGGER_NAME),
+                    ]
+                ]
+            )
+
+        case "worker":
+            run_subprocesses(
+                [
+                    create_airflow_subprocess(
+                        ["celery", "worker"],
+                        environ=environ,
+                        logger_name=WORKER_LOGGER_NAME,
+                    ),
+                ]
+            )
+
+        case "webserver":
+            run_subprocesses(
+                [
+                    create_airflow_subprocess(
+                        ["webserver"],
+                        environ=environ,
+                        logger_name=WEBSERVER_LOGGER_NAME,
+                    ),
+                ]
+            )
+
+        case _:
+            raise ValueError(f"Unexpected command: {cmd}")
 
 
 async def main() -> None:
@@ -254,7 +330,7 @@ async def main() -> None:
     await airflow_db_init(environ)
     await create_airflow_user(environ)
     create_queue()
-    await install_user_requirements(environ)
+    await install_user_requirements(command, environ)
 
     # Export the environment variables to .bashrc and .bash_profile to enable
     # users to run a shell on the container and have the necessary environment
@@ -272,8 +348,10 @@ async def main() -> None:
             await airflow_db_reset(environ)
             # After resetting the db, initialize it again
             await airflow_db_init(environ)
-        case _:
+        case "scheduler" | "webserver" | "worker":
             run_airflow_command(command, environ)
+        case _:
+            raise ValueError(f"Invalid command: {command}")
 
 
 if __name__ == "__main__":
