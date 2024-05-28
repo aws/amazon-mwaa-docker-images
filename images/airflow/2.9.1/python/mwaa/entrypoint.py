@@ -24,6 +24,7 @@ logging.config.dictConfig(LOGGING_CONFIG)
 # fmt: on
 
 # Python imports
+from datetime import timedelta
 from typing import Dict, List
 import asyncio
 import logging
@@ -56,6 +57,7 @@ logger = logging.getLogger("mwaa.entrypoint")
 # TODO Fix the "type: ignore"s in this file.
 
 
+USER_REQUIREMENTS_MAX_INSTALL_TIME = timedelta(minutes=9)
 AVAILABLE_COMMANDS = [
     "webserver",
     "scheduler",
@@ -189,6 +191,8 @@ async def install_user_requirements(cmd: str, environ: dict[str, str]):
                     ]
                 ),
             ),
+            timeout=USER_REQUIREMENTS_MAX_INSTALL_TIME,
+            friendly_name=f"{cmd}_requirements",
         )
         worker.start()
     else:
@@ -230,7 +234,7 @@ def export_env_variables(environ: dict[str, str]):
 
 
 def create_airflow_subprocess(
-    args: List[str], environ: Dict[str, str], logger_name: str
+    args: List[str], environ: Dict[str, str], logger_name: str, friendly_name: str
 ):
     """
     Create a subprocess for an Airflow command.
@@ -245,7 +249,9 @@ def create_airflow_subprocess(
     :returns The created subprocess.
     """
     logger: logging.Logger = logging.getLogger(logger_name)
-    return Subprocess(cmd=["airflow", *args], env=environ, logger=logger)
+    return Subprocess(
+        cmd=["airflow", *args], env=environ, logger=logger, friendly_name=friendly_name
+    )
 
 
 def run_airflow_command(cmd: str, environ: Dict[str, str]):
@@ -260,14 +266,17 @@ def run_airflow_command(cmd: str, environ: Dict[str, str]):
             run_subprocesses(
                 [
                     create_airflow_subprocess(
-                        [airflow_cmd], environ=environ, logger_name=logger_name
+                        [airflow_cmd],
+                        environ=environ,
+                        logger_name=logger_name,
+                        friendly_name=friendly_name,
                     )
-                    for airflow_cmd, logger_name in [
-                        ("scheduler", SCHEDULER_LOGGER_NAME),
+                    for airflow_cmd, logger_name, friendly_name in [
+                        ("scheduler", SCHEDULER_LOGGER_NAME, "scheduler"),
                         # Airflow has a dedicated logger for the DAG Processor Manager
                         # So we just use it
-                        ("dag-processor", "airflow.processor_manager"),
-                        ("triggerer", TRIGGERER_LOGGER_NAME),
+                        ("dag-processor", "airflow.processor_manager", "dag-processor"),
+                        ("triggerer", TRIGGERER_LOGGER_NAME, "triggerer"),
                     ]
                 ]
             )
@@ -279,6 +288,7 @@ def run_airflow_command(cmd: str, environ: Dict[str, str]):
                         ["celery", "worker"],
                         environ=environ,
                         logger_name=WORKER_LOGGER_NAME,
+                        friendly_name="worker",
                     ),
                 ]
             )
@@ -290,6 +300,7 @@ def run_airflow_command(cmd: str, environ: Dict[str, str]):
                         ["webserver"],
                         environ=environ,
                         logger_name=WEBSERVER_LOGGER_NAME,
+                        friendly_name="webserver",
                     ),
                 ]
             )

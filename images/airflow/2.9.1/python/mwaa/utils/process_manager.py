@@ -8,6 +8,7 @@ helps support CloudWatch Logs integration.
 """
 
 # Python imports
+from datetime import timedelta
 from enum import Enum
 from subprocess import Popen
 from typing import Any, Dict, List
@@ -22,8 +23,9 @@ import time
 import traceback
 
 
-# The maximum time to wait for process termination when SIGTERM is sent. Unit: seconds
-SIGTERM_TIMEOUT_SECONDS = 90
+# The maximum time we can wait for a process to gracefully respond to a SIGTERM signal
+# from us before we forcefully terminate the process with a SIGKILL.
+SIGTERM_PATIENCE_INTERVAL = timedelta(seconds=90)
 
 
 class ProcessStatus(Enum):
@@ -61,6 +63,8 @@ class Subprocess:
         cmd: List[str],
         env: Dict[str, str] = {**os.environ},
         logger: logging.Logger = logger,
+        timeout: timedelta | None = None,
+        friendly_name: str | None = None,
     ):
         """
         Initialize the Subprocess object.
@@ -68,14 +72,40 @@ class Subprocess:
         :param cmd: the command to run.
         :param env: A dictionary containing the environment variables to pass.
         :param logger: The logger object to use to publish logs coming from the process.
+        :param timeout: If specified, the process will be terminated if it takes more
+          time than what is specified here.
+        :param friendly_name: If specified, this name will be used in log messages to
+          refer to this process. When possible, it is recommended to set this.
         """
         self.cmd = cmd
         self.env = env
         # TODO Should we use a different default logger?
         self.logger = logger if logger else logging.getLogger(__name__)
+        self.timeout = timeout
+        self.friendly_name = friendly_name
+        self.start_time: float | None = None
         self.process: Popen[Any] | None = None
 
-    def start(self, auto_enter_execution_loop: bool = True):
+    def __str__(self):
+        """
+        Return a string identifying the sub-process.
+
+        If the user has specified a friendly name, this method will make use of it.
+        Hence, it is recommended to specify a friendly name.
+
+        :return A string identifying the sub-process.
+        """
+        if self.process and self.friendly_name:
+            return f"Process {self.friendly_name} (PID {self.process.pid})"
+        elif self.process:
+            return f"Process with PID {self.process.pid}"
+        else:
+            return ""
+
+    def start(
+        self,
+        auto_enter_execution_loop: bool = True,
+    ):
         """
         Start the subprocess.
 
@@ -141,10 +171,25 @@ class Subprocess:
 
         self.process_status = self._capture_output_line_from_process(self.process)
 
+        if (
+            self.timeout
+            and self.start_time
+            and time.time() - self.start_time > self.timeout.total_seconds()
+        ):
+            run_time = time.time() - self.start_time
+            self.logger.error(
+                f"Process timed out after running for more than {run_time} seconds. "
+                "A SIGTERM followed potentially by a SIGKILL will be sent to "
+                "terminate the process."
+            )
+            self._kill_subprocess(self.process)
+            self.process_status = ProcessStatus.FINISHED_WITH_NO_MORE_LOGS
+
         return self.process_status != ProcessStatus.FINISHED_WITH_NO_MORE_LOGS
 
     def _start_process(self) -> Popen[Any]:
         print(f"Starting new subprocess for command '{self.cmd}'...")
+        self.start_time = time.time()
         process = subprocess.Popen(
             self.cmd,
             stdout=subprocess.PIPE,
@@ -193,31 +238,38 @@ class Subprocess:
             return ProcessStatus.RUNNING_WITH_NO_LOG_READ
 
     def _kill_subprocess(self, process: Popen[Any]):
+        def _error(msg: str):
+            # TODO Consider using a CompositeLogger instead if we need to log to console
+            # and the process logger in multiple places in this module.
+            print(msg)
+            self.logger.error(msg)
+
         # Do nothing if process has already terminated
         if process.poll() is not None:
             return
-        print("Killing process %s" % process.pid)
+        _error(f"Killing {str(self)}")
         try:
             os.kill(process.pid, signal.SIGTERM)
         except OSError:
-            print(
-                "Failed to kill the process {0} with a SIGTERM signal. Failed to send signal {1}. Sending SIGKILL...".format(
-                    process.pid, signal.SIGTERM
-                )
+            _error(
+                f"Failed to kill {str(self)} with a SIGTERM signal. "
+                f"Failed to send signal {signal.SIGTERM}. Sending SIGKILL..."
             )
             os.kill(process.pid, signal.SIGKILL)
         try:
-            outs, _ = process.communicate(timeout=SIGTERM_TIMEOUT_SECONDS)
+            outs, _ = process.communicate(
+                timeout=SIGTERM_PATIENCE_INTERVAL.total_seconds()
+            )
             if outs:
                 self.logger.info(outs.decode("utf-8"))
         except subprocess.TimeoutExpired:
-            print(
-                "Failed to kill the process {0} with a SIGTERM signal. Process timed out. Sending SIGKILL...".format(
-                    process.pid
-                )
+            _error(
+                f"Failed to kill {str(self)} with a SIGTERM signal. Process didn't "
+                f"respond to SIGTERM after {SIGTERM_PATIENCE_INTERVAL.total_seconds()} "
+                "seconds. Sending SIGKILL..."
             )
             os.kill(process.pid, signal.SIGKILL)
-        print("Process killed. Return code %s" % process.returncode)
+        _error("Process killed. Return code %s" % process.returncode)
 
 
 def run_subprocesses(subprocesses: List[Subprocess]):
