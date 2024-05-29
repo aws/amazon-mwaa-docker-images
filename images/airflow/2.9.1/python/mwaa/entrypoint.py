@@ -27,6 +27,7 @@ logging.config.dictConfig(LOGGING_CONFIG)
 from datetime import timedelta
 from typing import Dict, List
 import asyncio
+import json
 import logging
 import os
 import sys
@@ -63,8 +64,8 @@ logger = logging.getLogger("mwaa.entrypoint")
 
 # TODO Fix the "type: ignore"s in this file.
 
-
 USER_REQUIREMENTS_MAX_INSTALL_TIME = timedelta(minutes=9)
+STARTUP_SCRIPT_MAX_EXECUTION_TIME = timedelta(minutes=5)
 AVAILABLE_COMMANDS = [
     "webserver",
     "scheduler",
@@ -205,6 +206,70 @@ async def install_user_requirements(cmd: str, environ: dict[str, str]):
         worker.start()
     else:
         logger.info("No user requirements to install.")
+
+def execute_startup_script(cmd: str, environ: Dict[str, str]):
+    """
+    Execute user startup script.
+
+    :param cmd - The MWAA command the container is running, e.g. "worker", "scheduler". This is used for logging
+    purposes so the logs of the execution of the startup script get sent to the correct place.
+    :param environ: A dictionary containing the environment variables.
+    """
+    EXECUTE_USER_STARTUP_SCRIPT_PATH = "execute-user-startup-script"
+    STARTUP_SCRIPT_PATH = "/usr/local/airflow/startup/startup.sh"
+    POST_STARTUP_SCRIPT_VERIFICATION_PATH = "post-startup-script-verification"
+    PROCESS_LOGGER = logging.getLogger(MWAA_LOGGERS.get(f"{cmd}_startup"))
+
+    if os.path.isfile(STARTUP_SCRIPT_PATH):
+        logger.info("Executing customer startup script.")
+
+        start_time = time.time()  # Capture start time
+        startup_script_process = Subprocess(
+            cmd=["/bin/bash", EXECUTE_USER_STARTUP_SCRIPT_PATH],
+            env=environ,
+            logger=PROCESS_LOGGER,
+            conditions=[
+                TimeoutCondition(STARTUP_SCRIPT_MAX_EXECUTION_TIME),
+            ],
+            friendly_name=f"{cmd}_startup",
+        )
+        startup_script_process.start()
+        end_time = time.time()
+        duration = end_time - start_time
+        PROCESS_LOGGER.info(f"Startup script execution time: {duration:.2f} seconds.")
+
+        logger.info("Executing post startup script verification.")
+        verification_process = Subprocess(
+            cmd=["/bin/bash", POST_STARTUP_SCRIPT_VERIFICATION_PATH],
+            env=environ,
+            logger=PROCESS_LOGGER,
+            conditions=[
+                TimeoutCondition(STARTUP_SCRIPT_MAX_EXECUTION_TIME),
+            ],
+            friendly_name=f"{cmd}_startup",
+        )
+        verification_process.start()
+
+        customer_env_vars_path = "/tmp/customer_env_vars.json"
+        if os.path.isfile(customer_env_vars_path):
+            try:
+                with open(customer_env_vars_path, "r") as f:
+                    customer_env_dict = json.load(f)
+                return customer_env_dict
+            except Exception as e:
+                logger.error(f"Error reading customer environment variables: {e}")
+                return {}
+
+        else:
+            logger.error("An unexpected error occurred: the file containing the customer-defined "
+            "environment variables could not be located. If the customer's startup "
+            "script defines environment variables, this error message indicates that "
+            "those variables won't be exported to the Airflow tasks.")
+            return {}
+        
+    else:
+        logger.info(f"No startup script found at {STARTUP_SCRIPT_PATH}.")
+        return {}
 
 
 def export_env_variables(environ: dict[str, str]):
@@ -360,14 +425,16 @@ async def main() -> None:
     logger.info(f"Warming a Docker container for an Airflow {command}.")
 
     # Add the necessary environment variables.
-    environ = {**os.environ, **get_airflow_config(), "MWAA_COMMAND": command}
+    mwaa_environ = {**get_airflow_config(), "MWAA_COMMAND": command, "MWAA_AIRFLOW_COMPONENT": command}
 
     # IMPORTANT NOTE: The level for this should stay "DEBUG" to avoid logging customer
     # custom environment variables, which potentially contains sensitive credentials,
     # to stdout which, in this case of Fargate hosting (like in Amazon MWAA), ends up
     # being captured and sent to the service hosting.
-    logger.debug(f"Environment variables: {environ}")
+    logger.debug(f"Environment variables: { {**os.environ, **mwaa_environ} }")
 
+    customer_env = execute_startup_script(command, { **os.environ, **mwaa_environ })
+    environ = { **os.environ, **customer_env, **mwaa_environ }
     await airflow_db_init(environ)
     if os.environ.get("MWAA__CORE__AUTH_TYPE", "").lower() == "simple":
         # In "simple" auth mode, we create an admin user "airflow" with password

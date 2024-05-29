@@ -156,26 +156,35 @@ def _configure():
         args = _get_mwaa_logging_env_vars(comp)
         _configure_subprocesses_logging(comp, *args)
         _configure_subprocesses_logging(f"{comp}_requirements", *args)
+        _configure_subprocesses_logging(f"{comp}_startup", *args)
 
 
 SCHEDULER_LOGGER_NAME = "mwaa.scheduler"
 SCHEDULER_REQUIREMENTS_LOGGER_NAME = "mwaa.scheduler_requirements"
+SCHEDULER_STARTUP_LOGGER_NAME = "mwaa.scheduler_startup"
 TRIGGERER_LOGGER_NAME = "mwaa.triggerer"
 TRIGGERER_REQUIREMENTS_LOGGER_NAME = "mwaa.triggerer_requirements"
+TRIGGERER_STARTUP_LOGGER_NAME = "mwaa.triggerer_startup"
 WEBSERVER_LOGGER_NAME = "mwaa.webserver"
 WEBSERVER_REQUIREMENTS_LOGGER_NAME = "mwaa.webserver_requirements"
+WEBSERVER_STARTUP_LOGGER_NAME = "mwaa.webserver_startup"
 WORKER_LOGGER_NAME = "mwaa.worker"
 WORKER_REQUIREMENTS_LOGGER_NAME = "mwaa.worker_requirements"
+WORKER_STARTUP_LOGGER_NAME = "mwaa.worker_startup"
 
 MWAA_LOGGERS = {
     "scheduler": SCHEDULER_LOGGER_NAME,
     "scheduler_requirements": SCHEDULER_REQUIREMENTS_LOGGER_NAME,
+    "scheduler_startup": SCHEDULER_STARTUP_LOGGER_NAME,
     "triggerer": TRIGGERER_LOGGER_NAME,
     "triggerer_requirements": TRIGGERER_REQUIREMENTS_LOGGER_NAME,
+    "triggerer_startup": TRIGGERER_STARTUP_LOGGER_NAME,
     "webserver": WEBSERVER_LOGGER_NAME,
     "webserver_requirements": WEBSERVER_REQUIREMENTS_LOGGER_NAME,
+    "webserver_startup": WEBSERVER_STARTUP_LOGGER_NAME,
     "worker": WORKER_LOGGER_NAME,
     "worker_requirements": WORKER_REQUIREMENTS_LOGGER_NAME,
+    "worker_startup": WORKER_STARTUP_LOGGER_NAME,
 }
 
 _configure()
