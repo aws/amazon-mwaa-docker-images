@@ -263,23 +263,24 @@ def run_airflow_command(cmd: str, environ: Dict[str, str]):
     """
     match cmd:
         case "scheduler":
-            run_subprocesses(
-                [
-                    create_airflow_subprocess(
-                        [airflow_cmd],
-                        environ=environ,
-                        logger_name=logger_name,
-                        friendly_name=friendly_name,
-                    )
-                    for airflow_cmd, logger_name, friendly_name in [
-                        ("scheduler", SCHEDULER_LOGGER_NAME, "scheduler"),
-                        # Airflow has a dedicated logger for the DAG Processor Manager
-                        # So we just use it
-                        ("dag-processor", "airflow.processor_manager", "dag-processor"),
-                        ("triggerer", TRIGGERER_LOGGER_NAME, "triggerer"),
-                    ]
+            subprocesses = [
+                create_airflow_subprocess(
+                    [airflow_cmd],
+                    environ=environ,
+                    logger_name=logger_name,
+                    friendly_name=friendly_name,
+                )
+                for airflow_cmd, logger_name, friendly_name in [
+                    ("scheduler", SCHEDULER_LOGGER_NAME, "scheduler"),
+                    # Airflow has a dedicated logger for the DAG Processor Manager
+                    # So we just use it
+                    ("dag-processor", "airflow.processor_manager", "dag-processor"),
+                    ("triggerer", TRIGGERER_LOGGER_NAME, "triggerer"),
                 ]
-            )
+            ]
+            # Schedulers, triggers, and DAG processors are all essential processes and
+            # if any fails, we want to exit the container and let it restart.
+            run_subprocesses(subprocesses, essential_subprocesses=subprocesses)
 
         case "worker":
             run_subprocesses(
