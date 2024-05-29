@@ -44,6 +44,41 @@ Notice that this command requires you to have valid AWS credentials in your `~/.
 file or environment variables, and that the credentials you use have the necessary permissions to
 create an ECR repository and push a Docker image.
 
+### Note on the Generated Docker Images
+
+When you build the Docker images of a certain Airflow version, using either `build.sh` or `run.sh`
+(which automatically also calls `build.sh` for you), multiple Docker images will actually be
+generated. For example, for Airflow 2.9 (the only currently supported version), you will notice the
+following images:
+
+| Repository                        | Tag                           |
+| --------------------------------- | ----------------------------- |
+| amazon-mwaa-docker-images/airflow | 2.9.1                         |
+| amazon-mwaa-docker-images/airflow | 2.9.1-dev                     |
+| amazon-mwaa-docker-images/airflow | 2.9.1-explorer                |
+| amazon-mwaa-docker-images/airflow | 2.9.1-explorer-dev            |
+| amazon-mwaa-docker-images/airflow | 2.9.1-explorer-privileged     |
+| amazon-mwaa-docker-images/airflow | 2.9.1-explorer-privileged-dev |
+
+Each of the postfixes added to the image tag represents a certain build type, as explained below:
+
+- `explorer`: The 'explorer' build type is almost identical to the default build type except that it
+  doesn't include an entrypoint, meaning that if you run this image locally, it will not actually
+  start Airflow. This is useful for debugging purposes to run the image and look around its content
+  without starting airflow. For example, you might want to explore the file system and see what is
+  available where.
+- `privileged`: Privileged images are the same as their non-privileged counterpart except that they
+  run as the `root` user instead. This gives the user of this Docker image
+  elevated permissions. This can be useful if the user wants to do some experiments as the root
+  user, e.g. installing DNF packages, creating new folders outside the airflow user folder, among
+  others.
+- `dev`: These images have extra packages installed for debugging purposes. For example, typically
+  you wouldn't want to install a text editor in a Docker image that you use for production. However,
+  during debugging, you might want to open some files and inspect their contents, make some changes,
+  etc. Thus, we install an editor in the dev images to aid with such use cases. Similarly, we
+  install tools like `wget` to make it possible for the user to fetch web pages. For a complete
+  listing of what is installed in `dev` images, see the `bootstrap-dev` folders.
+
 ## Security
 
 See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
