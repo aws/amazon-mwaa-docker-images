@@ -70,7 +70,7 @@ def _get_mwaa_logging_env_vars(source: str):
 
 def _configure_task_logging():
     log_group_arn, log_level, logging_enabled = _get_mwaa_logging_env_vars("task")
-    if log_group_arn is not None:
+    if log_group_arn:
         # Setup CloudWatch logging.
         LOGGING_CONFIG["handlers"]["task"] = {
             "class": _qualified_name(cloudwatch_handlers.TaskLogHandler),
@@ -92,7 +92,7 @@ def _configure_dag_processing_logging():
     log_group_arn, log_level, logging_enabled = _get_mwaa_logging_env_vars(
         "dagprocessor"
     )
-    if log_group_arn is not None:
+    if log_group_arn:
         # Setup CloudWatch logging for DAG Processor Manager.
         LOGGING_CONFIG["handlers"]["processor_manager"] = {
             "class": _qualified_name(cloudwatch_handlers.DagProcessorManagerLogHandler),
@@ -132,7 +132,7 @@ def _configure_subprocesses_logging(
 ):
     logger_name = MWAA_LOGGERS[subprocess_name.lower()]
     handler_name = logger_name.replace(".", "_")
-    if log_group_arn is not None:
+    if log_group_arn:
         LOGGING_CONFIG["handlers"][handler_name] = {
             "class": _qualified_name(cloudwatch_handlers.SubprocessLogHandler),
             "formatter": "airflow",
