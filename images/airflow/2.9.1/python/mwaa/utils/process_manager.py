@@ -149,6 +149,11 @@ class Subprocess:
             # TODO Create a handler that can be used to hook the code that gracefully
             # shutdowns the worker.
 
+    def stop(self):
+        """Stop the subprocess."""
+        if self.process:
+            self._kill_subprocess(self.process)
+
     def execution_loop_iter(self):
         """
         Execute a single iteration of the execution loop.
@@ -219,10 +224,9 @@ class Subprocess:
 
         :return: The process status. See ProcessStatus enum for the possible values.
         """
-        if not process.stdout:
-            # TODO - Is this the right exception to throw?
-            raise RuntimeError("Process stdout is empty")
-        line = process.stdout.readline()
+        line = b""
+        if process.stdout and not process.stdout.closed:
+            line = process.stdout.readline()
         process_finished = process.poll() is not None
         if line == b"" and process_finished:
             return ProcessStatus.FINISHED_WITH_NO_MORE_LOGS
@@ -272,7 +276,9 @@ class Subprocess:
         _error("Process killed. Return code %s" % process.returncode)
 
 
-def run_subprocesses(subprocesses: List[Subprocess]):
+def run_subprocesses(
+    subprocesses: List[Subprocess], essential_subprocesses: List[Subprocess] = []
+):
     """
     Run the given subprocesses in parallel.
 
@@ -284,6 +290,11 @@ def run_subprocesses(subprocesses: List[Subprocess]):
     the loop() method to ingest logs, which is what we do here for all processes.
 
     :param subprocesses: A list of Subprocess objects to run in parallel.
+    :param essential_subprocesses: A sub-list of the processes that that must continue
+      running, otherwise all sub-processes will be terminated. This is useful when we
+      want to have multiple sub-processes running any container, and exit the container
+      if any of them fails, e.g. the scheduler container, which contains the scheduler,
+      triggerer, and DAG processor.
     """
     for s in subprocesses:
         s.start(False)  # False since we want to run the subprocesses in parallel
@@ -303,6 +314,20 @@ def run_subprocesses(subprocesses: List[Subprocess]):
 
         # Remove finished processes from the list of running processes.
         subprocesses = [s for s in subprocesses if s not in finished_processes]
+
+        finished_essential_processes = [
+            s for s in finished_processes if s in essential_subprocesses
+        ]
+
+        if finished_essential_processes:
+            names = [str(p) for p in finished_essential_processes]
+            print(
+                f"The following essential process(es) exited: {', '.join(names)}. "
+                "Terminating other subprocesses..."
+            )
+            for s in subprocesses:
+                s.stop()
+            break
 
         if not read_some_logs:
             # We didn't read any logs from any process. Sleep for a bit so we don't
