@@ -37,7 +37,9 @@
     "cloudwatchlogs",
     "creds",
     "dagprocessor",
+    "dateutil",
     "dblock",
+    "DGRAM",
     "elasticmq",
     "esbenp",
     "fargate",
@@ -55,6 +57,7 @@
     "loggroup",
     "mwaa",
     "nonblock",
+    "poolclass",
     "psycopg",
     "qualname",
     "resetdb",
@@ -63,6 +66,7 @@
     "taskinstance",
     "textwidth",
     "triggerer",
+    "tzutc",
     "webserver"
   ]
 }

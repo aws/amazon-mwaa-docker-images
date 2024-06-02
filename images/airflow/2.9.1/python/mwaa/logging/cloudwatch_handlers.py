@@ -108,7 +108,7 @@ class BaseLogHandler(logging.Handler):
             self.handler.close()
             self.handler = None
 
-    @throttle(LOG_GROUP_INIT_WAIT_SECONDS)
+    @throttle(LOG_GROUP_INIT_WAIT_SECONDS, instance_level_throttling=True)
     def _ensure_log_group_exists(self):
         """
         Ensure the log group specified by the caller exists, and create it if necessary.
