@@ -16,6 +16,7 @@ x-airflow-common: &airflow-common
     # Use this environment variable if you have custom requirements you want to install when the
     # container is up.
     MWAA__CORE__REQUIREMENTS_PATH: ${MWAA__CORE__REQUIREMENTS_PATH}
+    MWAA__CORE__AUTH_TYPE: "simple"
     # Use this enviornment variable to enable encryption with KMS.
     MWAA__CORE__KMS_KEY_ARN: ${MWAA__CORE__KMS_KEY_ARN}
 

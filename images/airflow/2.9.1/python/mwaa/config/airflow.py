@@ -90,6 +90,17 @@ def get_airflow_scheduler_config() -> Dict[str, str]:
     }
 
 
+def get_airflow_webserver_config() -> Dict[str, str]:
+    """
+    Retrieve the environment variables for Airflow's "webserver" configuration section.
+
+    :returns A dictionary containing the environment variables.
+    """
+    return {
+        "AIRFLOW__WEBSERVER__CONFIG_FILE": "/python/mwaa/webserver/webserver_config.py",
+    }
+
+
 def get_airflow_config() -> Dict[str, str]:
     """
     Retrieve the environment variables required to set Airflow configurations.
@@ -103,4 +114,5 @@ def get_airflow_config() -> Dict[str, str]:
         **get_airflow_logging_config(),
         **get_airflow_metrics_config(),
         **get_airflow_scheduler_config(),
+        **get_airflow_webserver_config(),
     }
