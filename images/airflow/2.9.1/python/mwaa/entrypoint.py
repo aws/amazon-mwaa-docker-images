@@ -340,7 +340,12 @@ async def main() -> None:
     logger.debug(f"Environment variables: {environ}")
 
     await airflow_db_init(environ)
-    await create_airflow_user(environ)
+    if os.environ.get("MWAA__CORE__AUTH_TYPE", "").lower() == "simple":
+        # In "simple" auth mode, we create an admin user "airflow" with password
+        # "airflow". We use this to make the Docker Compose setup easy to use without
+        # having to create a user manually. Needless to say, this shouldn't be used in
+        # production environments.
+        await create_airflow_user(environ)
     create_queue()
     await install_user_requirements(command, environ)
 
