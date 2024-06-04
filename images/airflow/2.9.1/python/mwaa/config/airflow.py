@@ -1,5 +1,6 @@
 """Contain functions for building Airflow configuration."""
 
+import json
 from typing import Dict
 
 from mwaa.config.database import get_db_connection_string
@@ -96,8 +97,11 @@ def get_airflow_secrets_config() -> Dict[str, str]:
 
     :returns A dictionary containing the environment variables.
     """
+    connection_lookup_pattern = {
+        "connections_lookup_pattern": "^(?!aws_default$).*$"
+    }
     return {
-        "AIRFLOW__SECRETS__BACKEND_KWARGS": '{"connections_lookup_pattern":"^(?!aws_default$).*$"}"',
+        "AIRFLOW__SECRETS__BACKEND_KWARGS": json.dumps(connection_lookup_pattern),
     }
 
 
