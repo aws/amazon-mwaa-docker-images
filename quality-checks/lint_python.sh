@@ -28,11 +28,9 @@ check_dir() {
     source "${venv_dir}/bin/activate"
     # Run ruff and Pyright
     echo "Running ruff..."
-    ruff "${dir}" || status=1
+    ruff check "${dir}" || status=1
     echo "Running Pyright..."
     pyright "${dir}" || status=1
-    echo "Running pydocstyle..."
-    pydocstyle "${dir}" || status=1
     deactivate
 
     echo

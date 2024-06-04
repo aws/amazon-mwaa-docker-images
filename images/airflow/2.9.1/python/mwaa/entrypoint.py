@@ -36,6 +36,7 @@ import time
 import boto3
 from botocore.exceptions import ClientError
 
+# Our imports
 from mwaa.config.airflow import get_airflow_config
 from mwaa.config.sqs import (
     get_sqs_queue_name,
@@ -43,9 +44,15 @@ from mwaa.config.sqs import (
 )
 from mwaa.logging.config import MWAA_LOGGERS
 from mwaa.logging.loggers import CompositeLogger
+from mwaa.subprocess.conditions import (
+    AirflowDbReachableCondition,
+    ProcessCondition,
+    SidecarHealthCondition,
+    TimeoutCondition,
+)
+from mwaa.subprocess.subprocess import Subprocess, run_subprocesses
 from mwaa.utils.cmd import run_command
 from mwaa.utils.dblock import with_db_lock
-from mwaa.utils.process_manager import Subprocess, run_subprocesses
 
 
 # Usually, we pass the `__name__` variable instead as that defaults to the
@@ -62,7 +69,6 @@ AVAILABLE_COMMANDS = [
     "webserver",
     "scheduler",
     "worker",
-    "triggerer",
     "shell",
     "resetdb",
     "spy",
@@ -191,7 +197,9 @@ async def install_user_requirements(cmd: str, environ: dict[str, str]):
                     ]
                 ),
             ),
-            timeout=USER_REQUIREMENTS_MAX_INSTALL_TIME,
+            conditions=[
+                TimeoutCondition(USER_REQUIREMENTS_MAX_INSTALL_TIME),
+            ],
             friendly_name=f"{cmd}_requirements",
         )
         worker.start()
@@ -234,7 +242,11 @@ def export_env_variables(environ: dict[str, str]):
 
 
 def create_airflow_subprocess(
-    args: List[str], environ: Dict[str, str], logger_name: str, friendly_name: str
+    args: List[str],
+    environ: Dict[str, str],
+    logger_name: str,
+    friendly_name: str,
+    conditions: List[ProcessCondition] = [],
 ):
     """
     Create a subprocess for an Airflow command.
@@ -250,7 +262,11 @@ def create_airflow_subprocess(
     """
     logger: logging.Logger = logging.getLogger(logger_name)
     return Subprocess(
-        cmd=["airflow", *args], env=environ, logger=logger, friendly_name=friendly_name
+        cmd=["airflow", *args],
+        env=environ,
+        logger=logger,
+        friendly_name=friendly_name,
+        conditions=conditions,
     )
 
 
@@ -263,23 +279,30 @@ def run_airflow_command(cmd: str, environ: Dict[str, str]):
     """
     match cmd:
         case "scheduler":
-            run_subprocesses(
-                [
-                    create_airflow_subprocess(
-                        [airflow_cmd],
-                        environ=environ,
-                        logger_name=logger_name,
-                        friendly_name=friendly_name,
-                    )
-                    for airflow_cmd, logger_name, friendly_name in [
-                        ("scheduler", SCHEDULER_LOGGER_NAME, "scheduler"),
-                        # Airflow has a dedicated logger for the DAG Processor Manager
-                        # So we just use it
-                        ("dag-processor", "airflow.processor_manager", "dag-processor"),
-                        ("triggerer", TRIGGERER_LOGGER_NAME, "triggerer"),
+            subprocesses = [
+                create_airflow_subprocess(
+                    [airflow_cmd],
+                    environ=environ,
+                    logger_name=logger_name,
+                    friendly_name=friendly_name,
+                    conditions=[
+                        SidecarHealthCondition(airflow_component="scheduler"),
+                        AirflowDbReachableCondition(),
                     ]
+                    if airflow_cmd == "scheduler"
+                    else [],
+                )
+                for airflow_cmd, logger_name, friendly_name in [
+                    ("scheduler", SCHEDULER_LOGGER_NAME, "scheduler"),
+                    # Airflow has a dedicated logger for the DAG Processor Manager
+                    # So we just use it
+                    ("dag-processor", "airflow.processor_manager", "dag-processor"),
+                    ("triggerer", TRIGGERER_LOGGER_NAME, "triggerer"),
                 ]
-            )
+            ]
+            # Schedulers, triggers, and DAG processors are all essential processes and
+            # if any fails, we want to exit the container and let it restart.
+            run_subprocesses(subprocesses, essential_subprocesses=subprocesses)
 
         case "worker":
             run_subprocesses(
@@ -289,6 +312,10 @@ def run_airflow_command(cmd: str, environ: Dict[str, str]):
                         environ=environ,
                         logger_name=WORKER_LOGGER_NAME,
                         friendly_name="worker",
+                        conditions=[
+                            SidecarHealthCondition(airflow_component="worker"),
+                            AirflowDbReachableCondition(),
+                        ],
                     ),
                 ]
             )
@@ -301,6 +328,9 @@ def run_airflow_command(cmd: str, environ: Dict[str, str]):
                         environ=environ,
                         logger_name=WEBSERVER_LOGGER_NAME,
                         friendly_name="webserver",
+                        conditions=[
+                            AirflowDbReachableCondition(),
+                        ],
                     ),
                 ]
             )
@@ -339,7 +369,12 @@ async def main() -> None:
     logger.debug(f"Environment variables: {environ}")
 
     await airflow_db_init(environ)
-    await create_airflow_user(environ)
+    if os.environ.get("MWAA__CORE__AUTH_TYPE", "").lower() == "simple":
+        # In "simple" auth mode, we create an admin user "airflow" with password
+        # "airflow". We use this to make the Docker Compose setup easy to use without
+        # having to create a user manually. Needless to say, this shouldn't be used in
+        # production environments.
+        await create_airflow_user(environ)
     create_queue()
     await install_user_requirements(command, environ)
 
