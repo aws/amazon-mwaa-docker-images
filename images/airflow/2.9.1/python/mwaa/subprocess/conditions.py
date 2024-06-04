@@ -86,7 +86,7 @@ class ProcessCondition:
         """
         self.name = name if name else self.__class__.__name__
 
-    def init(self):
+    def prepare(self):
         """
         Called by the Subprocess class to indicate the start of the subprocess.
         """
@@ -102,7 +102,7 @@ class ProcessCondition:
         """
         Enter the runtime context related to this object.
         """
-        self.init()
+        self.prepare()
         return self
 
     def __exit__(
@@ -164,7 +164,7 @@ class SidecarHealthCondition(ProcessCondition):
         self.port = port
         self.socket: socket.socket | None
 
-    def init(self):
+    def prepare(self):
         """
         Called by the Subprocess class to indicate the start of the subprocess.
 
@@ -223,7 +223,10 @@ class SidecarHealthCondition(ProcessCondition):
                         condition=self,
                         successful=True,
                         message=f"Unexpected response retrieved from sidecar: {status}. "
-                        "Assuming status is HEALTHY.",
+                        "Treating the status as HEALTHY. This may be a false positive "
+                        "so it should be investigated, unless it is happening at the "
+                        "start of the container before the sidecar monitoring is up "
+                        "and emitting health indicators.",
                     )
                     logger.warning(response.message)
         except Exception:
@@ -231,7 +234,10 @@ class SidecarHealthCondition(ProcessCondition):
                 condition=self,
                 successful=True,
                 message="Reading the health status from the sidecar timed out. Unable "
-                "to positively determine health. Assuming status is healthy.",
+                "to positively determine health. Assuming status is healthy. This may "
+                "be a false positive so it should be investigated, unless it is "
+                "happening at the start of the container before the sidecar monitoring "
+                "is up and emitting health indicators.",
             )
             logger.error(response.message, exc_info=sys.exc_info())
 
@@ -256,7 +262,7 @@ class TimeoutCondition(ProcessCondition):
         self.timeout = timeout
         self.start_time: float | None = None
 
-    def init(self):
+    def prepare(self):
         """
         Called by the Subprocess class to indicate the start of the subprocess.
 
@@ -272,16 +278,17 @@ class TimeoutCondition(ProcessCondition):
         """
         if not self.start_time:
             raise RuntimeError("TimeoutCondition has not been initialized")
-        running_time_secs = time.time() - self.start_time
-        if running_time_secs < self.timeout.total_seconds():
+        running_time_ms = (time.time() - self.start_time) * 1000
+        timeout_ms = self.timeout.total_seconds() * 1000
+        if running_time_ms < timeout_ms:
             return ProcessConditionResponse(condition=self, successful=True)
         else:
             return ProcessConditionResponse(
                 condition=self,
                 successful=False,
                 message=f"Process timed out after running for more than "
-                f"{running_time_secs} seconds when the maximum running time "
-                f"is {self.timeout.total_seconds()} seconds.",
+                f"{running_time_ms} milliseconds when the maximum running time "
+                f"is {timeout_ms} milliseconds.",
             )
 
 
@@ -290,7 +297,7 @@ class AirflowDbReachableCondition(ProcessCondition):
     A condition for ensuring the Airflow database is reachable.
     """
 
-    def init(self):
+    def prepare(self):
         """
         Initialize the condition.
         """

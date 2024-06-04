@@ -128,7 +128,7 @@ class Subprocess:
 
         # Initialize process conditions if any.
         for condition in self.conditions:
-            condition.init()
+            condition.prepare()
 
         try:
             self.process = self._start_process()
