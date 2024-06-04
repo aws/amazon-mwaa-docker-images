@@ -31,18 +31,13 @@ from airflow.config_templates.airflow_local_settings import (
 
 # Our imports
 from mwaa.logging import cloudwatch_handlers
+from mwaa.utils import qualified_name
 
 # We adopt the default logging configuration from Airflow and do the necessary changes
 # to setup logging with CloudWatch Logs.
 LOGGING_CONFIG = {
     **DEFAULT_LOGGING_CONFIG,
 }
-
-
-def _qualified_name(cls: type) -> str:
-    module = cls.__module__
-    qualname = cls.__qualname__
-    return f"{module}.{qualname}"
 
 
 def _get_kms_key_arn():
@@ -73,7 +68,7 @@ def _configure_task_logging():
     if log_group_arn:
         # Setup CloudWatch logging.
         LOGGING_CONFIG["handlers"]["task"] = {
-            "class": _qualified_name(cloudwatch_handlers.TaskLogHandler),
+            "class": qualified_name(cloudwatch_handlers.TaskLogHandler),
             "formatter": "airflow",
             "filters": ["mask_secrets"],
             "base_log_folder": str(os.path.expanduser(BASE_LOG_FOLDER)),
@@ -95,7 +90,7 @@ def _configure_dag_processing_logging():
     if log_group_arn:
         # Setup CloudWatch logging for DAG Processor Manager.
         LOGGING_CONFIG["handlers"]["processor_manager"] = {
-            "class": _qualified_name(cloudwatch_handlers.DagProcessorManagerLogHandler),
+            "class": qualified_name(cloudwatch_handlers.DagProcessorManagerLogHandler),
             "formatter": "airflow",
             "log_group_arn": log_group_arn,
             "kms_key_arn": _get_kms_key_arn(),
@@ -110,7 +105,7 @@ def _configure_dag_processing_logging():
 
         # Setup CloudWatch logging for DAG processing.
         LOGGING_CONFIG["handlers"]["processor"] = {
-            "class": _qualified_name(cloudwatch_handlers.DagProcessingLogHandler),
+            "class": qualified_name(cloudwatch_handlers.DagProcessingLogHandler),
             "formatter": "airflow",
             "log_group_arn": log_group_arn,
             "kms_key_arn": _get_kms_key_arn(),
@@ -134,7 +129,7 @@ def _configure_subprocesses_logging(
     handler_name = logger_name.replace(".", "_")
     if log_group_arn:
         LOGGING_CONFIG["handlers"][handler_name] = {
-            "class": _qualified_name(cloudwatch_handlers.SubprocessLogHandler),
+            "class": qualified_name(cloudwatch_handlers.SubprocessLogHandler),
             "formatter": "airflow",
             "filters": ["mask_secrets"],
             "log_group_arn": log_group_arn,

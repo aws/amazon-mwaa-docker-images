@@ -20,12 +20,18 @@ import signal
 import subprocess
 import sys
 import time
-import traceback
+
+# Our imports
+from mwaa.logging.utils import throttle
+from mwaa.subprocess.conditions import ProcessCondition
 
 
 # The maximum time we can wait for a process to gracefully respond to a SIGTERM signal
 # from us before we forcefully terminate the process with a SIGKILL.
 SIGTERM_PATIENCE_INTERVAL = timedelta(seconds=90)
+
+
+module_logger = logging.getLogger(__name__)
 
 
 class ProcessStatus(Enum):
@@ -51,9 +57,6 @@ class ProcessStatus(Enum):
     RUNNING_WITH_LOG_READ = 3
 
 
-logger = logging.getLogger(__name__)
-
-
 class Subprocess:
     """A class for running sub-processes, monitoring them, and capturing their logs."""
 
@@ -62,9 +65,9 @@ class Subprocess:
         *,
         cmd: List[str],
         env: Dict[str, str] = {**os.environ},
-        logger: logging.Logger = logger,
-        timeout: timedelta | None = None,
+        logger: logging.Logger = module_logger,
         friendly_name: str | None = None,
+        conditions: List[ProcessCondition] = [],
     ):
         """
         Initialize the Subprocess object.
@@ -76,13 +79,16 @@ class Subprocess:
           time than what is specified here.
         :param friendly_name: If specified, this name will be used in log messages to
           refer to this process. When possible, it is recommended to set this.
+        :param conditions: The conditions that must be met at all times, otherwise the
+          process gets terminated. This can be useful for, for example, monitoring,
+          limiting running time of the process, etc.
         """
         self.cmd = cmd
         self.env = env
-        # TODO Should we use a different default logger?
-        self.logger = logger if logger else logging.getLogger(__name__)
-        self.timeout = timeout
+        self.process_logger = logger if logger else module_logger
         self.friendly_name = friendly_name
+        self.conditions = conditions
+
         self.start_time: float | None = None
         self.process: Popen[Any] | None = None
 
@@ -119,6 +125,11 @@ class Subprocess:
           useful if the caller wants to run multiple sub-processes and have them run in
           parallel.
         """
+
+        # Initialize process conditions if any.
+        for condition in self.conditions:
+            condition.prepare()
+
         try:
             self.process = self._start_process()
 
@@ -139,12 +150,11 @@ class Subprocess:
                         # and impacts the Airflow process.
                         time.sleep(1)
         except Exception as ex:
-            print(
+            module_logger.fatal(
                 "Unexpected error occurred while trying to start a process "
-                f"for command '{self.cmd}': {ex}"
+                f"for command '{self.cmd}': {ex}",
+                exc_info=sys.exc_info(),
             )
-            exc_type, exc_value, exc_traceback = sys.exc_info()
-            traceback.print_exception(exc_type, exc_value, exc_traceback)
 
             # TODO Create a handler that can be used to hook the code that gracefully
             # shutdowns the worker.
@@ -153,6 +163,24 @@ class Subprocess:
         """Stop the subprocess."""
         if self.process:
             self._kill_subprocess(self.process)
+            self.process = None
+
+    def close(self):
+        """
+        Close the subprocess.
+        """
+        for condition in self.conditions:
+            condition.close()
+
+    @throttle(60)  # so we don't make excessive calls to process conditions
+    def _check_process_conditions(self):
+        # Evaluate all conditions
+        checked_conditions = [c.check() for c in self.conditions]
+
+        # Filter out the unsuccessful conditions
+        failed_conditions = [c for c in checked_conditions if not c.successful]
+
+        return failed_conditions
 
     def execution_loop_iter(self):
         """
@@ -176,16 +204,18 @@ class Subprocess:
 
         self.process_status = self._capture_output_line_from_process(self.process)
 
-        if (
-            self.timeout
-            and self.start_time
-            and time.time() - self.start_time > self.timeout.total_seconds()
-        ):
-            run_time = time.time() - self.start_time
-            self.logger.error(
-                f"Process timed out after running for more than {run_time} seconds. "
-                "A SIGTERM followed potentially by a SIGKILL will be sent to "
-                "terminate the process."
+        # Filter out the unsuccessful conditions
+        failed_conditions = self._check_process_conditions()
+
+        if failed_conditions:
+            self.process_logger.error(
+                f"""
+{self} failed due to the following conditions failing:
+
+{os.linesep.join([' - ' + c.message for c in failed_conditions])}
+
+A SIGTERM followed potentially by a SIGKILL will be sent to terminate the process.
+            """.strip()
             )
             self._kill_subprocess(self.process)
             self.process_status = ProcessStatus.FINISHED_WITH_NO_MORE_LOGS
@@ -193,7 +223,7 @@ class Subprocess:
         return self.process_status != ProcessStatus.FINISHED_WITH_NO_MORE_LOGS
 
     def _start_process(self) -> Popen[Any]:
-        print(f"Starting new subprocess for command '{self.cmd}'...")
+        module_logger.info(f"Starting new subprocess for command '{self.cmd}'...")
         self.start_time = time.time()
         process = subprocess.Popen(
             self.cmd,
@@ -209,7 +239,7 @@ class Subprocess:
             fl = fcntl.fcntl(process.stdout, fcntl.F_GETFL)
             fcntl.fcntl(process.stdout, fcntl.F_SETFL, fl | os.O_NONBLOCK)
 
-        print(
+        module_logger.info(
             f"New subprocess for command '{self.cmd}' started. "
             f"New process ID is {process.pid}. "
             f"Parent process ID is {os.getpid()}."
@@ -232,7 +262,7 @@ class Subprocess:
             return ProcessStatus.FINISHED_WITH_NO_MORE_LOGS
         if line:
             # Send the log to the logger.
-            self.logger.info(line.decode("utf-8"))
+            self.process_logger.info(line.decode("utf-8"))
             return (
                 ProcessStatus.FINISHED_WITH_LOG_READ
                 if process_finished
@@ -245,8 +275,8 @@ class Subprocess:
         def _error(msg: str):
             # TODO Consider using a CompositeLogger instead if we need to log to console
             # and the process logger in multiple places in this module.
-            print(msg)
-            self.logger.error(msg)
+            module_logger.error(msg)
+            self.process_logger.error(msg)
 
         # Do nothing if process has already terminated
         if process.poll() is not None:
@@ -265,7 +295,7 @@ class Subprocess:
                 timeout=SIGTERM_PATIENCE_INTERVAL.total_seconds()
             )
             if outs:
-                self.logger.info(outs.decode("utf-8"))
+                self.process_logger.info(outs.decode("utf-8"))
         except subprocess.TimeoutExpired:
             _error(
                 f"Failed to kill {str(self)} with a SIGTERM signal. Process didn't "
@@ -321,7 +351,7 @@ def run_subprocesses(
 
         if finished_essential_processes:
             names = [str(p) for p in finished_essential_processes]
-            print(
+            module_logger.error(
                 f"The following essential process(es) exited: {', '.join(names)}. "
                 "Terminating other subprocesses..."
             )

@@ -1,8 +1,9 @@
 """Contain functions for retrieving Airflow Celery-related configuration."""
 
 # Python imports
-import copy
 from typing import Any
+import copy
+
 
 # 3rd party imports
 from airflow.providers.celery.executors.default_celery import DEFAULT_CELERY_CONFIG
@@ -10,6 +11,9 @@ from airflow.providers.celery.executors.default_celery import DEFAULT_CELERY_CON
 # Our import
 from mwaa.config.aws import get_aws_region
 from mwaa.config.sqs import get_sqs_queue_name, get_sqs_queue_url, should_use_ssl
+
+from mwaa.celery.sqs_broker import Transport
+from mwaa.utils import qualified_name
 
 
 def create_celery_config() -> dict[str, Any]:
@@ -20,10 +24,11 @@ def create_celery_config() -> dict[str, Any]:
 
     :returns A dictionary containing the Celery configuration.
     """
-    # We use Airflow's default condfiguration and make the changes we want.
+    # We use Airflow's default configuration and make the changes we want.
     celery_config: dict[str, Any] = copy.deepcopy(DEFAULT_CELERY_CONFIG)
     celery_config = {
         **celery_config,
+        "broker_transport": qualified_name(Transport),
         "broker_transport_options": {
             **celery_config["broker_transport_options"],
             "predefined_queues": {get_sqs_queue_name(): {"url": get_sqs_queue_url()}},

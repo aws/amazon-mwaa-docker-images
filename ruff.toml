@@ -1,3 +1,10 @@
 exclude = [
-    ".venv"
+    ".venv",
+    "images",
+]
+
+[lint]
+select = [
+    # Enable pydocstyle rules to enforce documentation
+    "D1"
 ]
