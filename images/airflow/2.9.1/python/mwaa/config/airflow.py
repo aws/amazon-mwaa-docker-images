@@ -1,5 +1,6 @@
 """Contain functions for building Airflow configuration."""
 
+import json
 from typing import Dict
 
 from mwaa.config.database import get_db_connection_string
@@ -87,6 +88,20 @@ def get_airflow_scheduler_config() -> Dict[str, str]:
     """
     return {
         "AIRFLOW__SCHEDULER__STANDALONE_DAG_PROCESSOR": "True",
+        "AIRFLOW__SCHEDULER__SCHEDULE_AFTER_TASK_EXECUTION": "False",
+    }
+
+def get_airflow_secrets_config() -> Dict[str, str]:
+    """
+    Retrieve the environment variables for Airflow's "secrets" configuration section.
+
+    :returns A dictionary containing the environment variables.
+    """
+    connection_lookup_pattern = {
+        "connections_lookup_pattern": "^(?!aws_default$).*$"
+    }
+    return {
+        "AIRFLOW__SECRETS__BACKEND_KWARGS": json.dumps(connection_lookup_pattern),
     }
 
 
@@ -115,4 +130,5 @@ def get_airflow_config() -> Dict[str, str]:
         **get_airflow_metrics_config(),
         **get_airflow_scheduler_config(),
         **get_airflow_webserver_config(),
+        **get_airflow_secrets_config(),
     }
