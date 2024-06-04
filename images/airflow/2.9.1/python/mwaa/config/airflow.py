@@ -126,4 +126,5 @@ def get_airflow_config() -> Dict[str, str]:
         **get_airflow_metrics_config(),
         **get_airflow_scheduler_config(),
         **get_airflow_webserver_config(),
+        **get_airflow_secrets_config(),
     }
