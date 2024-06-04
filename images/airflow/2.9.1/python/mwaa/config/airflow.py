@@ -87,6 +87,17 @@ def get_airflow_scheduler_config() -> Dict[str, str]:
     """
     return {
         "AIRFLOW__SCHEDULER__STANDALONE_DAG_PROCESSOR": "True",
+        "AIRFLOW__SCHEDULER__SCHEDULE_AFTER_TASK_EXECUTION": "False",
+    }
+
+def get_airflow_secrets_config() -> Dict[str, str]:
+    """
+    Retrieve the environment variables for Airflow's "secrets" configuration section.
+
+    :returns A dictionary containing the environment variables.
+    """
+    return {
+        "AIRFLOW__SECRETS__BACKEND_KWARGS": '{"connections_lookup_pattern":"^(?!aws_default$).*$"}"',
     }
 
 
