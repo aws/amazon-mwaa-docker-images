@@ -44,7 +44,28 @@ def _get_kms_key_arn():
     return os.environ.get("MWAA__CORE__KMS_KEY_ARN", None)
 
 
-def _get_mwaa_logging_env_vars(source: str):
+def get_mwaa_logging_env_vars(source: str):
+    """
+    Retrieve the environment variables used to configure logging from a certain source.
+
+    Each logging source, e.g. scheduler, DAG processing, is configurable via three
+    environment variables:
+
+    - MWAA__LOGGING__AIRFLOW_<source>_LOG_GROUP_ARN: The ARN of the log group to
+      publish logs to. If this is not set, CloudWatch Logs integration will not be
+      enabled.
+    - MWAA__LOGGING__AIRFLOW_<source>_LOG_LEVEL: The level of logging, e.g. INFO.
+    - MWAA__LOGGING__AIRFLOW_<source>_LOGS_ENABLED: Whether logging for this source is
+      enabled or not.
+
+    Given a certain source, this method returns a tuple of the values of these three
+    variables.
+
+    :param source: The source of logging. Can be any of the following: dagprocessor,
+      scheduler, triggerer, task, webserver, or worker.
+
+    :returns A tuple of (log_group_arn, log_level, logging_enabled)
+    """
     log_group_arn = os.environ.get(
         f"MWAA__LOGGING__AIRFLOW_{source.upper()}_LOG_GROUP_ARN", None
     )
@@ -64,7 +85,7 @@ def _get_mwaa_logging_env_vars(source: str):
 
 
 def _configure_task_logging():
-    log_group_arn, log_level, logging_enabled = _get_mwaa_logging_env_vars("task")
+    log_group_arn, log_level, logging_enabled = get_mwaa_logging_env_vars("task")
     if log_group_arn:
         # Setup CloudWatch logging.
         LOGGING_CONFIG["handlers"]["task"] = {
@@ -84,7 +105,7 @@ def _configure_task_logging():
 
 
 def _configure_dag_processing_logging():
-    log_group_arn, log_level, logging_enabled = _get_mwaa_logging_env_vars(
+    log_group_arn, log_level, logging_enabled = get_mwaa_logging_env_vars(
         "dagprocessor"
     )
     if log_group_arn:
@@ -153,7 +174,7 @@ def _configure():
     # because Airflow already has a dedicated logger for it, so we just use that when
     # we run the "dag-processor" Airflow command.
     for comp in ["Worker", "Scheduler", "WebServer", "Triggerer"]:
-        args = _get_mwaa_logging_env_vars(comp)
+        args = get_mwaa_logging_env_vars(comp)
         _configure_subprocesses_logging(comp, *args)
         _configure_subprocesses_logging(f"{comp}_requirements", *args)
         _configure_subprocesses_logging(f"{comp}_startup", *args)
