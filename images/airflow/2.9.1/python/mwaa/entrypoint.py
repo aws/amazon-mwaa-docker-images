@@ -38,7 +38,12 @@ import boto3
 from botocore.exceptions import ClientError
 
 # Our imports
-from mwaa.config.airflow import get_airflow_config
+from mwaa.config.airflow import (
+    get_essential_airflow_config,
+    get_opinionated_airflow_config,
+    get_user_airflow_config,
+)
+from mwaa.config.environ import get_essential_environ, get_opinionated_environ
 from mwaa.config.sqs import (
     get_sqs_queue_name,
     should_create_queue,
@@ -207,7 +212,8 @@ async def install_user_requirements(cmd: str, environ: dict[str, str]):
     else:
         logger.info("No user requirements to install.")
 
-def execute_startup_script(cmd: str, environ: Dict[str, str]):
+
+def execute_startup_script(cmd: str, environ: Dict[str, str]) -> Dict[str, str]:
     """
     Execute user startup script.
 
@@ -261,12 +267,14 @@ def execute_startup_script(cmd: str, environ: Dict[str, str]):
                 return {}
 
         else:
-            logger.error("An unexpected error occurred: the file containing the customer-defined "
-            "environment variables could not be located. If the customer's startup "
-            "script defines environment variables, this error message indicates that "
-            "those variables won't be exported to the Airflow tasks.")
+            logger.error(
+                "An unexpected error occurred: the file containing the customer-defined "
+                "environment variables could not be located. If the customer's startup "
+                "script defines environment variables, this error message indicates that "
+                "those variables won't be exported to the Airflow tasks."
+            )
             return {}
-        
+
     else:
         logger.info(f"No startup script found at {STARTUP_SCRIPT_PATH}.")
         return {}
@@ -425,18 +433,56 @@ async def main() -> None:
     logger.info(f"Warming a Docker container for an Airflow {command}.")
 
     # Add the necessary environment variables.
-    mwaa_environ = {**get_airflow_config(), "MWAA_COMMAND": command, "MWAA_AIRFLOW_COMPONENT": command}
+    mwaa_essential_airflow_config = get_essential_airflow_config()
+    mwaa_opinionated_airflow_config = get_opinionated_airflow_config()
+    mwaa_essential_airflow_environ = get_essential_environ(command)
+    mwaa_opinionated_airflow_environ = get_opinionated_environ()
+    user_airflow_config = get_user_airflow_config()
+
+    startup_script_environ = execute_startup_script(
+        command,
+        {
+            **os.environ,
+            **mwaa_opinionated_airflow_config,
+            **mwaa_opinionated_airflow_environ,
+            **user_airflow_config,
+            **mwaa_essential_airflow_environ,
+            **mwaa_essential_airflow_config,
+        },
+    )
+    environ = {
+        **os.environ,
+        # Custom configuration and environment variables that we think are good, but
+        # allow the user to override.
+        **mwaa_opinionated_airflow_config,
+        **mwaa_opinionated_airflow_environ,
+        # What the user defined in the startup script.
+        **startup_script_environ,
+        # What the user passed via Airflow config secrets (specified by the
+        # MWAA__CORE__CUSTOM_AIRFLOW_CONFIGS environment variable.)
+        **user_airflow_config,
+        # The MWAA__x__y environment variables that are passed to the container are
+        # considered protected environment variables that cannot be overridden at
+        # runtime to avoid breaking the functionality of the container.
+        **{
+            key: value
+            for (key, value) in os.environ.items()
+            if key.startswith("MWAA__")
+        },
+        # Essential variables that our setup will not function properly without, hence
+        # it always has the highest priority.
+        **mwaa_essential_airflow_config,
+        **mwaa_essential_airflow_environ,
+    }
 
     # IMPORTANT NOTE: The level for this should stay "DEBUG" to avoid logging customer
     # custom environment variables, which potentially contains sensitive credentials,
     # to stdout which, in this case of Fargate hosting (like in Amazon MWAA), ends up
     # being captured and sent to the service hosting.
-    logger.debug(f"Environment variables: { {**os.environ, **mwaa_environ} }")
+    logger.debug(f"Environment variables: %s", environ)
 
-    customer_env = execute_startup_script(command, { **os.environ, **mwaa_environ })
-    environ = { **os.environ, **customer_env, **mwaa_environ }
     await airflow_db_init(environ)
-    if os.environ.get("MWAA__CORE__AUTH_TYPE", "").lower() == "simple":
+    if os.environ.get("MWAA__CORE__AUTH_TYPE", "").lower() == "testing":
         # In "simple" auth mode, we create an admin user "airflow" with password
         # "airflow". We use this to make the Docker Compose setup easy to use without
         # having to create a user manually. Needless to say, this shouldn't be used in

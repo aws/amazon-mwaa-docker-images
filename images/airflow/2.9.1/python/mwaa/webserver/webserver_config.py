@@ -13,7 +13,7 @@ CSRF_ENABLED = True
 # Flask-WTF flag for CSRF
 WTF_CSRF_ENABLED = True
 
-if os.environ.get("MWAA__CORE__AUTH_TYPE", "").lower() == "iam":
+if os.environ.get("MWAA__CORE__AUTH_TYPE", "").lower() == "mwaa-iam":
     # The auth type is IAM. This is a MWAA-specific type, which relies on a plugin
     # defined in MWAA's sidecar.
     from aws_mwaa.iam import IamSecurityManager
