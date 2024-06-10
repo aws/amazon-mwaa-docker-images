@@ -21,6 +21,9 @@ if os.environ.get("MWAA__CORE__AUTH_TYPE", "").lower() == "mwaa-iam":
 
     AUTH_TYPE = AUTH_REMOTE_USER
     SECURITY_MANAGER_CLASS = IamSecurityManager
+elif os.environ.get("MWAA__CORE__AUTH_TYPE", "").lower() == "none":
+    # Disable auth
+    AUTH_ROLE_PUBLIC = 'Admin'
 else:
     from flask_appbuilder.security.manager import AUTH_DB
 
