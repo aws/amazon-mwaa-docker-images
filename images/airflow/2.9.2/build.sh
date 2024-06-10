@@ -15,13 +15,13 @@ python3 ../generate-dockerfiles.py
 deactivate
 
 # Build the base image.
-$CONTAINER_RUNTIME build -f ./Dockerfiles/Dockerfile.base -t amazon-mwaa-docker-images/airflow:2.9.1-base ./
+$CONTAINER_RUNTIME build -f ./Dockerfiles/Dockerfile.base -t amazon-mwaa-docker-images/airflow:2.9.2-base ./
 
 # Build the derivatives.
 for dev in "True" "False"; do
     for build_type in "standard" "explorer" "explorer-privileged"; do
         dockerfile_name="Dockerfile"
-        tag_name="amazon-mwaa-docker-images/airflow:2.9.1"
+        tag_name="amazon-mwaa-docker-images/airflow:2.9.2"
 
         if [[ "$build_type" != "standard" ]]; then
             dockerfile_name="${dockerfile_name}-${build_type}"

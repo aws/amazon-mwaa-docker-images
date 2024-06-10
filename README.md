@@ -10,7 +10,7 @@ However, at this point, this repository is still under development.
 
 ## Using the Airflow Image
 
-Currently, Airflow v2.9.1 is supported. Future versions in parity with Amazon MWAA will be added.
+Currently, Airflow v2.9.2 is supported. Future versions in parity with Amazon MWAA will be added.
 
 To experiment with the image using a vanilla Docker setup, follow these steps:
 
@@ -25,10 +25,10 @@ To experiment with the image using a vanilla Docker setup, follow these steps:
 python3 create_venvs.py
 ```
 
-3. Build the Airflow v2.9.1 Docker image using:
+3. Build the Airflow v2.9.2 Docker image using:
 
 ```
-cd <amazon-mwaa-docker-images path>/images/airflow/2.9.1
+cd <amazon-mwaa-docker-images path>/images/airflow/2.9.2
 ./run.sh
 ```
 
@@ -53,12 +53,12 @@ following images:
 
 | Repository                        | Tag                           |
 | --------------------------------- | ----------------------------- |
-| amazon-mwaa-docker-images/airflow | 2.9.1                         |
-| amazon-mwaa-docker-images/airflow | 2.9.1-dev                     |
-| amazon-mwaa-docker-images/airflow | 2.9.1-explorer                |
-| amazon-mwaa-docker-images/airflow | 2.9.1-explorer-dev            |
-| amazon-mwaa-docker-images/airflow | 2.9.1-explorer-privileged     |
-| amazon-mwaa-docker-images/airflow | 2.9.1-explorer-privileged-dev |
+| amazon-mwaa-docker-images/airflow | 2.9.2                         |
+| amazon-mwaa-docker-images/airflow | 2.9.2-dev                     |
+| amazon-mwaa-docker-images/airflow | 2.9.2-explorer                |
+| amazon-mwaa-docker-images/airflow | 2.9.2-explorer-dev            |
+| amazon-mwaa-docker-images/airflow | 2.9.2-explorer-privileged     |
+| amazon-mwaa-docker-images/airflow | 2.9.2-explorer-privileged-dev |
 
 Each of the postfixes added to the image tag represents a certain build type, as explained below:
 
