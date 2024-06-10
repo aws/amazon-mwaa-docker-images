@@ -271,8 +271,8 @@ class DagProcessorManagerLogHandler(BaseLogHandler):
     Airflow ([1]), and shouldn't be confused with the DagFileProcessorProcess class [2]
     which is responsible for processing a single DAG file.
 
-    [1] https://github.com/apache/airflow/blob/2.9.1/airflow/dag_processing/manager.py#L331
-    [2] https://github.com/apache/airflow/blob/2.9.1/airflow/dag_processing/processor.py#L69
+    [1] https://github.com/apache/airflow/blob/2.9.2/airflow/dag_processing/manager.py#L331
+    [2] https://github.com/apache/airflow/blob/2.9.2/airflow/dag_processing/processor.py#L69
     """
 
     def __init__(
@@ -290,7 +290,7 @@ class DagProcessorManagerLogHandler(BaseLogHandler):
               This makes it easier to control enabling and disabling logging without
               much changes to the logging configuration.
 
-        [1] https://airflow.apache.org/docs/apache-airflow/2.9.1/configurations-ref.html#config-logging-log-processor-filename-template
+        [1] https://airflow.apache.org/docs/apache-airflow/2.9.2/configurations-ref.html#config-logging-log-processor-filename-template
         """
         super().__init__(log_group_arn, kms_key_arn, enabled)
         self.create_watchtower_handler(stream_name, "DAGProcessorManager")
@@ -333,7 +333,7 @@ class DagProcessingLogHandler(BaseLogHandler):
               This makes it easier to control enabling and disabling logging without
               much changes to the logging configuration.
 
-        [1] https://airflow.apache.org/docs/apache-airflow/2.9.1/configurations-ref.html#config-logging-log-processor-filename-template
+        [1] https://airflow.apache.org/docs/apache-airflow/2.9.2/configurations-ref.html#config-logging-log-processor-filename-template
         """
         super().__init__(log_group_arn, kms_key_arn, enabled)
 

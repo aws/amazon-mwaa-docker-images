@@ -3,10 +3,10 @@
 # the Jinja2-templated Dockerfile.j2 file, so you need to change that file
 # instead.
 #
-# This file was generated on 2024-05-14 20:40:23.027247
+# This file was generated on 2024-06-10 17:48:22.831894
 #
 
-FROM amazon-mwaa-docker-images/airflow:2.9.1-base
+FROM amazon-mwaa-docker-images/airflow:2.9.2-base
 
 # Copy bootstrapping files.
 COPY ./bootstrap-dev /bootstrap-dev
@@ -27,4 +27,6 @@ RUN rm -rf /bootstrap-dev
 
 USER airflow
 
-ENTRYPOINT ["/bin/bash"]
+ENTRYPOINT ["python3", "-m", "mwaa.entrypoint"]
+
+CMD shell

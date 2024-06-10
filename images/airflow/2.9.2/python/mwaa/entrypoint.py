@@ -161,8 +161,8 @@ def create_queue() -> None:
     except ClientError as e:
         # If the queue does not exist, create it
         if (
-            e.response.get("Error", {}).get("Code")
-            == "AWS.SimpleQueueService.NonExistentQueue"
+            e.response.get("Error", {}).get("Message")
+            == "The specified queue does not exist."
         ):
             response = sqs.create_queue(QueueName=queue_name)  # type: ignore
             queue_url = response["QueueUrl"]  # type: ignore
