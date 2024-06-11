@@ -191,6 +191,18 @@ def _get_essential_airflow_webserver_config() -> Dict[str, str]:
         "AIRFLOW__WEBSERVER__CONFIG_FILE": "/python/mwaa/webserver/webserver_config.py",
         **flask_secret_key,
     }
+    
+def _get_essential_airflow_api_config() -> Dict[str, str]:
+    """
+    Retrieve the environment variables for Airflow's "api" configuration section.
+    
+    :returns A dictionary containing the environment variables.
+    """
+    api_config: Dict[str, str] = {}
+    if os.environ.get("MWAA__CORE__AUTH_TYPE", "").lower() == "none":
+        api_config["AIRFLOW__API__AUTH_BACKENDS"] =  "airflow.api.auth.backend.default"
+
+    return api_config
 
 
 def get_essential_airflow_config() -> Dict[str, str]:
@@ -209,6 +221,7 @@ def get_essential_airflow_config() -> Dict[str, str]:
         **_get_essential_airflow_metrics_config(),
         **_get_essential_airflow_scheduler_config(),
         **_get_essential_airflow_webserver_config(),
+        **_get_essential_airflow_api_config(),
     }
 
 
