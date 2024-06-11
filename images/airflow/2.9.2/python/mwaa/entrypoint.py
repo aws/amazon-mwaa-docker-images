@@ -352,16 +352,24 @@ def run_airflow_command(cmd: str, environ: Dict[str, str]):
     """
     match cmd:
         case "scheduler":
+            conditions: List[ProcessCondition] = (
+                [
+                    SidecarHealthCondition(airflow_component="scheduler"),
+                    AirflowDbReachableCondition(),
+                ]
+                if os.environ.get(
+                    "MWAA__HEALTH_MONITORING__ENABLE_SIDECAR_HEALTH_MONITORING", "false"
+                )
+                == "true"
+                else [AirflowDbReachableCondition()]
+            )
             subprocesses = [
                 create_airflow_subprocess(
                     [airflow_cmd],
                     environ=environ,
                     logger_name=logger_name,
                     friendly_name=friendly_name,
-                    conditions=[
-                        SidecarHealthCondition(airflow_component="scheduler"),
-                        AirflowDbReachableCondition(),
-                    ]
+                    conditions=conditions
                     if airflow_cmd == "scheduler"
                     else [],
                 )
@@ -378,6 +386,17 @@ def run_airflow_command(cmd: str, environ: Dict[str, str]):
             run_subprocesses(subprocesses, essential_subprocesses=subprocesses)
 
         case "worker":
+            conditions: List[ProcessCondition] = (
+                [
+                    SidecarHealthCondition(airflow_component="worker"),
+                    AirflowDbReachableCondition(),
+                ]
+                if os.environ.get(
+                    "MWAA__HEALTH_MONITORING__ENABLE_SIDECAR_HEALTH_MONITORING", "false"
+                )
+                == "true"
+                else [AirflowDbReachableCondition()]
+            )
             run_subprocesses(
                 [
                     create_airflow_subprocess(
@@ -385,10 +404,7 @@ def run_airflow_command(cmd: str, environ: Dict[str, str]):
                         environ=environ,
                         logger_name=WORKER_LOGGER_NAME,
                         friendly_name="worker",
-                        conditions=[
-                            SidecarHealthCondition(airflow_component="worker"),
-                            AirflowDbReachableCondition(),
-                        ],
+                        conditions=conditions,
                     ),
                 ]
             )
