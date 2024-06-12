@@ -3,7 +3,7 @@
 # the Jinja2-templated Dockerfile.j2 file, so you need to change that file
 # instead.
 #
-# This file was generated on 2024-06-10 17:48:22.828557
+# This file was generated on 2024-06-12 23:08:41.010942
 #
 
 FROM public.ecr.aws/amazonlinux/amazonlinux:2023
@@ -90,6 +90,8 @@ USER root
 # the folder to be fully setup first.
 
 RUN /bootstrap/03-root-secondpass/001-create-mwaa-dir.sh
+
+RUN /bootstrap/03-root-secondpass/002-make-airflow-sudoer.sh
 
 RUN /bootstrap/03-root-secondpass/100-chown-airflow-folder.sh
 
