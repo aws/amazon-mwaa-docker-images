@@ -6,7 +6,10 @@ import json
 import logging
 import os
 
-# 3rd-party Imports
+# 3rd-party imports
+from airflow.configuration import conf
+
+# Our imports
 from mwaa.config.database import get_db_connection_string
 from mwaa.config.sqs import get_sqs_endpoint, get_sqs_queue_name
 
@@ -112,13 +115,61 @@ def _get_essential_airflow_logging_config() -> Dict[str, str]:
     }
 
 
-def _get_essential_airflow_metrics_config() -> Dict[str, str]:
+def _get_mwaa_cloudwatch_integration_config() -> Dict[str, str]:
     """
-    Retrieve the environment variables for Airflow's "metrics" configuration section.
+    Retrieve the environment variables required to enable CloudWatch Metrics integration.
 
     :returns A dictionary containing the environment variables.
     """
+    enabled = (
+        os.environ.get("MWAA__CLOUDWATCH_METRICS_INTEGRATION__ENABLED", "false").lower()
+        == "true"
+    )
+    if not enabled:
+        # MWAA CloudWatch Metrics integration isn't enabled.
+        return {}
+
+    metrics_section = conf.getsection("metrics")
+    if metrics_section is None:
+        raise RuntimeError(
+            "Unexpected error: couldn't find 'metrics' section in Airflow configuration."
+        )
+    metrics_defaults = {
+        f"AIRFLOW__METRICS__{option.upper()}": conf.get_default_value("metrics", option)  # type: ignore
+        for option in metrics_section.keys()
+    }
+
+    # In MWAA, we use the metrics for monitoring purposes, hence we don't allow the user
+    # to override the Airflow configurations for metrics. However, we still give the
+    # customer the ability to control metrics via the options below, which we process in
+    # the sidecar. Hence, we save the customer-provided values for these metrics in a
+    # volume that the sidecar has access to, but then force enable them in Airflow so
+    # the latter always publish metrics.
+    customer_config_path = os.environ.get(
+        "MWAA__CLOUDWATCH_METRICS_INTEGRATION__CUSTOMER_CONFIG_PATH"
+    )
+    if customer_config_path:
+        user_config = get_user_airflow_config()
+        for option in [
+            "statsd_on",
+            "metrics_block_list",
+            "metrics_allow_list",
+        ]:
+            c = user_config.get(f"AIRFLOW__METRICS__{option.upper()}", "")
+            config_path = os.path.join(customer_config_path, f"{option}.txt")
+            try:
+                with open(config_path, "w") as f:
+                    print(c, file=f)  # type: ignore
+            except:
+                logger.error(
+                    f"Failed to write {option} to {config_path}. This might "
+                    f"result in metrics misconfiguration."
+                )
+
     return {
+        # We don't allow the user to change the metrics configuration as that can break
+        # the integration with CloudWatch Metrics.
+        **metrics_defaults,
         "AIRFLOW__METRICS__STATSD_ON": "True",
         "AIRFLOW__METRICS__STATSD_HOST": "localhost",
         "AIRFLOW__METRICS__STATSD_PORT": "8125",
@@ -191,16 +242,17 @@ def _get_essential_airflow_webserver_config() -> Dict[str, str]:
         "AIRFLOW__WEBSERVER__CONFIG_FILE": "/python/mwaa/webserver/webserver_config.py",
         **flask_secret_key,
     }
-    
+
+
 def _get_essential_airflow_api_config() -> Dict[str, str]:
     """
     Retrieve the environment variables for Airflow's "api" configuration section.
-    
+
     :returns A dictionary containing the environment variables.
     """
     api_config: Dict[str, str] = {}
     if os.environ.get("MWAA__CORE__AUTH_TYPE", "").lower() == "none":
-        api_config["AIRFLOW__API__AUTH_BACKENDS"] =  "airflow.api.auth.backend.default"
+        api_config["AIRFLOW__API__AUTH_BACKENDS"] = "airflow.api.auth.backend.default"
 
     return api_config
 
@@ -218,7 +270,7 @@ def get_essential_airflow_config() -> Dict[str, str]:
         **_get_essential_airflow_core_config(),
         **_get_essential_airflow_db_config(),
         **_get_essential_airflow_logging_config(),
-        **_get_essential_airflow_metrics_config(),
+        **_get_mwaa_cloudwatch_integration_config(),
         **_get_essential_airflow_scheduler_config(),
         **_get_essential_airflow_webserver_config(),
         **_get_essential_airflow_api_config(),
