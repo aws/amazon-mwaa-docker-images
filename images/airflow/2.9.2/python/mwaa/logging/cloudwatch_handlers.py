@@ -10,6 +10,7 @@ handling scheduler/worker/etc logs, and so on.
 # Python imports
 import logging
 import os
+import re
 import sys
 import traceback
 
@@ -32,6 +33,43 @@ from mwaa.logging.utils import parse_arn, throttle
 
 LOG_GROUP_INIT_WAIT_SECONDS = 900
 ERROR_REPORTING_WAIT_SECONDS = 60
+
+
+# fmt: off
+# IMPORTANT NOTE: The time complexity of log inspection is O(M*N) where M is the number
+# of logs and N is the number of log patterns. As such, each new pattern added will
+# increase the time complexity by O(M), which could be substantial adition for noisy
+# environments. Care should, thus, be taken to only add the really important patterns.
+# Additionally, there is no reason why we shouldn't add those
+_PATTERNS = [
+    # psycopg2.OperationalError
+    (re.compile(r"psycopg2\.OperationalError"), "psycopg2"),
+    # Timeout errors
+    (re.compile( r"airflow\.exceptions\.AirflowTaskTimeout: DagBag import timeout for .+ after"), "DagImportTimeout"),
+    (re.compile(r"airflow\.exceptions\.AirflowTaskTimeout"), "TaskTimeout"),
+    # base_executor.py
+    (re.compile(r"could not queue task"), "TaskQueueingFailure"),
+    # celery_executor.py
+    (re.compile(r"Adopted tasks were still pending after"), "AdoptedTaskStillPending"),
+    (re.compile(r"Celery command failed on host:"), "CeleryCommandFailure"),
+    (re.compile(r"Failed to execute task"), "CeleryTaskExecutionFailure"),
+    (re.compile(r"execute_command encountered a CalledProcessError"), "ExecuteCommandCalledProcessError"),
+    # dag_processing.py
+    (re.compile( r"DagFileProcessorManager \(PID=.+\) last sent a heartbeat .+ seconds ago! Restarting it"), "DagFileProcessorManagerNoHeartbeat"),
+    # dagrun.py
+    (re.compile(r"Marking run .+ failed"), "DagRunFailure"),
+    (re.compile(r"Deadlock; marking run .+ failed"), "DagRunDeadlock"),
+    # taskinstance.py
+    (re.compile(r"Recording the task instance as FAILED"), "TaskInstanceFailure"),
+    # taskinstance.py and local_task_job.py
+    (re.compile(r"Received SIGTERM\. Terminating subprocesses."), "SIGTERM"),
+    # scheduler_job.py
+    (re.compile(r"Couldn\'t find dag .+ in DagBag/DB!"), "DagNotFound"),
+    (re.compile(r"Execution date is in future:"), "ExecutionDateInFuture"),
+    # standard_task_runner.py
+    (re.compile( r"Job .+ was killed before it finished (likely due to running out of memory)"), "JobKilled"),
+]
+# fmt: on
 
 
 class BaseLogHandler(logging.Handler):
@@ -170,9 +208,29 @@ class BaseLogHandler(logging.Handler):
             try:
                 self._ensure_log_group_exists()
                 self.handler.emit(record)  # type: ignore
+                self.sniff_errors(record)
             except Exception:
                 self.stats.incr(f"mwaa.logging.{self.logs_source}.emit_error", 1)
                 self._report_logging_error("Failed to emit log record.")
+
+    def sniff_errors(self, record: logging.LogRecord):
+        """
+        Check the content of the logs for known errors and report them as metrics.
+
+        Privacy Note: The logs here are customer logs and, thus, we cannot store them,
+        so we only check them against a predefined list of Airflow errors and report a
+        metric.
+
+        :param record: The log record being sniffed.
+        """
+
+        if not hasattr(record, "message"):
+            return
+
+        for pattern, metric_dim in _PATTERNS:
+            if pattern.search(record.message):
+                self.stats.incr(f"mwaa.error_log.{self.logs_source}.{metric_dim}")
+                break
 
     def flush(self):
         """Flush remaining log records."""

@@ -9,11 +9,13 @@ health of a process and restart it if necessary. Process conditions make this po
 from __future__ import annotations
 
 # Python imports
+from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+from dateutil.tz import tz
 from functools import cached_property
 from types import TracebackType
-from dateutil.tz import tz
+from typing import Deque
 import logging
 import socket
 import sys
@@ -26,6 +28,7 @@ from sqlalchemy.pool import NullPool
 
 # Our imports
 from mwaa.config.database import get_db_connection_string
+from mwaa.utils.plogs import generate_plog
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +71,9 @@ class ProcessConditionResponse:
             )
 
 
+_PROCESS_CONDITION_DEFAULT_MAX_HISTORY = 10
+
+
 class ProcessCondition:
     """
     Base class for all process conditions.
@@ -76,7 +82,11 @@ class ProcessCondition:
     for a process to continue running. The
     """
 
-    def __init__(self, name: str | None = None):
+    def __init__(
+        self,
+        name: str | None = None,
+        max_history: int = _PROCESS_CONDITION_DEFAULT_MAX_HISTORY,
+    ):
         """
         Initialize the process condition.
 
@@ -85,6 +95,7 @@ class ProcessCondition:
           want to customize the name.
         """
         self.name = name if name else self.__class__.__name__
+        self.history: Deque[ProcessConditionResponse] = deque(maxlen=max_history)
 
     def prepare(self):
         """
@@ -117,6 +128,16 @@ class ProcessCondition:
         self.close()
 
     def check(self) -> ProcessConditionResponse:
+        """
+        Execute the condition and return the response.
+
+        :returns A ProcessConditionResponse containing data about the response.
+        """
+        response = self._check()
+        self.history.append(response)
+        return response
+
+    def _check(self) -> ProcessConditionResponse:
         """
         Execute the condition and return the response.
 
@@ -185,12 +206,14 @@ class SidecarHealthCondition(ProcessCondition):
         if self.socket:
             self.socket.close()
 
-    def check(self) -> ProcessConditionResponse:
+    def _check(self) -> ProcessConditionResponse:
         """
         Execute the condition and return the response.
 
         :returns A ProcessConditionResponse containing data about the response.
         """
+        if self.socket is None:
+            raise RuntimeError("Unexpected error: socket object shouldn't be None.")
         try:
             status, _ = self.socket.recvfrom(SOCKET_BUFFER_SIZE)
             status = status.decode("utf-8")
@@ -259,6 +282,7 @@ class TimeoutCondition(ProcessCondition):
 
         :param timeout: The maximum time the process is allowed to run.
         """
+        super().__init__()
         self.timeout = timeout
         self.start_time: float | None = None
 
@@ -270,7 +294,7 @@ class TimeoutCondition(ProcessCondition):
         """
         self.start_time = time.time()
 
-    def check(self) -> ProcessConditionResponse:
+    def _check(self) -> ProcessConditionResponse:
         """
         Execute the condition and return the response.
 
@@ -297,6 +321,16 @@ class AirflowDbReachableCondition(ProcessCondition):
     A condition for ensuring the Airflow database is reachable.
     """
 
+    def __init__(self, airflow_component: str):
+        """
+        Initialize the check object.
+
+        :param airflow_component: The airflow component to check.
+        """
+        super().__init__()
+        self.airflow_component = airflow_component
+        self.healthy: bool = True
+
     def prepare(self):
         """
         Initialize the condition.
@@ -305,12 +339,12 @@ class AirflowDbReachableCondition(ProcessCondition):
         engine_args = {}
         if not self._is_db_connection_pooling_enabled:
             logging.info(
-                "Connection pooling is disabled. AirflowDbHealthCheck will not pool connections."
+                "Connection pooling is disabled. AirflowDbReachableCondition will not pool connections."
             )
             engine_args["poolclass"] = NullPool
         else:
             logging.info(
-                "Connection pooling is enabled. AirflowDbHealthCheck will pool connections."
+                "Connection pooling is enabled. AirflowDbReachableCondition will pool connections."
             )
         self.engine = create_engine(
             get_db_connection_string(),
@@ -318,7 +352,23 @@ class AirflowDbReachableCondition(ProcessCondition):
             **engine_args,
         )
 
-    def check(self) -> ProcessConditionResponse:
+    def _generate_health_plog(self, healthy: bool, health_changed: bool):
+        if health_changed:
+            health_status = (
+                "CONNECTION_BECAME_HEALTHY"
+                if healthy
+                else "CONNECTION_BECAME_UNHEALTHY"
+            )
+        else:
+            health_status = "CONNECTION_HEALTHY" if healthy else "CONNECTION_UNHEALTHY"
+        print(
+            generate_plog(
+                "RDSHealthLogsProcessor",
+                f"[{self.airflow_component}] connection with RDS Meta DB is {health_status}.",
+            )
+        )
+
+    def _check(self) -> ProcessConditionResponse:
         """
         Execute the condition and return the response.
 
@@ -332,19 +382,26 @@ class AirflowDbReachableCondition(ProcessCondition):
             # try connection to the RDS metadata db and run a test query
             with self.engine.connect() as connection:  # type: ignore
                 connection.execute("SELECT 1")  # type: ignore
-            response = ProcessConditionResponse(
-                condition=self,
-                successful=True,
-                message="Successfully connected to database.",
-            )
-            logger.info(response.message)
+            healthy = True
+            message = "Successfully connected to database."
+            logger.info(message)
         except Exception as ex:
-            response = ProcessConditionResponse(
-                condition=self,
-                successful=False,
-                message=f"Couldn't connect to database. Error: {ex}",
-            )
-            logger.error(response.message)
+            healthy = False
+            message = f"Couldn't connect to database. Error: {ex}"
+            logger.error(message)
+        response = ProcessConditionResponse(
+            condition=self,
+            # This condition is currently informational only, to report metrics and
+            # logs. We have an issue to implement a restart after a certain grace
+            # period: https://github.com/aws/amazon-mwaa-docker-images/issues/75
+            successful=True,
+            message=message,
+        )
+        self._generate_health_plog(
+            healthy,
+            healthy != self.healthy,  # compare the current health against the last.
+        )
+        self.healthy = healthy
         return response
 
     @cached_property

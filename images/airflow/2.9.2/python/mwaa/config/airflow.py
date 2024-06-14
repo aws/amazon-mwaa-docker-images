@@ -1,6 +1,7 @@
 """Contain functions for building Airflow configuration."""
 
 # Python imports
+from functools import cache
 from typing import Dict
 import json
 import logging
@@ -115,6 +116,7 @@ def _get_essential_airflow_logging_config() -> Dict[str, str]:
     }
 
 
+@cache
 def _get_mwaa_cloudwatch_integration_config() -> Dict[str, str]:
     """
     Retrieve the environment variables required to enable CloudWatch Metrics integration.
@@ -127,7 +129,10 @@ def _get_mwaa_cloudwatch_integration_config() -> Dict[str, str]:
     )
     if not enabled:
         # MWAA CloudWatch Metrics integration isn't enabled.
+        logging.info("MWAA CloudWatch Metrics integration is NOT enabled.")
         return {}
+
+    logging.info("MWAA CloudWatch Metrics integration is enabled.")
 
     metrics_section = conf.getsection("metrics")
     if metrics_section is None:
