@@ -12,6 +12,7 @@ after setting up the necessary configurations.
 # is setup, its `logger` object will not have the right setup.
 # ruff: noqa: E402
 # fmt: off
+from functools import cache
 import logging.config
 from mwaa.logging.config import (
     LOGGING_CONFIG,
@@ -343,6 +344,21 @@ def create_airflow_subprocess(
     )
 
 
+@cache
+def _is_sidecar_health_monitoring_enabled():
+    enabled = (
+        os.environ.get(
+            "MWAA__HEALTH_MONITORING__ENABLE_SIDECAR_HEALTH_MONITORING", "false"
+        ).lower()
+        == "true"
+    )
+    if enabled:
+        logger.info("Sidecar health monitoring is enabled.")
+    else:
+        logger.info("Sidecar health monitoring is NOT enabled.")
+    return enabled
+
+
 def run_airflow_command(cmd: str, environ: Dict[str, str]):
     """
     Run the given Airflow command in a subprocess.
@@ -352,26 +368,21 @@ def run_airflow_command(cmd: str, environ: Dict[str, str]):
     """
     match cmd:
         case "scheduler":
-            conditions: List[ProcessCondition] = (
-                [
+            conditions: List[ProcessCondition] = [
+                AirflowDbReachableCondition(airflow_component="scheduler"),
+            ]
+            if _is_sidecar_health_monitoring_enabled():
+                conditions.append(
                     SidecarHealthCondition(airflow_component="scheduler"),
-                    AirflowDbReachableCondition(),
-                ]
-                if os.environ.get(
-                    "MWAA__HEALTH_MONITORING__ENABLE_SIDECAR_HEALTH_MONITORING", "false"
                 )
-                == "true"
-                else [AirflowDbReachableCondition()]
-            )
+
             subprocesses = [
                 create_airflow_subprocess(
                     [airflow_cmd],
                     environ=environ,
                     logger_name=logger_name,
                     friendly_name=friendly_name,
-                    conditions=conditions
-                    if airflow_cmd == "scheduler"
-                    else [],
+                    conditions=conditions if airflow_cmd == "scheduler" else [],
                 )
                 for airflow_cmd, logger_name, friendly_name in [
                     ("scheduler", SCHEDULER_LOGGER_NAME, "scheduler"),
@@ -386,17 +397,14 @@ def run_airflow_command(cmd: str, environ: Dict[str, str]):
             run_subprocesses(subprocesses, essential_subprocesses=subprocesses)
 
         case "worker":
-            conditions: List[ProcessCondition] = (
-                [
+            conditions: List[ProcessCondition] = [
+                AirflowDbReachableCondition(airflow_component="worker"),
+            ]
+            if _is_sidecar_health_monitoring_enabled():
+                conditions.append(
                     SidecarHealthCondition(airflow_component="worker"),
-                    AirflowDbReachableCondition(),
-                ]
-                if os.environ.get(
-                    "MWAA__HEALTH_MONITORING__ENABLE_SIDECAR_HEALTH_MONITORING", "false"
                 )
-                == "true"
-                else [AirflowDbReachableCondition()]
-            )
+
             run_subprocesses(
                 [
                     create_airflow_subprocess(
@@ -418,7 +426,7 @@ def run_airflow_command(cmd: str, environ: Dict[str, str]):
                         logger_name=WEBSERVER_LOGGER_NAME,
                         friendly_name="webserver",
                         conditions=[
-                            AirflowDbReachableCondition(),
+                            AirflowDbReachableCondition(airflow_component="webserver"),
                         ],
                     ),
                 ]

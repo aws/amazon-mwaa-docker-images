@@ -61,7 +61,12 @@ async def run_command(
     if not stdout_logging_method:
         stdout_logging_method = logging.getLogger(__name__).info
     if not stderr_logging_method:
-        stderr_logging_method = logging.getLogger(__name__).error
+        # Use the "info" method for stderr as well as shell scripts frequently use
+        # stderr even for informational output (e.g. in case the stdout should be
+        # allowed to be piped to another process, hence non-pipeable info is sent to
+        # stderr), and in such cases using the "error" method can be misleading if
+        # "[ERROR]" appears in logs when in fact there are no errors.
+        stderr_logging_method = logging.getLogger(__name__).info
 
     # Start the subprocess
     process: asyncio.subprocess.Process = await asyncio.create_subprocess_shell(
