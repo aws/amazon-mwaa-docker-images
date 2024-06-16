@@ -1,16 +1,8 @@
 #!/bin/bash
 
-# Define an array of required packages
-REQUIRED_PACKAGES=(
-    "apache-airflow-providers-amazon[aiobotocore]"
-    "apache-airflow[celery,statsd]==${AIRFLOW_VERSION}"
-    "celery[sqs]"
-    "boto3-stubs[logs]"
-    "boto3-stubs[sqs]"
-    psycopg2
-    pycurl
-    watchtower
-)
+# TODO Need to come up with a smaller list of constarints file including just
+# the critical dependencies that we don't allow the customer to override, e.g.
+# airflow, celery, kombu, and so on.
 
 # Install all required packages in one command
-pip3 install --constraint "${AIRFLOW_CONSTRAINTS_FILE}" "${REQUIRED_PACKAGES[@]}" "$@"
+pip3 install --constraint "${AIRFLOW_CONSTRAINTS_FILE}" "$@"

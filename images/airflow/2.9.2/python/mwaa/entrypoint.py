@@ -80,6 +80,7 @@ AVAILABLE_COMMANDS = [
     "resetdb",
     "spy",
 ]
+CONTAINER_START_TIME = time.time()
 
 
 @with_db_lock(1234)
@@ -222,12 +223,16 @@ def execute_startup_script(cmd: str, environ: Dict[str, str]) -> Dict[str, str]:
     purposes so the logs of the execution of the startup script get sent to the correct place.
     :param environ: A dictionary containing the environment variables.
     """
+    startup_script_path = os.environ.get("MWAA__CORE__STARTUP_SCRIPT_PATH", "")
+    if not startup_script_path:
+        logger.info("MWAA__CORE__STARTUP_SCRIPT_PATH is not provided.")
+        return {}
+
     EXECUTE_USER_STARTUP_SCRIPT_PATH = "execute-user-startup-script"
-    STARTUP_SCRIPT_PATH = "/usr/local/airflow/startup/startup.sh"
     POST_STARTUP_SCRIPT_VERIFICATION_PATH = "post-startup-script-verification"
     PROCESS_LOGGER = logging.getLogger(MWAA_LOGGERS.get(f"{cmd}_startup"))
 
-    if os.path.isfile(STARTUP_SCRIPT_PATH):
+    if os.path.isfile(startup_script_path):
         logger.info("Executing customer startup script.")
 
         start_time = time.time()  # Capture start time
@@ -277,7 +282,7 @@ def execute_startup_script(cmd: str, environ: Dict[str, str]) -> Dict[str, str]:
             return {}
 
     else:
-        logger.info(f"No startup script found at {STARTUP_SCRIPT_PATH}.")
+        logger.info(f"No startup script found at {startup_script_path}.")
         return {}
 
 
@@ -373,7 +378,10 @@ def run_airflow_command(cmd: str, environ: Dict[str, str]):
             ]
             if _is_sidecar_health_monitoring_enabled():
                 conditions.append(
-                    SidecarHealthCondition(airflow_component="scheduler"),
+                    SidecarHealthCondition(
+                        airflow_component="scheduler",
+                        container_start_time=CONTAINER_START_TIME,
+                    ),
                 )
 
             subprocesses = [
@@ -402,7 +410,10 @@ def run_airflow_command(cmd: str, environ: Dict[str, str]):
             ]
             if _is_sidecar_health_monitoring_enabled():
                 conditions.append(
-                    SidecarHealthCondition(airflow_component="worker"),
+                    SidecarHealthCondition(
+                        airflow_component="worker",
+                        container_start_time=CONTAINER_START_TIME,
+                    ),
                 )
 
             run_subprocesses(
