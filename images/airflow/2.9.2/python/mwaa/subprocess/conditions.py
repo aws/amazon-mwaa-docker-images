@@ -154,7 +154,9 @@ SOCKET_BUFFER_SIZE = 1024
 # Socket timeout. Wait time upon receiving a message from sidecar.
 # The connection to the socket is considered as timed out if it has to wait more than
 # this threshold In seconds
-SOCKET_TIMEOUT_SECONDS = 1
+_SOCKET_TIMEOUT_SECONDS = 1
+# The time to wait for the sidecar, during which timeouts from the sidecar are ignored.
+_SIDECAR_WAIT_PERIOD = timedelta(minutes=5)
 
 
 class SidecarHealthCondition(ProcessCondition):
@@ -170,11 +172,14 @@ class SidecarHealthCondition(ProcessCondition):
     def __init__(
         self,
         airflow_component: str,
+        container_start_time: float,
         host: str = SIDECAR_ADDRESS,
         port: int = SIDECAR_HEALTH_PORT,
     ):
         """
         :param airflow_component: The airflow component to check.
+        :param container_start_time: The epoch in seconds, i.e. time.time(), when the
+          container started.
         :param host: The host where the sidecar lives. This is currently 127.0.0.1, but
           a custom value can be provided if needed.
         :param port: The port the sidecar sends health monitoring results to.
@@ -184,6 +189,7 @@ class SidecarHealthCondition(ProcessCondition):
         self.host = host
         self.port = port
         self.socket: socket.socket | None
+        self.container_start_time: float = container_start_time
 
     def prepare(self):
         """
@@ -197,7 +203,7 @@ class SidecarHealthCondition(ProcessCondition):
             socket.SOCK_DGRAM,  # UDP
         )
         self.socket.bind((self.host, self.port))
-        self.socket.settimeout(SOCKET_TIMEOUT_SECONDS)
+        self.socket.settimeout(_SOCKET_TIMEOUT_SECONDS)
 
     def close(self):
         """
@@ -213,7 +219,9 @@ class SidecarHealthCondition(ProcessCondition):
         :returns A ProcessConditionResponse containing data about the response.
         """
         if self.socket is None:
-            raise RuntimeError("Unexpected error: socket object shouldn't be None.")
+            raise RuntimeError(
+                "Unexpected error: socket object and start time shouldn't be None."
+            )
         try:
             status, _ = self.socket.recvfrom(SOCKET_BUFFER_SIZE)
             status = status.decode("utf-8")
@@ -253,16 +261,27 @@ class SidecarHealthCondition(ProcessCondition):
                     )
                     logger.warning(response.message)
         except Exception:
-            response = ProcessConditionResponse(
-                condition=self,
-                successful=True,
-                message="Reading the health status from the sidecar timed out. Unable "
-                "to positively determine health. Assuming status is healthy. This may "
-                "be a false positive so it should be investigated, unless it is "
-                "happening at the start of the container before the sidecar monitoring "
-                "is up and emitting health indicators.",
-            )
-            logger.error(response.message, exc_info=sys.exc_info())
+            if (
+                time.time() - self.container_start_time
+                > _SIDECAR_WAIT_PERIOD.total_seconds()
+            ):
+                response = ProcessConditionResponse(
+                    condition=self,
+                    successful=True,
+                    message="Reading the health status from the sidecar timed out. "
+                    "Unable to positively determine health, so assuming healthy. This "
+                    "may be a false positive so it should be investigated.",
+                )
+                logger.error(response.message, exc_info=sys.exc_info())
+            else:
+                response = ProcessConditionResponse(
+                    condition=self,
+                    successful=True,
+                    message="Reading the health status from the sidecar timed out, but "
+                    "ignoring this since the container just started, so the sidecar "
+                    "monitoring might not have been initialized yet.",
+                )
+                logger.info(response.message)
 
         return response
 
