@@ -348,6 +348,47 @@ def create_airflow_subprocess(
         conditions=conditions,
     )
 
+def _is_protected_os_environ(key: str) -> bool:
+    # List of protected environment variables
+    # TODO - Add a comment for each variable explaining why it should be protected
+    protected_vars = [
+        "AIRFLOW_ENV_ID",
+        "AIRFLOW_ENV_NAME",
+        "AIRFLOW_HOME",
+        "AIRFLOW_TASK_REVISION_ID",
+        "AIRFLOW_VERSION",
+        "AIRFLOW__AWS_MWAA__REDIRECT_URL",
+        "AIRFLOW__CORE__DAG_CONCURRENCY",
+        "AIRFLOW__CORE__LOAD_EXAMPLES",
+        "AIRFLOW__CORE__MAX_ACTIVE_TASKS_PER_DAG",
+        "AIRFLOW__CORE__PARALLELISM",
+        "AIRFLOW__DATABASE__SQL_ALCHEMY_CONN",
+        "AIRFLOW__MWAA__TRIGGERER_ENABLED",
+        "AIRFLOW__TRIGGERER__DEFAULT_CAPACITY",
+        "AIRFLOW__TRIGGERER__JOB_HEARTBEAT_SEC",
+        "AIRFLOW__WEBSERVER__BASE_URL",
+        "AIRFLOW__WEBSERVER__SECRET_KEY",
+        "AWS_CONTAINER_CREDENTIALS_RELATIVE_URI",
+        "AWS_DEFAULT_REGION",
+        "AWS_EXECUTION_ENV",
+        "AWS_REGION",
+        "CUSTOMER_ACCOUNT_ID",
+        "ECS_AGENT_URI",
+        "ECS_CONTAINER_METADATA_URI",
+        "ECS_CONTAINER_METADATA_URI_V4",
+        "JWT_PUBLIC_KEY",
+        "PYTHONUNBUFFERED",
+        "SQL_ALCHEMY_CONN",
+        "SSL_MODE",
+        "TRY_LOOP",
+        "WATCHTOWER_VERSION"
+    ]
+
+    # Check whether this is an MWAA configuration or a protected variable
+    if key.startswith("MWAA__") or key in protected_vars:
+        return True
+
+    return False
 
 @cache
 def _is_sidecar_health_monitoring_enabled():
@@ -502,7 +543,7 @@ async def main() -> None:
         **{
             key: value
             for (key, value) in os.environ.items()
-            if key.startswith("MWAA__")
+            if _is_protected_os_environ(key)
         },
         # Essential variables that our setup will not function properly without, hence
         # it always has the highest priority.
