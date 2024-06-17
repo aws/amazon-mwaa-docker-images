@@ -386,6 +386,55 @@ def create_airflow_subprocess(
         conditions=conditions,
     )
 
+def _is_protected_os_environ(key: str) -> bool:
+    # Protected environment variables
+    protected_vars = [
+        # Environment ID and name are set by MWAA for
+        # informational purposes, and shouldn't be overriden by the customer.
+        "AIRFLOW_ENV_ID",
+        "AIRFLOW_ENV_NAME",
+        # Airflow home directory cannot be overriden
+        # as this will break MWAA setup.
+        "AIRFLOW_HOME",
+        # This is an internal MWAA identifier and
+        # shouldn't be modified by users.
+        "AIRFLOW_TASK_REVISION_ID",
+        # Airflow version is managed by MWAA and
+        # shouldn't be overridden manually.
+        "AIRFLOW_VERSION",
+        # The following two are needed by the IAM
+        # plugin and shouldn't be overriden.
+        "AIRFLOW__AWS_MWAA__REDIRECT_URL",
+        "JWT_PUBLIC_KEY",
+        # This is set to match the endpoint created
+        # by MWAA and shouldn't be overriden.
+        "AIRFLOW__WEBSERVER__BASE_URL",
+        # Default AWS region set by MWAA and used for AWS services.
+        "AWS_DEFAULT_REGION",
+        # AWS_REGION has a broader scope that is used by not just MWAA but
+        # by the AWS SDK in general if the default region is not set.
+        "AWS_REGION",
+        # This identifies the customer account associated
+        # with the MWAA environment.
+        "CUSTOMER_ACCOUNT_ID",
+        # These following are set by or needed for Fargate and
+        # shouldn't be modified by the user.
+        "ECS_AGENT_URI",
+        "ECS_CONTAINER_METADATA_URI",
+        "ECS_CONTAINER_METADATA_URI_V4",
+        "AWS_CONTAINER_CREDENTIALS_RELATIVE_URI",
+        "AWS_EXECUTION_ENV",
+        # We disable Python buffering as we want to make
+        # sure all print statements are sent to us immediately
+        # so we can control when to send them to CloudWatch Logs.
+        "PYTHONUNBUFFERED",
+        # This is used to validate the version of Watchtower installed
+        # which we don't allow the customer to override.
+        "WATCHTOWER_VERSION"
+    ]
+
+    # Check whether this is an MWAA configuration or a protected variable
+    return key.startswith("MWAA__") or key in protected_vars
 
 @cache
 def _is_sidecar_health_monitoring_enabled():
@@ -540,7 +589,7 @@ async def main() -> None:
         **{
             key: value
             for (key, value) in os.environ.items()
-            if key.startswith("MWAA__")
+            if _is_protected_os_environ(key)
         },
         # Essential variables that our setup will not function properly without, hence
         # it always has the highest priority.
