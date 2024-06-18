@@ -31,6 +31,8 @@ import asyncio
 import json
 import logging
 import os
+import re
+import shlex
 import sys
 import time
 
@@ -70,8 +72,6 @@ logger = logging.getLogger("mwaa.entrypoint")
 
 # TODO Fix the "type: ignore"s in this file.
 
-USER_REQUIREMENTS_MAX_INSTALL_TIME = timedelta(minutes=9)
-STARTUP_SCRIPT_MAX_EXECUTION_TIME = timedelta(minutes=5)
 AVAILABLE_COMMANDS = [
     "webserver",
     "scheduler",
@@ -80,6 +80,13 @@ AVAILABLE_COMMANDS = [
     "resetdb",
     "spy",
 ]
+MWAA_DOCS_REQUIREMENTS_GUIDE = "https://docs.aws.amazon.com/mwaa/latest/userguide/working-dags-dependencies.html#working-dags-dependencies-test-create"
+STARTUP_SCRIPT_MAX_EXECUTION_TIME = timedelta(minutes=5)
+USER_REQUIREMENTS_MAX_INSTALL_TIME = timedelta(minutes=9)
+
+# Save the start time of the container. This is used later to with the sidecar
+# monitoring because we need to have a grace period before we start reporting timeouts
+# related to sidecar endpoint not reporting health messages.
 CONTAINER_START_TIME = time.time()
 
 
@@ -174,6 +181,15 @@ def create_queue() -> None:
             raise e
 
 
+def _requirements_has_constraints(requirements_file: str):
+    with open(requirements_file, "r") as file:
+        for line in file:
+            if re.search(r"^\s*(-c |--constraint )", line):
+                return True
+
+    return False
+
+
 async def install_user_requirements(cmd: str, environ: dict[str, str]):
     """
     Install user requirements.
@@ -191,26 +207,45 @@ async def install_user_requirements(cmd: str, environ: dict[str, str]):
     if requirements_file and os.path.isfile(requirements_file):
         logger.info(f"Installing user requirements from {requirements_file}...")
 
-        worker = Subprocess(
-            cmd=["safe-pip-install", "-r", requirements_file],
-            env=environ,
-            logger=CompositeLogger(
-                "requirements_composite_logging",  # name can be anything unused.
-                # We use a set to avoid double logging to console if the user doesn't
-                # use CloudWatch for logging.
-                *set(
-                    [
-                        logging.getLogger(MWAA_LOGGERS.get(f"{cmd}_requirements")),
-                        logger,
-                    ]
-                ),
+        subprocess_logger = CompositeLogger(
+            "requirements_composite_logging",  # name can be anything unused.
+            # We use a set to avoid double logging to console if the user doesn't
+            # use CloudWatch for logging.
+            *set(
+                [
+                    logging.getLogger(MWAA_LOGGERS.get(f"{cmd}_requirements")),
+                    logger,
+                ]
             ),
+        )
+
+        extra_args = []
+        if not _requirements_has_constraints(requirements_file):
+            subprocess_logger.warning(
+                "WARNING: Constraints should be specified for requirements.txt. "
+                f"Please see {MWAA_DOCS_REQUIREMENTS_GUIDE}"
+            )
+            subprocess_logger.warning("Forcing local constraints")
+            extra_args = ["-c", os.environ["AIRFLOW_CONSTRAINTS_FILE"]]
+
+        pip_process = Subprocess(
+            cmd=["safe-pip-install", "-r", requirements_file, *extra_args],
+            env=environ,
+            logger=subprocess_logger,
             conditions=[
                 TimeoutCondition(USER_REQUIREMENTS_MAX_INSTALL_TIME),
             ],
             friendly_name=f"{cmd}_requirements",
         )
-        worker.start()
+        pip_process.start()
+        if pip_process.process and pip_process.process.returncode != 0:
+            subprocess_logger.error(
+                "ERROR: pip installation exited with a non-zero error code. This could "
+                "be the result of package conflict. Notice that MWAA enforces a list "
+                "of critical packages, e.g. Airflow, Celery, among others, whose "
+                "version cannot be overriden by the customer as that can break our "
+                "setup. Please double check your requirements.txt file."
+            )
     else:
         logger.info("No user requirements to install.")
 
@@ -267,9 +302,10 @@ def execute_startup_script(cmd: str, environ: Dict[str, str]) -> Dict[str, str]:
             try:
                 with open(customer_env_vars_path, "r") as f:
                     customer_env_dict = json.load(f)
+                logger.info("Successfully read the customer's environment variables.")
                 return customer_env_dict
             except Exception as e:
-                logger.error(f"Error reading customer environment variables: {e}")
+                logger.error(f"Error reading the customer's environment variables: {e}")
                 return {}
 
         else:
@@ -306,9 +342,7 @@ def export_env_variables(environ: dict[str, str]):
 
     # Environment variables to append
     env_vars_to_append = [
-        # TODO Need to escape value.
-        f'export {key}="{value}"\n'
-        for key, value in environ.items()
+        f"export {key}={shlex.quote(value)}\n" for key, value in environ.items()
     ]
 
     # Append to .bashrc

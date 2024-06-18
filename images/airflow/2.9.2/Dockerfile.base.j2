@@ -4,7 +4,6 @@ FROM public.ecr.aws/amazonlinux/amazonlinux:2023
 
 ENV AIRFLOW_VERSION=2.9.2
 
-ENV AIRFLOW_CONSTRAINTS_FILE="https://raw.githubusercontent.com/apache/airflow/constraints-2.9.2/constraints-3.11.txt"
 ENV AIRFLOW_USER_HOME=/usr/local/airflow
 ENV AIRFLOW_HOME=${AIRFLOW_USER_HOME}
 ENV MWAA_HOME=/usr/local/mwaa
@@ -13,6 +12,7 @@ ENV PYTHON_VERSION=3.11.9
 # We don't want those variables to stay in the final image, so we use ARG instead of ENV.
 ARG AIRFLOW_USER_LOCAL_PATH=${AIRFLOW_USER_HOME}/.local
 ARG AIRFLOW_USER_LOCAL_BIN_PATH=${AIRFLOW_USER_LOCAL_PATH}/bin
+ARG AIRFLOW_USER_LOCAL_ETC_PATH=${AIRFLOW_USER_LOCAL_PATH}/etc
 ARG PATH_DEFAULT=${PATH}
 ARG PATH_AIRFLOW_USER=${AIRFLOW_USER_LOCAL_BIN_PATH}:${PATH_DEFAULT}
 ARG PYTHON_MD5_CHECKSUM=22ea467e7d915477152e99d5da856ddc
@@ -23,6 +23,9 @@ ARG MARIADB_RPM_DEVEL=MariaDB-devel-11.1.2-1.fc38.x86_64.rpm
 ARG MARIADB_RPM_DEVEL_CHECKSUM=cfce6e9b53f4e4fb1cb14f1ed720c92c
 ARG MARIADB_RPM_SHARED=MariaDB-shared-11.1.2-1.fc38.x86_64.rpm
 ARG MARIADB_RPM_SHARED_CHECKSUM=ed82ad5bc5b35cb2719a9471a71c6cdb
+
+ENV AIRFLOW_CONSTRAINTS_FILE=${AIRFLOW_USER_LOCAL_ETC_PATH}/airflow_constraints.txt
+ENV MWAA_ESSENTIAL_CONSTRAINTS_FILE=${AIRFLOW_USER_LOCAL_ETC_PATH}/mwaa_essential_constraints.txt
 
 # Copy bootstrapping files.
 COPY ./bootstrap /bootstrap
@@ -40,11 +43,16 @@ RUN {{ filepath }}
 # END marker for root user, first pass bootstrapping steps.
 #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
+# Copy the etc/ directory 
+COPY ./etc $AIRFLOW_USER_LOCAL_ETC_PATH
+
 # Copy airflow user's bin/ directory before starting the bootstrapping steps for
 # airflow user.
 COPY ./bin/airflow-user $AIRFLOW_USER_LOCAL_BIN_PATH
-RUN chmod -R +x ${AIRFLOW_USER_LOCAL_BIN_PATH}/* && \
-  chown -R airflow: ${AIRFLOW_USER_LOCAL_PATH}
+RUN chmod -R +x ${AIRFLOW_USER_LOCAL_BIN_PATH}/* 
+
+# Make sure airflow user owns everything in its home directory.
+RUN chown -R airflow: ${AIRFLOW_USER_LOCAL_PATH}
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 # > BEGINNING marker for airflow user bootstrapping steps.

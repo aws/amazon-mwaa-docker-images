@@ -5,4 +5,4 @@
 # airflow, celery, kombu, and so on.
 
 # Install all required packages in one command
-pip3 install --constraint "${AIRFLOW_CONSTRAINTS_FILE}" "$@"
+pip3 install --constraint "${MWAA_ESSENTIAL_CONSTRAINTS_FILE}" "$@"
