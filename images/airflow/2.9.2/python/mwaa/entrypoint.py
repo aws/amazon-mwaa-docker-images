@@ -12,7 +12,6 @@ after setting up the necessary configurations.
 # is setup, its `logger` object will not have the right setup.
 # ruff: noqa: E402
 # fmt: off
-from functools import cache
 import logging.config
 from mwaa.logging.config import (
     LOGGING_CONFIG,
@@ -25,22 +24,29 @@ logging.config.dictConfig(LOGGING_CONFIG)
 # fmt: on
 
 # Python imports
+from argparse import Namespace
 from datetime import timedelta
-from typing import Dict, List
+from functools import cache, partial
+from types import FrameType
+from typing import Dict, List, Optional
 import asyncio
 import json
 import logging
 import os
 import re
 import shlex
+import signal
 import sys
 import time
 
 # 3rd party imports
 import boto3
 from botocore.exceptions import ClientError
+from airflow.providers.celery.cli import celery_command
+from airflow.stats import Stats
 
 # Our imports
+from mwaa.celery.task_monitor import WorkerTaskMonitor
 from mwaa.config.airflow import (
     get_essential_airflow_config,
     get_opinionated_airflow_config,
@@ -55,6 +61,7 @@ from mwaa.logging.config import MWAA_LOGGERS
 from mwaa.logging.loggers import CompositeLogger
 from mwaa.subprocess.conditions import (
     AirflowDbReachableCondition,
+    AutoScalingCondition,
     ProcessCondition,
     SidecarHealthCondition,
     TimeoutCondition,
@@ -173,7 +180,7 @@ def create_queue() -> None:
     except ClientError as e:
         # If the queue does not exist, create it
         if (
-            e.response.get("Error", {}).get("Message")
+            e.response.get("Error", {}).get("Message")  # type: ignore
             == "The specified queue does not exist."
         ):
             response = sqs.create_queue(QueueName=queue_name)  # type: ignore
@@ -457,6 +464,83 @@ def _is_sidecar_health_monitoring_enabled():
     return enabled
 
 
+def _initiate_worker_shutdown(
+    worker_logger: logging.Logger,
+    worker_task_monitor: Optional[WorkerTaskMonitor],
+    signal: int,
+    frame: Optional[FrameType],
+) -> None:
+    # First we pause the consumption and wait 5 seconds in order for any in-flight
+    # messages in the SQS broker layer to be processed and corresponding Airflow task
+    # instance to be created. Once that is done, we can start gracefully shutting down
+    # the worker. Without this, the SQS broker may consume messages from the queue,
+    # terminate before creating the corresponding Airflow task instance and abandon SQS
+    # messages in-flight.
+    if worker_task_monitor:
+        worker_task_monitor.pause_task_consumption()
+        time.sleep(5)
+        task_count = worker_task_monitor.get_current_task_count()
+        if task_count > 0:
+            logger.info("SIGTERM received for a worker with non-zero ongoing tasks.")
+            Stats.incr(f"mwaa.task_monitor.interrupted_tasks_at_shutdown", task_count)
+
+    logger.info("Caught SIGTERM, shutting down worker")
+
+    # Stop celery worker in a subprocess
+    worker_logger.info("Initiating Airflow Worker shutdown...")
+    celery_command.stop_worker(Namespace())  # type: ignore
+    worker_logger.info("Airflow Worker shutdown initiated.")
+
+
+def _run_airflow_worker(environ: Dict[str, str]):
+    conditions: List[ProcessCondition] = [
+        AirflowDbReachableCondition(airflow_component="worker"),
+    ]
+    if _is_sidecar_health_monitoring_enabled():
+        conditions.append(
+            SidecarHealthCondition(
+                airflow_component="worker",
+                container_start_time=CONTAINER_START_TIME,
+            ),
+        )
+
+    worker_logger = logging.getLogger(WORKER_LOGGER_NAME)
+
+    # Dynamic workers have the MWAA__CORE__TASK_MONITORING_ENABLED set to 'true'.
+    # This will be used to determine if idle worker checks are to be enabled.
+    task_monitoring_enabled = (
+        os.environ.get("MWAA__CORE__TASK_MONITORING_ENABLED", "false").lower() == "true"
+    )
+
+    # Initializing the monitor responsible for performing idle worker checks if enabled.
+    worker_task_monitor = WorkerTaskMonitor() if task_monitoring_enabled else None
+
+    worker_shutdown_handler = partial(
+        _initiate_worker_shutdown,
+        worker_logger,
+        worker_task_monitor,
+    )
+    signal.signal(signal.SIGTERM, worker_shutdown_handler)
+
+    if worker_task_monitor:
+        conditions.append(
+            AutoScalingCondition(worker_task_monitor, worker_shutdown_handler)
+        )
+
+    # Finally, run the worker subprocess.
+    run_subprocesses(
+        [
+            create_airflow_subprocess(
+                ["celery", "worker"],
+                environ=environ,
+                logger_name=WORKER_LOGGER_NAME,
+                friendly_name="worker",
+                conditions=conditions,
+            )
+        ]
+    )
+
+
 def run_airflow_command(cmd: str, environ: Dict[str, str]):
     """
     Run the given Airflow command in a subprocess.
@@ -498,28 +582,7 @@ def run_airflow_command(cmd: str, environ: Dict[str, str]):
             run_subprocesses(subprocesses, essential_subprocesses=subprocesses)
 
         case "worker":
-            conditions: List[ProcessCondition] = [
-                AirflowDbReachableCondition(airflow_component="worker"),
-            ]
-            if _is_sidecar_health_monitoring_enabled():
-                conditions.append(
-                    SidecarHealthCondition(
-                        airflow_component="worker",
-                        container_start_time=CONTAINER_START_TIME,
-                    ),
-                )
-
-            run_subprocesses(
-                [
-                    create_airflow_subprocess(
-                        ["celery", "worker"],
-                        environ=environ,
-                        logger_name=WORKER_LOGGER_NAME,
-                        friendly_name="worker",
-                        conditions=conditions,
-                    ),
-                ]
-            )
+            _run_airflow_worker(environ)
 
         case "webserver":
             run_subprocesses(

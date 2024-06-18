@@ -9,7 +9,6 @@ helps support CloudWatch Logs integration.
 
 # Python imports
 from datetime import timedelta
-from enum import Enum
 from subprocess import Popen
 from typing import Any, Dict, List
 import atexit
@@ -23,7 +22,8 @@ import time
 
 # Our imports
 from mwaa.logging.utils import throttle
-from mwaa.subprocess.conditions import ProcessCondition
+from mwaa.subprocess import ProcessStatus
+from mwaa.subprocess.conditions import ProcessCondition, ProcessConditionResponse
 
 
 # The maximum time we can wait for a process to gracefully respond to a SIGTERM signal
@@ -32,29 +32,6 @@ _SIGTERM_DEFAULT_PATIENCE_INTERVAL = timedelta(seconds=90)
 
 
 module_logger = logging.getLogger(__name__)
-
-
-class ProcessStatus(Enum):
-    """
-    An enum that represents the status of a process.
-
-    The status can be one of the following:
-    - FINISHED_WITH_NO_MORE_LOGS: The process has finished and there are no more logs to
-      read.
-    - FINISHED_WITH_LOG_READ: The process has finished but a log was recently read,
-      meaning there are potentially more logs that need to be read.
-    - RUNNING_WITH_NO_LOG_READ: The process is running but no log was read in the latest
-      attempt to read logs, thus a sleep is required before attempting to read more
-      logs to avoid spiking the CPU.
-    - RUNNING_WITH_LOG_READ: The process is running and a log was read in the latest
-      attempt, thus we should continue trying to read more logs to avoid delaying
-      logs publishing.
-    """
-
-    FINISHED_WITH_NO_MORE_LOGS = 0
-    FINISHED_WITH_LOG_READ = 1
-    RUNNING_WITH_NO_LOG_READ = 2
-    RUNNING_WITH_LOG_READ = 3
 
 
 class Subprocess:
@@ -175,9 +152,9 @@ class Subprocess:
             condition.close()
 
     @throttle(60)  # so we don't make excessive calls to process conditions
-    def _check_process_conditions(self):
+    def _check_process_conditions(self) -> List[ProcessConditionResponse]:
         # Evaluate all conditions
-        checked_conditions = [c.check() for c in self.conditions]
+        checked_conditions = [c.check(self.process_status) for c in self.conditions]
 
         # Filter out the unsuccessful conditions
         failed_conditions = [c for c in checked_conditions if not c.successful]

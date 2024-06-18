@@ -67,6 +67,18 @@ def _get_essential_airflow_core_config() -> Dict[str, str]:
     }
 
 
+def _get_opinionated_airflow_core_config() -> Dict[str, str]:
+    """
+    Retrieve the environment variables for Airflow's "core" configuration section.
+
+    :returns A dictionary containing the environment variables.
+    """
+
+    return {
+        "AIRFLOW__CORE__EXECUTE_TASKS_NEW_PYTHON_INTERPRETER": "True",
+    }
+
+
 def get_user_airflow_config() -> Dict[str, str]:
     """
     Retrieve the user-defined environment variables for Airflow configuration.
@@ -291,6 +303,7 @@ def get_opinionated_airflow_config() -> Dict[str, str]:
     :returns A dictionary containing the environment variables.
     """
     return {
+        **_get_opinionated_airflow_core_config(),
         **_get_opinionated_airflow_scheduler_config(),
         **_get_opinionated_airflow_secrets_config(),
     }
