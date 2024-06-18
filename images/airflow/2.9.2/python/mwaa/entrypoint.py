@@ -81,7 +81,10 @@ AVAILABLE_COMMANDS = [
     "spy",
 ]
 MWAA_DOCS_REQUIREMENTS_GUIDE = "https://docs.aws.amazon.com/mwaa/latest/userguide/working-dags-dependencies.html#working-dags-dependencies-test-create"
-STARTUP_SCRIPT_MAX_EXECUTION_TIME = timedelta(minutes=5)
+STARTUP_SCRIPT_SIGTERM_PATIENCE_INTERVAL = timedelta(seconds=5)
+STARTUP_SCRIPT_MAX_EXECUTION_TIME = (
+    timedelta(minutes=5) - STARTUP_SCRIPT_SIGTERM_PATIENCE_INTERVAL
+)
 USER_REQUIREMENTS_MAX_INSTALL_TIME = timedelta(minutes=9)
 
 # Save the start time of the container. This is used later to with the sidecar
@@ -279,6 +282,7 @@ def execute_startup_script(cmd: str, environ: Dict[str, str]) -> Dict[str, str]:
                 TimeoutCondition(STARTUP_SCRIPT_MAX_EXECUTION_TIME),
             ],
             friendly_name=f"{cmd}_startup",
+            sigterm_patience_interval=STARTUP_SCRIPT_SIGTERM_PATIENCE_INTERVAL,
         )
         startup_script_process.start()
         end_time = time.time()
