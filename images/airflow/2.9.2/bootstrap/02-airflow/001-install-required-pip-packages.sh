@@ -15,6 +15,7 @@ REQUIRED_PACKAGES=(
     psycopg2
     pycurl
     watchtower
+    virtualenv
 )
 
 # safe-pip-install always install all required packages, along with whatever
