@@ -28,7 +28,7 @@ from mwaa.subprocess.conditions import ProcessCondition
 
 # The maximum time we can wait for a process to gracefully respond to a SIGTERM signal
 # from us before we forcefully terminate the process with a SIGKILL.
-SIGTERM_PATIENCE_INTERVAL = timedelta(seconds=90)
+_SIGTERM_DEFAULT_PATIENCE_INTERVAL = timedelta(seconds=90)
 
 
 module_logger = logging.getLogger(__name__)
@@ -68,6 +68,7 @@ class Subprocess:
         logger: logging.Logger = module_logger,
         friendly_name: str | None = None,
         conditions: List[ProcessCondition] = [],
+        sigterm_patience_interval: timedelta = _SIGTERM_DEFAULT_PATIENCE_INTERVAL,
     ):
         """
         Initialize the Subprocess object.
@@ -88,6 +89,7 @@ class Subprocess:
         self.process_logger = logger if logger else module_logger
         self.friendly_name = friendly_name
         self.conditions = conditions
+        self.sigterm_patience_interval = sigterm_patience_interval
 
         self.start_time: float | None = None
         self.process: Popen[Any] | None = None
@@ -290,16 +292,15 @@ A SIGTERM followed potentially by a SIGKILL will be sent to terminate the proces
                 f"Failed to send signal {signal.SIGTERM}. Sending SIGKILL..."
             )
             os.kill(process.pid, signal.SIGKILL)
+        sigterm_patience_interval_secs = self.sigterm_patience_interval.total_seconds()
         try:
-            outs, _ = process.communicate(
-                timeout=SIGTERM_PATIENCE_INTERVAL.total_seconds()
-            )
+            outs, _ = process.communicate(timeout=sigterm_patience_interval_secs)
             if outs:
                 self.process_logger.info(outs.decode("utf-8"))
         except subprocess.TimeoutExpired:
             _error(
                 f"Failed to kill {str(self)} with a SIGTERM signal. Process didn't "
-                f"respond to SIGTERM after {SIGTERM_PATIENCE_INTERVAL.total_seconds()} "
+                f"respond to SIGTERM after {sigterm_patience_interval_secs} "
                 "seconds. Sending SIGKILL..."
             )
             os.kill(process.pid, signal.SIGKILL)
