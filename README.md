@@ -25,7 +25,13 @@ To experiment with the image using a vanilla Docker setup, follow these steps:
 python3 create_venvs.py
 ```
 
-3. Build the Airflow v2.9.2 Docker image using:
+3. Build the `fake-statsd-server` image:
+```
+cd <amazon-mwaa-docker-images path>/images/fake-statsd-server
+./build.sh
+```
+
+4. Build the Airflow v2.9.2 Docker image using:
 
 ```
 cd <amazon-mwaa-docker-images path>/images/airflow/2.9.2
