@@ -11,7 +11,7 @@ SQLALCHEMY_DATABASE_URI = conf.get_mandatory_value("database", "SQL_ALCHEMY_CONN
 CSRF_ENABLED = True
 
 # Flask-WTF flag for CSRF
-WTF_CSRF_ENABLED = True
+WTF_CSRF_ENABLED = False if os.environ.get("MWAA__WEBSERVER__WTF_CSRF_ENABLED", "").lower() == "false" else True
 
 if os.environ.get("MWAA__CORE__AUTH_TYPE", "").lower() == "mwaa-iam":
     # The auth type is IAM. This is a MWAA-specific type, which relies on a plugin
