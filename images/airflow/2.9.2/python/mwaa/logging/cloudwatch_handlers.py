@@ -146,38 +146,6 @@ class BaseLogHandler(logging.Handler):
             self.handler.close()
             self.handler = None
 
-    @throttle(LOG_GROUP_INIT_WAIT_SECONDS, instance_level_throttling=True)
-    def _ensure_log_group_exists(self):
-        """
-        Ensure the log group specified by the caller exists, and create it if necessary.
-
-        Returns:
-            True if the log group exists or was created successfully; False otherwise.
-        """
-        logs_client: CloudWatchLogsClient = boto3.client("logs")  # type: ignore
-        try:
-            self._print(f"Creating log group {self.log_group_name}...")
-
-            if self.kms_key_arn:
-                logs_client.create_log_group(
-                    logGroupName=self.log_group_name, kmsKeyId=self.kms_key_arn
-                )
-            else:
-                logs_client.create_log_group(logGroupName=self.log_group_name)
-            self._print(f"Log group {self.log_group_name} created successfully.")
-            return True
-        except logs_client.exceptions.ResourceAlreadyExistsException:
-            self._print(f"Log group {self.log_group_name} already exists.")
-            return True
-        except Exception:
-            self._print(f"Failed to create log group: {self.log_group_name}.")
-            exc_type, exc_value, exc_traceback = sys.exc_info()
-            traceback.print_exception(exc_type, exc_value, exc_traceback)
-            self.stats.incr(
-                f"mwaa.logging.{self.logs_source}.log_group_creation_error", 1
-            )
-            return False
-
     @throttle(ERROR_REPORTING_WAIT_SECONDS)
     def _report_logging_error(self, msg: str):
         """
@@ -206,7 +174,6 @@ class BaseLogHandler(logging.Handler):
         """
         if self.handler:
             try:
-                self._ensure_log_group_exists()
                 self.handler.emit(record)  # type: ignore
                 self.sniff_errors(record)
             except Exception:
