@@ -187,7 +187,11 @@ def create_queue() -> None:
 def _requirements_has_constraints(requirements_file: str):
     with open(requirements_file, "r") as file:
         for line in file:
-            if re.search(r"^\s*(-c |--constraint )", line):
+            # Notice that this regex check will also match lines with commented out
+            # constraints flag. This is intentional as a mechanism for users who
+            # want to avoid enforcing the default Airflow constraints, yet don't want
+            # to provide a constraints file.
+            if re.search(r"-c |--constraint ", line):
                 return True
 
     return False
@@ -386,6 +390,7 @@ def create_airflow_subprocess(
         conditions=conditions,
     )
 
+
 def _is_protected_os_environ(key: str) -> bool:
     # Protected environment variables
     protected_vars = [
@@ -430,11 +435,12 @@ def _is_protected_os_environ(key: str) -> bool:
         "PYTHONUNBUFFERED",
         # This is used to validate the version of Watchtower installed
         # which we don't allow the customer to override.
-        "WATCHTOWER_VERSION"
+        "WATCHTOWER_VERSION",
     ]
 
     # Check whether this is an MWAA configuration or a protected variable
     return key.startswith("MWAA__") or key in protected_vars
+
 
 @cache
 def _is_sidecar_health_monitoring_enabled():
