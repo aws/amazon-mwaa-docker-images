@@ -14,9 +14,10 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from dateutil.tz import tz
 from functools import cached_property
-from types import TracebackType
-from typing import Deque
+from types import FrameType, TracebackType
+from typing import Callable, Deque, Optional
 import logging
+import signal
 import socket
 import sys
 import time
@@ -27,7 +28,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.pool import NullPool
 
 # Our imports
+from mwaa.celery.task_monitor import WorkerTaskMonitor
 from mwaa.config.database import get_db_connection_string
+from mwaa.subprocess import ProcessStatus
 from mwaa.utils.plogs import generate_plog
 
 logger = logging.getLogger(__name__)
@@ -127,17 +130,17 @@ class ProcessCondition:
         """
         self.close()
 
-    def check(self) -> ProcessConditionResponse:
+    def check(self, process_status: ProcessStatus) -> ProcessConditionResponse:
         """
         Execute the condition and return the response.
 
         :returns A ProcessConditionResponse containing data about the response.
         """
-        response = self._check()
+        response = self._check(process_status)
         self.history.append(response)
         return response
 
-    def _check(self) -> ProcessConditionResponse:
+    def _check(self, process_status: ProcessStatus) -> ProcessConditionResponse:
         """
         Execute the condition and return the response.
 
@@ -212,7 +215,7 @@ class SidecarHealthCondition(ProcessCondition):
         if self.socket:
             self.socket.close()
 
-    def _check(self) -> ProcessConditionResponse:
+    def _check(self, process_status: ProcessStatus) -> ProcessConditionResponse:
         """
         Execute the condition and return the response.
 
@@ -313,7 +316,7 @@ class TimeoutCondition(ProcessCondition):
         """
         self.start_time = time.time()
 
-    def _check(self) -> ProcessConditionResponse:
+    def _check(self, process_status: ProcessStatus) -> ProcessConditionResponse:
         """
         Execute the condition and return the response.
 
@@ -380,6 +383,8 @@ class AirflowDbReachableCondition(ProcessCondition):
             )
         else:
             health_status = "CONNECTION_HEALTHY" if healthy else "CONNECTION_UNHEALTHY"
+        # Unlike normal logs, plogs are ingested by the service to take various actions.
+        # Hence, we always use 'print', to avoid log level accidentally stopping them.
         print(
             generate_plog(
                 "RDSHealthLogsProcessor",
@@ -387,7 +392,7 @@ class AirflowDbReachableCondition(ProcessCondition):
             )
         )
 
-    def _check(self) -> ProcessConditionResponse:
+    def _check(self, process_status: ProcessStatus) -> ProcessConditionResponse:
         """
         Execute the condition and return the response.
 
@@ -427,4 +432,76 @@ class AirflowDbReachableCondition(ProcessCondition):
     def _is_db_connection_pooling_enabled(self) -> bool:
         return conf.getboolean(  # type: ignore
             "database", "sql_alchemy_pool_enabled", fallback=False
+        )
+
+
+class AutoScalingCondition(ProcessCondition):
+    """
+    A condition for regularly communicating with the worker task monitor to ensure
+    graceful shutdown of workers in case of auto scaling.
+    """
+
+    def __init__(
+        self,
+        worker_task_monitor: WorkerTaskMonitor,
+        worker_shutdown_handler: Callable[[int, Optional[FrameType]], None],
+    ):
+        """
+        Initialize the instance.
+
+        :param worker_task_monitor: The worker task monitor. See the implementation of
+          WorkerTaskMonitor for more details on what this monitor does.
+        :param worker_shutdown_handler: A handler for gracefully shutting down a worker
+          in case it is idle.
+        """
+        super().__init__()
+        self.worker_task_monitor = worker_task_monitor
+        self.worker_shutdown_handler = worker_shutdown_handler
+
+    def prepare(self):
+        """
+        Initialize the condition.
+        """
+        pass
+
+    def _check(self, process_status: ProcessStatus) -> ProcessConditionResponse:
+        """
+        Execute the condition and return the response.
+
+        :returns A ProcessConditionResponse containing data about the response.
+        """
+
+        if process_status in [
+            ProcessStatus.RUNNING_WITH_LOG_READ,
+            ProcessStatus.RUNNING_WITH_NO_LOG_READ,
+        ]:
+            self.worker_task_monitor.cleanup_abandoned_resources()
+            if self.worker_task_monitor.is_worker_idle():
+                # After detecting worker idleness, we pause further work consumption via
+                # Celery, wait and check again for idleness.
+                self.worker_task_monitor.pause_task_consumption()
+                time.sleep(5)
+                if self.worker_task_monitor.is_worker_idle():
+                    logger.info("Worker has been declared idle. Exiting.")
+                    self.worker_shutdown_handler(signal.SIGTERM, None)
+                    # After shutting down the worker, the worker process status still
+                    # comes out to be alive for a few milliseconds.  Sleeping for a few
+                    # seconds helps avoid unnecessarily killing the worker process
+                    # again.
+                    time.sleep(5)
+                else:
+                    logger.info(
+                        "Worker picked up new tasks during shutdown, reviving worker."
+                    )
+                    self.worker_task_monitor.unpause_task_consumption()
+                    self.worker_task_monitor.reset_monitor_state()
+
+        # The AutoScalingCondition isn't actually a condition, but more like a hook
+        # that we want to execute regularly, hence we always return a success state.
+        # TODO Perhaps we should, in a follow-up PR, rename ProcessCondition to
+        # ProcessHook as that is more appropriate name, since not all conditions here
+        # are actually conditions.
+        return ProcessConditionResponse(
+            condition=self,
+            successful=True,
         )

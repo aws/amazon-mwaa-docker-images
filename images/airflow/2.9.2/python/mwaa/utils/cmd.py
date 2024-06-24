@@ -72,6 +72,7 @@ async def run_command(
     process: asyncio.subprocess.Process = await asyncio.create_subprocess_shell(
         command, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE
     )
+    logger.info(f"Created a process (PID={process.pid}) to execute command {command}.")
 
     # Read stdout and stderr asynchronously
     async def stream_output(
