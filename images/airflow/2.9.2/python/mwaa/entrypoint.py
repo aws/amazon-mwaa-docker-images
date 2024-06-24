@@ -60,6 +60,7 @@ from mwaa.config.sqs import (
 from mwaa.logging.config import MWAA_LOGGERS
 from mwaa.logging.loggers import CompositeLogger
 from mwaa.subprocess.conditions import (
+    SIDECAR_DEFAULT_HEALTH_PORT,
     AirflowDbReachableCondition,
     AutoScalingCondition,
     ProcessCondition,
@@ -464,6 +465,18 @@ def _is_sidecar_health_monitoring_enabled():
     return enabled
 
 
+def _get_sidecar_health_port():
+    try:
+        return int(
+            os.environ.get(
+                "MWAA__HEALTH_MONITORING__SIDECAR_HEALTH_PORT",
+                SIDECAR_DEFAULT_HEALTH_PORT,
+            )
+        )
+    except:
+        return SIDECAR_DEFAULT_HEALTH_PORT
+
+
 def _initiate_worker_shutdown(
     worker_logger: logging.Logger,
     worker_task_monitor: Optional[WorkerTaskMonitor],
@@ -501,6 +514,7 @@ def _run_airflow_worker(environ: Dict[str, str]):
             SidecarHealthCondition(
                 airflow_component="worker",
                 container_start_time=CONTAINER_START_TIME,
+                port=_get_sidecar_health_port(),
             ),
         )
 
@@ -558,6 +572,7 @@ def run_airflow_command(cmd: str, environ: Dict[str, str]):
                     SidecarHealthCondition(
                         airflow_component="scheduler",
                         container_start_time=CONTAINER_START_TIME,
+                        port=_get_sidecar_health_port(),
                     ),
                 )
 

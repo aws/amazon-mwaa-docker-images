@@ -149,8 +149,7 @@ class ProcessCondition:
         raise NotImplementedError()
 
 
-SIDECAR_ADDRESS = "127.0.0.1"
-SIDECAR_HEALTH_PORT = 8200
+SIDECAR_DEFAULT_HEALTH_PORT = 8200
 SOCKET_BUFFER_SIZE = 1024
 
 
@@ -176,20 +175,16 @@ class SidecarHealthCondition(ProcessCondition):
         self,
         airflow_component: str,
         container_start_time: float,
-        host: str = SIDECAR_ADDRESS,
-        port: int = SIDECAR_HEALTH_PORT,
+        port: int = SIDECAR_DEFAULT_HEALTH_PORT,
     ):
         """
         :param airflow_component: The airflow component to check.
         :param container_start_time: The epoch in seconds, i.e. time.time(), when the
           container started.
-        :param host: The host where the sidecar lives. This is currently 127.0.0.1, but
-          a custom value can be provided if needed.
         :param port: The port the sidecar sends health monitoring results to.
         """
         super().__init__()
         self.airflow_component = airflow_component
-        self.host = host
         self.port = port
         self.socket: socket.socket | None
         self.container_start_time: float = container_start_time
@@ -205,7 +200,8 @@ class SidecarHealthCondition(ProcessCondition):
             socket.AF_INET,  # Internet
             socket.SOCK_DGRAM,  # UDP
         )
-        self.socket.bind((self.host, self.port))
+        logger.info(f"Binding to port {self.port}")
+        self.socket.bind(("127.0.0.1", self.port))
         self.socket.settimeout(_SOCKET_TIMEOUT_SECONDS)
 
     def close(self):
