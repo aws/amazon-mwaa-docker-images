@@ -237,20 +237,31 @@ def _cleanup_undead_process(process_id: int):
     :param process_id: The ID of the process.
     """
     print(f"Cleaning up undead process with ID: {process_id}")
+
+    # For calculating behvaioural metrics.
+    clean_undead_process_graceful_success = 0
+    clean_undead_process_forceful_success = 0
+    clean_undead_process_forceful_failure = 0
+
     try:
         os.kill(process_id, signal.SIGTERM)
-        Stats.incr(f"mwaa.task_monitor.clean_undead_process_graceful_success", 1)
-        return
+        clean_undead_process_graceful_success += 1
     except OSError as sigterm_error:
         print(f"Failed to SIGTERM process {process_id}. Error: {sigterm_error}")
 
     try:
         os.kill(process_id, signal.SIGKILL)
-        Stats.incr(f"mwaa.task_monitor.clean_undead_process_forceful_success", 1)
-        return
+        clean_undead_process_forceful_success += 1
     except OSError as sigkill_error:
         print(f"Failed to SIGKILL process {process_id}. Error: {sigkill_error}")
-        Stats.incr(f"mwaa.task_monitor.clean_undead_process_forceful_failure", 1)
+        clean_undead_process_forceful_failure += 1
+
+    # Return metrics.
+    return (
+        clean_undead_process_graceful_success,
+        clean_undead_process_forceful_success,
+        clean_undead_process_forceful_failure,
+    )
 
 
 class WorkerTaskMonitor:
@@ -431,6 +442,11 @@ class WorkerTaskMonitor:
         current_celery_tasks: List[CeleryTask],
         process_id_map: Dict[str, int],
     ):
+        # For calculating behvaioural metrics.
+        clean_undead_process_graceful_success = 0
+        clean_undead_process_forceful_success = 0
+        clean_undead_process_forceful_failure = 0
+
         # Cleanup any undead task processes.
         potentially_undead_process_ids: List[int] = []
         for task_command in process_id_map:
@@ -441,14 +457,37 @@ class WorkerTaskMonitor:
                 ):
                     potentially_undead_process_ids.append(process_id_map[task_command])
                 else:
-                    _cleanup_undead_process(process_id_map[task_command])
+                    (
+                        clean_undead_process_graceful_success,
+                        clean_undead_process_forceful_success,
+                        clean_undead_process_forceful_failure,
+                    ) = _cleanup_undead_process(process_id_map[task_command])
         self.undead_process_ids_from_last_check = potentially_undead_process_ids
+
+        # Report behavioural metrics.
+        Stats.incr(
+            f"mwaa.task_monitor.clean_undead_process_graceful_success",
+            clean_undead_process_graceful_success,
+        )
+        Stats.incr(
+            f"mwaa.task_monitor.clean_undead_process_forceful_success",
+            clean_undead_process_forceful_success,
+        )
+        Stats.incr(
+            f"mwaa.task_monitor.clean_undead_process_forceful_failure",
+            clean_undead_process_forceful_failure,
+        )
 
     def _return_abandoned_task_to_queue(self, celery_task: CeleryTask):
         """
         Cleanup the abandoned SQS message from the Celery SQS Channel.
         :param celery_task: Celery task (celery command + SQS receipt handle).
         """
+        # For calculating behvaioural metrics.
+        clean_celery_message_error_no_queue = 0
+        clean_celery_message_success = 0
+        clean_celery_message_error_sqs_op = 0
+
         print(
             "Cleaning up abandoned SQS message corresponding to task "
             f"state: {celery_task}"
@@ -465,26 +504,32 @@ class WorkerTaskMonitor:
                 f"Unable to cleanup abandoned SQS message for task state {celery_task}."
                 " No default queue found."
             )
-            Stats.incr(f"mwaa.task_monitor.clean_celery_message_error_no_queue", 1)
-            return
-        sqs: SQSClient = boto3.client(  # type: ignore
-            "sqs",
-            region_name=os.environ["AWS_REGION"],
-            config=BOTO_RETRY_CONFIGURATION,  # type: ignore
-        )
-        try:
-            sqs.change_message_visibility(
-                QueueUrl=celery_queue_url,
-                ReceiptHandle=celery_task["receipt_handle"],
-                VisibilityTimeout=0,
+            clean_celery_message_error_no_queue += 1
+
+        else:
+            sqs: SQSClient = boto3.client(  # type: ignore
+                "sqs",
+                region_name=os.environ["AWS_REGION"],
+                config=BOTO_RETRY_CONFIGURATION,  # type: ignore
             )
-            Stats.incr(f"mwaa.task_monitor.clean_celery_message_success", 1)
-        except botocore.exceptions.ClientError as error:  # type: ignore
-            print(
-                f"Unable to cleanup abandoned SQS message for task state {celery_task}."
-                f" Error: {error}"
+            try:
+                sqs.change_message_visibility(
+                    QueueUrl=celery_queue_url,
+                    ReceiptHandle=celery_task["receipt_handle"],
+                    VisibilityTimeout=0,
+                )
+                clean_celery_message_success += 1
+            except botocore.exceptions.ClientError as error:  # type: ignore
+                print(
+                    f"Unable to cleanup abandoned SQS message for task state {celery_task}."
+                    f" Error: {error}"
+                )
+                clean_celery_message_error_sqs_op += 1
+            _update_celery_state(
+                self.cleanup_celery_state, celery_task, CeleryStateUpdateAction.ADD
             )
-            Stats.incr(f"mwaa.task_monitor.clean_celery_message_error_sqs_op", 1)
-        _update_celery_state(
-            self.cleanup_celery_state, celery_task, CeleryStateUpdateAction.ADD
-        )
+
+        # Report behavioural metrics.
+        Stats.incr(f"mwaa.task_monitor.clean_celery_message_error_no_queue", 1)
+        Stats.incr(f"mwaa.task_monitor.clean_celery_message_success", 1)
+        Stats.incr(f"mwaa.task_monitor.clean_celery_message_error_sqs_op", 1)

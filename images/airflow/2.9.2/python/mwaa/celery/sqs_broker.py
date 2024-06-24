@@ -527,6 +527,7 @@ class Channel(virtual.Channel):
                 self.celery_state.buf[: self.celery_tasks_buffer_size] = (
                     self._get_padded_bytes_from_str(dumps(current_celery_tasks))
                 )
+                Stats.incr("mwaa.celery.celery_state_update_failure", 0)
             except Exception:
                 Stats.incr("mwaa.celery.celery_state_update_failure", 1)
             finally:
