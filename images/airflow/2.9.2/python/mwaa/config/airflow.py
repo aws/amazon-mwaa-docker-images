@@ -167,12 +167,12 @@ def _get_mwaa_cloudwatch_integration_config() -> Dict[str, str]:
     )
     if customer_config_path:
         user_config = get_user_airflow_config()
-        for option in [
-            "statsd_on",
-            "metrics_block_list",
-            "metrics_allow_list",
+        for option, default_value in [
+            ("statsd_on", "True"),
+            ("metrics_block_list", ""),
+            ("metrics_allow_list", ""),
         ]:
-            c = user_config.get(f"AIRFLOW__METRICS__{option.upper()}", "")
+            c = user_config.get(f"AIRFLOW__METRICS__{option.upper()}", default_value)
             config_path = os.path.join(customer_config_path, f"{option}.txt")
             try:
                 with open(config_path, "w") as f:
