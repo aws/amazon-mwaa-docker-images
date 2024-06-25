@@ -235,6 +235,9 @@ def _cleanup_undead_process(process_id: int):
     Cleanup the undead process.
 
     :param process_id: The ID of the process.
+
+    :returns A tuple containing the number of process graceful successes, forceful
+    successes, and failures, respectively.
     """
     print(f"Cleaning up undead process with ID: {process_id}")
 
@@ -530,6 +533,15 @@ class WorkerTaskMonitor:
             )
 
         # Report behavioural metrics.
-        Stats.incr(f"mwaa.task_monitor.clean_celery_message_error_no_queue", 1)
-        Stats.incr(f"mwaa.task_monitor.clean_celery_message_success", 1)
-        Stats.incr(f"mwaa.task_monitor.clean_celery_message_error_sqs_op", 1)
+        Stats.incr(
+            f"mwaa.task_monitor.clean_celery_message_error_no_queue",
+            clean_celery_message_error_no_queue,
+        )
+        Stats.incr(
+            f"mwaa.task_monitor.clean_celery_message_success",
+            clean_celery_message_success,
+        )
+        Stats.incr(
+            f"mwaa.task_monitor.clean_celery_message_error_sqs_op",
+            clean_celery_message_error_sqs_op,
+        )

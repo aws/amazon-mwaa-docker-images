@@ -181,6 +181,8 @@ from enum import Enum
 from multiprocessing import shared_memory
 from threading import Lock
 import os
+
+from mwaa.logging.utils import throttle
 # End of Amazon addition
 
 logger = get_logger(__name__)
@@ -482,6 +484,13 @@ class Channel(virtual.Channel):
                 return index
         return -1
 
+    @throttle(seconds=60, log_throttling_msg=False)
+    def _report_celery_status_update_no_failure(self):
+        # This method is used to report a zero value for the celery_state_update_failure
+        # metric. It is throttled with an interval of 60 seconds, to avoid spamming
+        # the metric with lots of values.
+        Stats.incr("mwaa.celery.celery_state_update_failure", 0)
+
     def _update_state_with_tasks(
         self, celery_task_tuples, update_action: CeleryStateUpdateAction
     ):
@@ -527,7 +536,7 @@ class Channel(virtual.Channel):
                 self.celery_state.buf[: self.celery_tasks_buffer_size] = (
                     self._get_padded_bytes_from_str(dumps(current_celery_tasks))
                 )
-                Stats.incr("mwaa.celery.celery_state_update_failure", 0)
+                self._report_celery_status_update_no_failure()
             except Exception:
                 Stats.incr("mwaa.celery.celery_state_update_failure", 1)
             finally:
