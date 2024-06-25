@@ -14,7 +14,6 @@ from builtins import memoryview
 from typing import Any, Dict, List
 
 # 3rd-party imports
-from airflow.stats import Stats
 from dateutil.tz import tz
 from mypy_boto3_sqs.client import SQSClient
 import boto3
@@ -300,6 +299,10 @@ class WorkerTaskMonitor:
         self.abandoned_celery_tasks_from_last_check: List[CeleryTask] = []
         self.undead_process_ids_from_last_check = []
 
+        from airflow.stats import Stats
+
+        self.stats = Stats
+
     def is_worker_idle(self):
         """
         Checks if the worker has gone idle or not. For this to happen, a worker will
@@ -409,6 +412,11 @@ class WorkerTaskMonitor:
         current_celery_tasks: List[CeleryTask],
         process_id_map: Dict[str, int],
     ):
+        # For calculating behvaioural metrics.
+        clean_celery_message_error_no_queue = 0
+        clean_celery_message_success = 0
+        clean_celery_message_error_sqs_op = 0
+
         # Checking if celery task cleanup from the past run has been completed.
         current_cleanup_celery_tasks = _get_celery_tasks(self.cleanup_celery_state)
         for cleanup_celery_task in current_cleanup_celery_tasks:
@@ -437,8 +445,26 @@ class WorkerTaskMonitor:
                     ):
                         potentially_abandoned_celery_tasks.append(celery_task)
                     else:
-                        self._return_abandoned_task_to_queue(celery_task)
+                        (
+                            clean_celery_message_error_no_queue,
+                            clean_celery_message_success,
+                            clean_celery_message_error_sqs_op,
+                        ) = self._return_abandoned_task_to_queue(celery_task)
         self.abandoned_celery_tasks_from_last_check = potentially_abandoned_celery_tasks
+
+        # Report behavioural metrics.
+        self.stats.incr(
+            f"mwaa.task_monitor.clean_celery_message_error_no_queue",
+            clean_celery_message_error_no_queue,
+        )
+        self.stats.incr(
+            f"mwaa.task_monitor.clean_celery_message_success",
+            clean_celery_message_success,
+        )
+        self.stats.incr(
+            f"mwaa.task_monitor.clean_celery_message_error_sqs_op",
+            clean_celery_message_error_sqs_op,
+        )
 
     def _cleanup_all_undead_processes(
         self,
@@ -468,15 +494,15 @@ class WorkerTaskMonitor:
         self.undead_process_ids_from_last_check = potentially_undead_process_ids
 
         # Report behavioural metrics.
-        Stats.incr(
+        self.stats.incr(
             f"mwaa.task_monitor.clean_undead_process_graceful_success",
             clean_undead_process_graceful_success,
         )
-        Stats.incr(
+        self.stats.incr(
             f"mwaa.task_monitor.clean_undead_process_forceful_success",
             clean_undead_process_forceful_success,
         )
-        Stats.incr(
+        self.stats.incr(
             f"mwaa.task_monitor.clean_undead_process_forceful_failure",
             clean_undead_process_forceful_failure,
         )
@@ -532,16 +558,9 @@ class WorkerTaskMonitor:
                 self.cleanup_celery_state, celery_task, CeleryStateUpdateAction.ADD
             )
 
-        # Report behavioural metrics.
-        Stats.incr(
-            f"mwaa.task_monitor.clean_celery_message_error_no_queue",
+        # For calculating behvaioural metrics.
+        return (
             clean_celery_message_error_no_queue,
-        )
-        Stats.incr(
-            f"mwaa.task_monitor.clean_celery_message_success",
             clean_celery_message_success,
-        )
-        Stats.incr(
-            f"mwaa.task_monitor.clean_celery_message_error_sqs_op",
             clean_celery_message_error_sqs_op,
         )

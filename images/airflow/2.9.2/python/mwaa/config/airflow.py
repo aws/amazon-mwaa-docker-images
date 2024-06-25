@@ -218,6 +218,7 @@ def _get_opinionated_airflow_scheduler_config() -> Dict[str, str]:
     """
     return {
         "AIRFLOW__SCHEDULER__SCHEDULE_AFTER_TASK_EXECUTION": "False",
+        "AIRFLOW__SCHEDULER__TASK_QUEUED_TIMEOUT": "1800.0",
     }
 
 

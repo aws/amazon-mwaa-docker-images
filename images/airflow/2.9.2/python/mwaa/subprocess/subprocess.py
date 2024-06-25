@@ -21,6 +21,7 @@ import sys
 import time
 
 # Our imports
+from mwaa.logging.loggers import CompositeLogger
 from mwaa.logging.utils import throttle
 from mwaa.subprocess import ProcessStatus
 from mwaa.subprocess.conditions import ProcessCondition, ProcessConditionResponse
@@ -64,6 +65,16 @@ class Subprocess:
         self.cmd = cmd
         self.env = env
         self.process_logger = logger if logger else module_logger
+        # The dual logger is used in case we want to publish logs using both, the logger
+        # of the process and the logger of this Python module. This is useful in case
+        # some messages are useful to both, the customer (typically the customer's
+        # CloudWatch) and the service (Fargate, i.e. the service's CloudWatch).
+        self.dual_logger = CompositeLogger(
+            "process_module_dual_logger",  # name can be anything unused.
+            # We use a set to avoid double logging using the module logger if the user
+            # doesn't pass a logger.
+            *set([self.process_logger, module_logger]),
+        )
         self.friendly_name = friendly_name
         self.conditions = conditions
         self.sigterm_patience_interval = sigterm_patience_interval
@@ -187,7 +198,7 @@ class Subprocess:
         failed_conditions = self._check_process_conditions()
 
         if failed_conditions:
-            self.process_logger.error(
+            self.dual_logger.error(
                 f"""
 {self} failed due to the following conditions failing:
 
@@ -251,20 +262,14 @@ A SIGTERM followed potentially by a SIGKILL will be sent to terminate the proces
             return ProcessStatus.RUNNING_WITH_NO_LOG_READ
 
     def _kill_subprocess(self, process: Popen[Any]):
-        def _error(msg: str):
-            # TODO Consider using a CompositeLogger instead if we need to log to console
-            # and the process logger in multiple places in this module.
-            module_logger.error(msg)
-            self.process_logger.error(msg)
-
         # Do nothing if process has already terminated
         if process.poll() is not None:
             return
-        _error(f"Killing {str(self)}")
+        module_logger.info(f"Killing {str(self)}")
         try:
             os.kill(process.pid, signal.SIGTERM)
         except OSError:
-            _error(
+            module_logger.error(
                 f"Failed to kill {str(self)} with a SIGTERM signal. "
                 f"Failed to send signal {signal.SIGTERM}. Sending SIGKILL..."
             )
@@ -275,13 +280,13 @@ A SIGTERM followed potentially by a SIGKILL will be sent to terminate the proces
             if outs:
                 self.process_logger.info(outs.decode("utf-8"))
         except subprocess.TimeoutExpired:
-            _error(
+            module_logger.error(
                 f"Failed to kill {str(self)} with a SIGTERM signal. Process didn't "
                 f"respond to SIGTERM after {sigterm_patience_interval_secs} "
                 "seconds. Sending SIGKILL..."
             )
             os.kill(process.pid, signal.SIGKILL)
-        _error("Process killed. Return code %s" % process.returncode)
+        module_logger.info("Process killed. Return code %s" % process.returncode)
 
 
 def run_subprocesses(
