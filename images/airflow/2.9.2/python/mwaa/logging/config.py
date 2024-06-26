@@ -143,6 +143,7 @@ def _configure_dag_processing_logging():
 def _configure_subprocesses_logging(
     subprocess_name: str,
     log_group_arn: str | None,
+    log_stream_name_prefix: str,
     log_level: str,
     logging_enabled: bool,
 ):
@@ -155,7 +156,7 @@ def _configure_subprocesses_logging(
             "filters": ["mask_secrets"],
             "log_group_arn": log_group_arn,
             "kms_key_arn": _get_kms_key_arn(),
-            "stream_name_prefix": subprocess_name.lower(),
+            "stream_name_prefix": log_stream_name_prefix,
             "logs_source": subprocess_name,
             "enabled": logging_enabled,
         }
@@ -174,10 +175,28 @@ def _configure():
     # because Airflow already has a dedicated logger for it, so we just use that when
     # we run the "dag-processor" Airflow command.
     for comp in ["Worker", "Scheduler", "WebServer", "Triggerer"]:
-        args = get_mwaa_logging_env_vars(comp)
-        _configure_subprocesses_logging(comp, *args)
-        _configure_subprocesses_logging(f"{comp}_requirements", *args)
-        _configure_subprocesses_logging(f"{comp}_startup", *args)
+        log_group_arn, log_level, logging_enabled = get_mwaa_logging_env_vars(comp)
+        _configure_subprocesses_logging(
+            comp,
+            log_group_arn=log_group_arn,
+            log_stream_name_prefix=comp.lower(),
+            log_level=log_level,
+            logging_enabled=logging_enabled,
+        )
+        _configure_subprocesses_logging(
+            f"{comp}_requirements",
+            log_group_arn=log_group_arn,
+            log_stream_name_prefix="requirements_install",
+            log_level="INFO",  # We always want to publish requirements logs.
+            logging_enabled=logging_enabled,
+        )
+        _configure_subprocesses_logging(
+            f"{comp}_startup",
+            log_group_arn=log_group_arn,
+            log_stream_name_prefix="startup_script_execution",
+            log_level="INFO",  # We always want to publish startup script logs.
+            logging_enabled=logging_enabled,
+        )
 
 
 SCHEDULER_LOGGER_NAME = "mwaa.scheduler"
