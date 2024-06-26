@@ -24,7 +24,6 @@ logging.config.dictConfig(LOGGING_CONFIG)
 # fmt: on
 
 # Python imports
-from argparse import Namespace
 from datetime import timedelta
 from functools import cache, partial
 from types import FrameType
@@ -42,7 +41,6 @@ import time
 # 3rd party imports
 import boto3
 from botocore.exceptions import ClientError
-from airflow.providers.celery.cli import celery_command
 from airflow.stats import Stats
 
 # Our imports
@@ -480,6 +478,7 @@ def _get_sidecar_health_port():
 def _initiate_worker_shutdown(
     worker_logger: logging.Logger,
     worker_task_monitor: Optional[WorkerTaskMonitor],
+    environ: Dict[str, str],
     signal: int,
     frame: Optional[FrameType],
 ) -> None:
@@ -494,14 +493,19 @@ def _initiate_worker_shutdown(
         time.sleep(5)
         task_count = worker_task_monitor.get_current_task_count()
         if task_count > 0:
-            logger.info("SIGTERM received for a worker with non-zero ongoing tasks.")
-            Stats.incr(f"mwaa.task_monitor.interrupted_tasks_at_shutdown", task_count)
+            logger.warning("SIGTERM received for a worker with non-zero ongoing tasks.")
+        Stats.incr(f"mwaa.task_monitor.interrupted_tasks_at_shutdown", task_count)
 
     logger.info("Caught SIGTERM, shutting down worker")
 
     # Stop celery worker in a subprocess
     worker_logger.info("Initiating Airflow Worker shutdown...")
-    celery_command.stop_worker(Namespace())  # type: ignore
+    Subprocess(
+        cmd=["airflow", "celery", "stop"],
+        env=environ,
+        logger=worker_logger,
+        friendly_name="airflow celery stop",
+    ).start()
     worker_logger.info("Airflow Worker shutdown initiated.")
 
 
@@ -525,14 +529,19 @@ def _run_airflow_worker(environ: Dict[str, str]):
     task_monitoring_enabled = (
         os.environ.get("MWAA__CORE__TASK_MONITORING_ENABLED", "false").lower() == "true"
     )
-
-    # Initializing the monitor responsible for performing idle worker checks if enabled.
-    worker_task_monitor = WorkerTaskMonitor() if task_monitoring_enabled else None
+    if task_monitoring_enabled:
+        logger.info("Worker task monitoring is enabled.")
+        # Initializing the monitor responsible for performing idle worker checks if enabled.
+        worker_task_monitor = WorkerTaskMonitor()
+    else:
+        logger.info("Worker task monitoring is NOT enabled.")
+        worker_task_monitor = None
 
     worker_shutdown_handler = partial(
         _initiate_worker_shutdown,
         worker_logger,
         worker_task_monitor,
+        environ,
     )
     signal.signal(signal.SIGTERM, worker_shutdown_handler)
 

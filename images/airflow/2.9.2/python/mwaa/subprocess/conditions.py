@@ -473,6 +473,7 @@ class AutoScalingCondition(ProcessCondition):
         ]:
             self.worker_task_monitor.cleanup_abandoned_resources()
             if self.worker_task_monitor.is_worker_idle():
+                logger.info(f"Worker process is idle. Pausing task consumption...")
                 # After detecting worker idleness, we pause further work consumption via
                 # Celery, wait and check again for idleness.
                 self.worker_task_monitor.pause_task_consumption()
@@ -491,6 +492,13 @@ class AutoScalingCondition(ProcessCondition):
                     )
                     self.worker_task_monitor.unpause_task_consumption()
                     self.worker_task_monitor.reset_monitor_state()
+            else:
+                logger.info(f"Worker process is NOT idle. No action is needed.")
+        else:
+            logger.info(
+                f"Worker process finished (status is {process_status.name}). "
+                "No need to check for idleness anymore."
+            )
 
         # The AutoScalingCondition isn't actually a condition, but more like a hook
         # that we want to execute regularly, hence we always return a success state.
