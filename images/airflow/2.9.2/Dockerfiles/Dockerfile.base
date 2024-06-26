@@ -3,8 +3,6 @@
 # the Jinja2-templated Dockerfile.j2 file, so you need to change that file
 # instead.
 #
-# This file was generated on 2024-06-18 01:40:14.378983
-#
 
 FROM public.ecr.aws/amazonlinux/amazonlinux:2023
 
@@ -35,25 +33,30 @@ ARG MARIADB_RPM_SHARED_CHECKSUM=ed82ad5bc5b35cb2719a9471a71c6cdb
 ENV AIRFLOW_CONSTRAINTS_FILE=${AIRFLOW_USER_LOCAL_ETC_PATH}/airflow_constraints.txt
 ENV MWAA_ESSENTIAL_CONSTRAINTS_FILE=${AIRFLOW_USER_LOCAL_ETC_PATH}/mwaa_essential_constraints.txt
 
-# Copy bootstrapping files.
-COPY ./bootstrap /bootstrap
-RUN chmod -R +x /bootstrap
+# Copy files common to all bootstrapping files.
+COPY ./bootstrap/common.sh /bootstrap/common.sh
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 # BEGINNING marker for root user, first pass bootstrapping steps.
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-RUN /bootstrap/01-root-firstpass/001-init.sh
+COPY ./bootstrap/01-root-firstpass/001-init.sh /bootstrap/01-root-firstpass/001-init.sh
+RUN chmod +x /bootstrap/01-root-firstpass/001-init.sh && /bootstrap/01-root-firstpass/001-init.sh
 
-RUN /bootstrap/01-root-firstpass/002-install-python.sh
+COPY ./bootstrap/01-root-firstpass/002-install-python.sh /bootstrap/01-root-firstpass/002-install-python.sh
+RUN chmod +x /bootstrap/01-root-firstpass/002-install-python.sh && /bootstrap/01-root-firstpass/002-install-python.sh
 
-RUN /bootstrap/01-root-firstpass/003-install-mariadb.sh
+COPY ./bootstrap/01-root-firstpass/003-install-mariadb.sh /bootstrap/01-root-firstpass/003-install-mariadb.sh
+RUN chmod +x /bootstrap/01-root-firstpass/003-install-mariadb.sh && /bootstrap/01-root-firstpass/003-install-mariadb.sh
 
-RUN /bootstrap/01-root-firstpass/004-create-airflow-user.sh
+COPY ./bootstrap/01-root-firstpass/004-create-airflow-user.sh /bootstrap/01-root-firstpass/004-create-airflow-user.sh
+RUN chmod +x /bootstrap/01-root-firstpass/004-create-airflow-user.sh && /bootstrap/01-root-firstpass/004-create-airflow-user.sh
 
-RUN /bootstrap/01-root-firstpass/005-install-aws-cli.sh
+COPY ./bootstrap/01-root-firstpass/005-install-aws-cli.sh /bootstrap/01-root-firstpass/005-install-aws-cli.sh
+RUN chmod +x /bootstrap/01-root-firstpass/005-install-aws-cli.sh && /bootstrap/01-root-firstpass/005-install-aws-cli.sh
 
-RUN /bootstrap/01-root-firstpass/100-install-needed-dnf-packages.sh
+COPY ./bootstrap/01-root-firstpass/100-install-needed-dnf-packages.sh /bootstrap/01-root-firstpass/100-install-needed-dnf-packages.sh
+RUN chmod +x /bootstrap/01-root-firstpass/100-install-needed-dnf-packages.sh && /bootstrap/01-root-firstpass/100-install-needed-dnf-packages.sh
 
 #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 # END marker for root user, first pass bootstrapping steps.
@@ -78,7 +81,17 @@ RUN chown -R airflow: ${AIRFLOW_USER_LOCAL_PATH}
 USER airflow
 ENV PATH=${PATH_AIRFLOW_USER} 
 
+USER root
+COPY ./bootstrap/02-airflow/001-install-required-pip-packages.sh /bootstrap/02-airflow/001-install-required-pip-packages.sh
+RUN chmod +x /bootstrap/02-airflow/001-install-required-pip-packages.sh
+USER airflow
 RUN /bootstrap/02-airflow/001-install-required-pip-packages.sh
+
+USER root
+COPY ./bootstrap/02-airflow/999-licensecheck.py /bootstrap/02-airflow/999-licensecheck.py
+RUN chmod +x /bootstrap/02-airflow/999-licensecheck.py
+USER airflow
+RUN /bootstrap/02-airflow/999-licensecheck.py
 
 # Revert the PATH and user.
 ENV PATH=${PATH_DEFAULT}
@@ -97,11 +110,14 @@ USER root
 # giving ownership of the Airflow home user to the 'airflow' user requires the
 # the folder to be fully setup first.
 
-RUN /bootstrap/03-root-secondpass/001-create-mwaa-dir.sh
+COPY ./bootstrap/03-root-secondpass/001-create-mwaa-dir.sh /bootstrap/03-root-secondpass/001-create-mwaa-dir.sh
+RUN chmod +x /bootstrap/03-root-secondpass/001-create-mwaa-dir.sh && /bootstrap/03-root-secondpass/001-create-mwaa-dir.sh
 
-RUN /bootstrap/03-root-secondpass/002-make-airflow-sudoer.sh
+COPY ./bootstrap/03-root-secondpass/002-make-airflow-sudoer.sh /bootstrap/03-root-secondpass/002-make-airflow-sudoer.sh
+RUN chmod +x /bootstrap/03-root-secondpass/002-make-airflow-sudoer.sh && /bootstrap/03-root-secondpass/002-make-airflow-sudoer.sh
 
-RUN /bootstrap/03-root-secondpass/100-chown-airflow-folder.sh
+COPY ./bootstrap/03-root-secondpass/100-chown-airflow-folder.sh /bootstrap/03-root-secondpass/100-chown-airflow-folder.sh
+RUN chmod +x /bootstrap/03-root-secondpass/100-chown-airflow-folder.sh && /bootstrap/03-root-secondpass/100-chown-airflow-folder.sh
 
 #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 # END marker for root user, second pass bootstrapping steps.

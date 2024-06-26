@@ -90,8 +90,6 @@ def generate_dockerfile(
 # the Jinja2-templated Dockerfile.j2 file, so you need to change that file
 # instead.
 #
-# This file was generated on {datetime.now()}
-#
     """.strip()
         )
         f.write(os.linesep)
@@ -116,21 +114,21 @@ def generate_base_dockerfile(image_root_dir: Path) -> None:
     data = {
         "bootstrapping_scripts_root_firstpass": sorted(
             [
-                os.path.join("/bootstrap/01-root-firstpass", file.name)
+                os.path.join("bootstrap/01-root-firstpass", file.name)
                 for file in (image_root_dir / "bootstrap/01-root-firstpass").iterdir()
                 if file.is_file()
             ]
         ),
         "bootstrapping_scripts_airflow": sorted(
             [
-                os.path.join("/bootstrap/02-airflow", file.name)
+                os.path.join("bootstrap/02-airflow", file.name)
                 for file in (image_root_dir / "bootstrap/02-airflow").iterdir()
                 if file.is_file()
             ]
         ),
         "bootstrapping_scripts_root_secondpass": sorted(
             [
-                os.path.join("/bootstrap/03-root-secondpass", file.name)
+                os.path.join("bootstrap/03-root-secondpass", file.name)
                 for file in (image_root_dir / "bootstrap/03-root-secondpass").iterdir()
                 if file.is_file()
             ]
@@ -174,7 +172,7 @@ def generate_derivative_dockerfiles(
         "bootstrapping_scripts_dev": (
             sorted(
                 [
-                    os.path.join("/bootstrap-dev", file.name)
+                    os.path.join("bootstrap-dev", file.name)
                     for file in (image_root_dir / "bootstrap-dev").iterdir()
                     if file.is_file()
                 ]

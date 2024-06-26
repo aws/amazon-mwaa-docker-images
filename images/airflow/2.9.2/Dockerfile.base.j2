@@ -27,16 +27,17 @@ ARG MARIADB_RPM_SHARED_CHECKSUM=ed82ad5bc5b35cb2719a9471a71c6cdb
 ENV AIRFLOW_CONSTRAINTS_FILE=${AIRFLOW_USER_LOCAL_ETC_PATH}/airflow_constraints.txt
 ENV MWAA_ESSENTIAL_CONSTRAINTS_FILE=${AIRFLOW_USER_LOCAL_ETC_PATH}/mwaa_essential_constraints.txt
 
-# Copy bootstrapping files.
-COPY ./bootstrap /bootstrap
-RUN chmod -R +x /bootstrap
+# Copy files common to all bootstrapping files.
+COPY ./bootstrap/common.sh /bootstrap/common.sh
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 # BEGINNING marker for root user, first pass bootstrapping steps.
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 {% for filepath in bootstrapping_scripts_root_firstpass %}
-RUN {{ filepath }}
+COPY ./{{ filepath }} /{{ filepath }}
+RUN chmod +x /{{ filepath }} && /{{ filepath }}
+
 {% endfor %}
 
 #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -63,7 +64,11 @@ USER airflow
 ENV PATH=${PATH_AIRFLOW_USER} 
 
 {% for filepath in bootstrapping_scripts_airflow %}
-RUN {{ filepath }}
+USER root
+COPY ./{{ filepath }} /{{ filepath }}
+RUN chmod +x /{{ filepath }}
+USER airflow
+RUN /{{ filepath }}
 {% endfor %}
 
 # Revert the PATH and user.
@@ -86,7 +91,8 @@ USER root
 # the folder to be fully setup first.
 
 {% for filepath in bootstrapping_scripts_root_secondpass %}
-RUN {{ filepath }}
+COPY ./{{ filepath }} /{{ filepath }}
+RUN chmod +x /{{ filepath }} && /{{ filepath }}
 {% endfor %}
 
 #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
