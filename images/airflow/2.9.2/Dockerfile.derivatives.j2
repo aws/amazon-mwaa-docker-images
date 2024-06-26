@@ -2,10 +2,6 @@ FROM amazon-mwaa-docker-images/airflow:2.9.2-base
 
 {% if bootstrapping_scripts_dev %}
 
-# Copy bootstrapping files.
-COPY ./bootstrap-dev /bootstrap-dev
-RUN chmod -R +x /bootstrap-dev
-
 {#
 Those steps are only exectued for development images. Those are images that
 contain additional packages that help with debugging, e.g. editors, etc., but
@@ -17,7 +13,8 @@ are not supposed to be in production.
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 {% for filepath in bootstrapping_scripts_dev %}
-RUN {{ filepath }}
+COPY ./{{ filepath }} /{{ filepath }}
+RUN chmod +x /{{ filepath }} && /{{ filepath }}
 {% endfor %}
 
 #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
