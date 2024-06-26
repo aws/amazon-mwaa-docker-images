@@ -471,10 +471,6 @@ class AutoScalingCondition(ProcessCondition):
             ProcessStatus.RUNNING_WITH_LOG_READ,
             ProcessStatus.RUNNING_WITH_NO_LOG_READ,
         ]:
-            logger.info(
-                f"Worker process is still running with status {process_status.name}. "
-                "Checking for idleness..."
-            )
             self.worker_task_monitor.cleanup_abandoned_resources()
             if self.worker_task_monitor.is_worker_idle():
                 logger.info(f"Worker process is idle. Pausing task consumption...")
