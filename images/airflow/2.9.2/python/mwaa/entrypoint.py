@@ -41,7 +41,6 @@ import time
 # 3rd party imports
 import boto3
 from botocore.exceptions import ClientError
-from airflow.stats import Stats
 
 # Our imports
 from mwaa.celery.task_monitor import WorkerTaskMonitor
@@ -68,6 +67,7 @@ from mwaa.subprocess.conditions import (
 from mwaa.subprocess.subprocess import Subprocess, run_subprocesses
 from mwaa.utils.cmd import run_command
 from mwaa.utils.dblock import with_db_lock
+from mwaa.utils.statsd import get_statsd
 
 
 # Usually, we pass the `__name__` variable instead as that defaults to the
@@ -494,7 +494,8 @@ def _initiate_worker_shutdown(
         task_count = worker_task_monitor.get_current_task_count()
         if task_count > 0:
             logger.warning("SIGTERM received for a worker with non-zero ongoing tasks.")
-        Stats.incr(f"mwaa.task_monitor.interrupted_tasks_at_shutdown", task_count)
+        stats = get_statsd()
+        stats.incr(f"mwaa.task_monitor.interrupted_tasks_at_shutdown", task_count)  # type: ignore
 
     logger.info("Caught SIGTERM, shutting down worker")
 

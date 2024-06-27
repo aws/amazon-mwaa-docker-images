@@ -29,6 +29,7 @@ import watchtower
 
 # Our imports
 from mwaa.logging.utils import parse_arn, throttle
+from python.mwaa.utils.statsd import get_statsd
 
 
 LOG_GROUP_INIT_WAIT_SECONDS = 900
@@ -101,10 +102,7 @@ class BaseLogHandler(logging.Handler):
         # TODO Find a nice and unambiguous solution to the craziness of super() and MRO.
         logging.Handler.__init__(self)
 
-        # Airflow Stats object.
-        from airflow.stats import Stats
-
-        self.stats = Stats
+        self.stats = get_statsd()
 
     def create_watchtower_handler(
         self,

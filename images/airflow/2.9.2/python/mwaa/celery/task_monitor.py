@@ -20,6 +20,9 @@ import boto3
 import botocore
 import psutil
 
+# Our imports
+from mwaa.utils.statsd import get_statsd
+
 EOF_TOKEN = "EOF_TOKEN"
 
 # The SQS channel needs to maintain data regarding the SQS messages that it is currently
@@ -299,9 +302,7 @@ class WorkerTaskMonitor:
         self.abandoned_celery_tasks_from_last_check: List[CeleryTask] = []
         self.undead_process_ids_from_last_check = []
 
-        from airflow.stats import Stats
-
-        self.stats = Stats
+        self.stats = get_statsd()
 
     def is_worker_idle(self):
         """
@@ -453,15 +454,15 @@ class WorkerTaskMonitor:
         self.abandoned_celery_tasks_from_last_check = potentially_abandoned_celery_tasks
 
         # Report behavioural metrics.
-        self.stats.incr(
+        self.stats.incr(  # type: ignore
             f"mwaa.task_monitor.clean_celery_message_error_no_queue",
             clean_celery_message_error_no_queue,
         )
-        self.stats.incr(
+        self.stats.incr(  # type: ignore
             f"mwaa.task_monitor.clean_celery_message_success",
             clean_celery_message_success,
         )
-        self.stats.incr(
+        self.stats.incr(  # type: ignore
             f"mwaa.task_monitor.clean_celery_message_error_sqs_op",
             clean_celery_message_error_sqs_op,
         )
@@ -494,15 +495,15 @@ class WorkerTaskMonitor:
         self.undead_process_ids_from_last_check = potentially_undead_process_ids
 
         # Report behavioural metrics.
-        self.stats.incr(
+        self.stats.incr(  # type: ignore
             f"mwaa.task_monitor.clean_undead_process_graceful_success",
             clean_undead_process_graceful_success,
         )
-        self.stats.incr(
+        self.stats.incr(  # type: ignore
             f"mwaa.task_monitor.clean_undead_process_forceful_success",
             clean_undead_process_forceful_success,
         )
-        self.stats.incr(
+        self.stats.incr(  # type: ignore
             f"mwaa.task_monitor.clean_undead_process_forceful_failure",
             clean_undead_process_forceful_failure,
         )
