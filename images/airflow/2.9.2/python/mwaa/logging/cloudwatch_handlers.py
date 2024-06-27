@@ -29,7 +29,7 @@ import watchtower
 
 # Our imports
 from mwaa.logging.utils import parse_arn, throttle
-from python.mwaa.utils.statsd import get_statsd
+from mwaa.utils.statsd import get_statsd
 
 
 LOG_GROUP_INIT_WAIT_SECONDS = 900
