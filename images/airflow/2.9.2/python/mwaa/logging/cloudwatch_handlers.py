@@ -171,6 +171,17 @@ class BaseLogHandler(logging.Handler):
             record - The log record to emit.
         """
         if self.handler:
+            # This is a potentially noisy warning that we started seeing because we
+            # are still not using pattern matching for metrics allow/block-listing.
+            # As a temporary work-around, we are dropping these messages at the handler
+            # level. We should, however, fix this issue by setting to True the
+            # `metrics_use_pattern_match` flag.
+            # More context: https://github.com/aws/amazon-mwaa-docker-images/issues/98
+            if (
+                "RemovedInAirflow3Warning: The basic metric validator will be deprecated"
+                in record.getMessage()
+            ):
+                return
             try:
                 self.handler.emit(record)  # type: ignore
                 self.sniff_errors(record)

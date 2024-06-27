@@ -5,6 +5,7 @@ on which the monitor is running.
 
 # Python imports
 import json
+import logging
 import os
 import signal
 from datetime import datetime, timedelta
@@ -80,6 +81,9 @@ BOTO_RETRY_CONFIGURATION = botocore.config.Config(  # type: ignore
 )
 
 CeleryTask = Dict[str, Any]
+
+
+logger = logging.getLogger(__name__)
 
 
 class CeleryStateUpdateAction(Enum):
@@ -241,7 +245,7 @@ def _cleanup_undead_process(process_id: int):
     :returns A tuple containing the number of process graceful successes, forceful
     successes, and failures, respectively.
     """
-    print(f"Cleaning up undead process with ID: {process_id}")
+    logger.info(f"Cleaning up undead process with ID: {process_id}")
 
     # For calculating behvaioural metrics.
     clean_undead_process_graceful_success = 0
@@ -252,13 +256,13 @@ def _cleanup_undead_process(process_id: int):
         os.kill(process_id, signal.SIGTERM)
         clean_undead_process_graceful_success += 1
     except OSError as sigterm_error:
-        print(f"Failed to SIGTERM process {process_id}. Error: {sigterm_error}")
+        logger.info(f"Failed to SIGTERM process {process_id}. Error: {sigterm_error}")
 
     try:
         os.kill(process_id, signal.SIGKILL)
         clean_undead_process_forceful_success += 1
     except OSError as sigkill_error:
-        print(f"Failed to SIGKILL process {process_id}. Error: {sigkill_error}")
+        logger.info(f"Failed to SIGKILL process {process_id}. Error: {sigkill_error}")
         clean_undead_process_forceful_failure += 1
 
     # Return metrics.
@@ -427,7 +431,7 @@ class WorkerTaskMonitor:
                     cleanup_celery_task,
                     CeleryStateUpdateAction.REMOVE,
                 )
-                print(f"Cleanup complete for celery task {cleanup_celery_task}.")
+                logger.info(f"Cleanup complete for celery task {cleanup_celery_task}.")
         current_cleanup_celery_tasks = _get_celery_tasks(self.cleanup_celery_state)
 
         # Cleanup abandoned SQS messages from the Celery SQS Channel.
@@ -518,7 +522,7 @@ class WorkerTaskMonitor:
         clean_celery_message_success = 0
         clean_celery_message_error_sqs_op = 0
 
-        print(
+        logger.info(
             "Cleaning up abandoned SQS message corresponding to task "
             f"state: {celery_task}"
         )
@@ -530,7 +534,7 @@ class WorkerTaskMonitor:
             celery_queue_details.get("url") if celery_queue_details else None
         )
         if not celery_queue_url:
-            print(
+            logger.info(
                 f"Unable to cleanup abandoned SQS message for task state {celery_task}."
                 " No default queue found."
             )
@@ -550,7 +554,7 @@ class WorkerTaskMonitor:
                 )
                 clean_celery_message_success += 1
             except botocore.exceptions.ClientError as error:  # type: ignore
-                print(
+                logger.info(
                     f"Unable to cleanup abandoned SQS message for task state {celery_task}."
                     f" Error: {error}"
                 )
