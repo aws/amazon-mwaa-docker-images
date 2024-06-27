@@ -211,6 +211,21 @@ class SidecarHealthCondition(ProcessCondition):
         if self.socket:
             self.socket.close()
 
+    def _generate_autorestart_plog(self):
+        """
+        Generate a processable log that the service can ingest to know that a restart
+        on an Airlfow worker/scheduler has happened and report health metrics.
+        """
+
+        # Unlike normal logs, plogs are ingested by the service to take various actions.
+        # Hence, we always use 'print', to avoid log level accidentally stopping them.
+        print(
+            generate_plog(
+                "AutoRestartLogsProcessor",
+                f"[{self.airflow_component}] Restarting process...",
+            )
+        )
+
     def _check(self, process_status: ProcessStatus) -> ProcessConditionResponse:
         """
         Execute the condition and return the response.
@@ -281,6 +296,9 @@ class SidecarHealthCondition(ProcessCondition):
                     "monitoring might not have been initialized yet.",
                 )
                 logger.info(response.message)
+
+        if not response.successful:
+            self._generate_autorestart_plog()
 
         return response
 
