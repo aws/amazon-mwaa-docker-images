@@ -100,6 +100,7 @@ def _configure_task_logging():
         LOGGING_CONFIG["loggers"]["airflow.task"].update(
             {
                 "level": log_level,
+                "propagate": False,
             }
         )
 
