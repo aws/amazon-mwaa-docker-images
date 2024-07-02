@@ -206,7 +206,7 @@ class SidecarHealthCondition(ProcessCondition):
 
     def close(self):
         """
-        Free the socket that was created
+        Free the socket that was created.
         """
         if self.socket:
             self.socket.close()
@@ -478,6 +478,12 @@ class AutoScalingCondition(ProcessCondition):
         """
         pass
 
+    def close(self):
+        """
+        Close the auto scaling condition.
+        """
+        self.worker_task_monitor.close()
+
     def _check(self, process_status: ProcessStatus) -> ProcessConditionResponse:
         """
         Execute the condition and return the response.
@@ -498,12 +504,11 @@ class AutoScalingCondition(ProcessCondition):
                 time.sleep(5)
                 if self.worker_task_monitor.is_worker_idle():
                     logger.info("Worker has been declared idle. Exiting.")
-                    self.worker_shutdown_handler(signal.SIGTERM, None)
-                    # After shutting down the worker, the worker process status still
-                    # comes out to be alive for a few milliseconds.  Sleeping for a few
-                    # seconds helps avoid unnecessarily killing the worker process
-                    # again.
-                    time.sleep(5)
+                    return ProcessConditionResponse(
+                        condition=self,
+                        successful=False,
+                        message="Worker has been declared idle. Exiting...",
+                    )
                 else:
                     logger.info(
                         "Worker picked up new tasks during shutdown, reviving worker."
@@ -518,11 +523,8 @@ class AutoScalingCondition(ProcessCondition):
                 "No need to check for idleness anymore."
             )
 
-        # The AutoScalingCondition isn't actually a condition, but more like a hook
-        # that we want to execute regularly, hence we always return a success state.
-        # TODO Perhaps we should, in a follow-up PR, rename ProcessCondition to
-        # ProcessHook as that is more appropriate name, since not all conditions here
-        # are actually conditions.
+        # The AutoScalingCondition always succeeds, unless the worker is idle in which
+        # case we let the worker shut down. This case is covered above.
         return ProcessConditionResponse(
             condition=self,
             successful=True,

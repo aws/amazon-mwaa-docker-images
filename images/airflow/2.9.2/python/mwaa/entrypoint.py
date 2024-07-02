@@ -256,7 +256,7 @@ async def install_user_requirements(cmd: str, environ: dict[str, str]):
                 "ERROR: pip installation exited with a non-zero error code. This could "
                 "be the result of package conflict. Notice that MWAA enforces a list "
                 "of critical packages, e.g. Airflow, Celery, among others, whose "
-                "version cannot be overriden by the customer as that can break our "
+                "version cannot be overridden by the customer as that can break our "
                 "setup. Please double check your requirements.txt file."
             )
     else:
@@ -401,10 +401,10 @@ def _is_protected_os_environ(key: str) -> bool:
     # Protected environment variables
     protected_vars = [
         # Environment ID and name are set by MWAA for
-        # informational purposes, and shouldn't be overriden by the customer.
+        # informational purposes, and shouldn't be overridden by the customer.
         "AIRFLOW_ENV_ID",
         "AIRFLOW_ENV_NAME",
-        # Airflow home directory cannot be overriden
+        # Airflow home directory cannot be overridden
         # as this will break MWAA setup.
         "AIRFLOW_HOME",
         # This is an internal MWAA identifier and
@@ -414,11 +414,11 @@ def _is_protected_os_environ(key: str) -> bool:
         # shouldn't be overridden manually.
         "AIRFLOW_VERSION",
         # The following two are needed by the IAM
-        # plugin and shouldn't be overriden.
+        # plugin and shouldn't be overridden.
         "AIRFLOW__AWS_MWAA__REDIRECT_URL",
         "JWT_PUBLIC_KEY",
         # This is set to match the endpoint created
-        # by MWAA and shouldn't be overriden.
+        # by MWAA and shouldn't be overridden.
         "AIRFLOW__WEBSERVER__BASE_URL",
         # Default AWS region set by MWAA and used for AWS services.
         "AWS_DEFAULT_REGION",
@@ -435,6 +435,9 @@ def _is_protected_os_environ(key: str) -> bool:
         "ECS_CONTAINER_METADATA_URI_V4",
         "AWS_CONTAINER_CREDENTIALS_RELATIVE_URI",
         "AWS_EXECUTION_ENV",
+        # We don't allow the customer to override the PYTHONPATH, as this can break our
+        # Python setup easily.
+        "PYTHONPATH",
         # We disable Python buffering as we want to make
         # sure all print statements are sent to us immediately
         # so we can control when to send them to CloudWatch Logs.

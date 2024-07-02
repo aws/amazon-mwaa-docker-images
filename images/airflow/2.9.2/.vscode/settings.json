@@ -5,8 +5,8 @@
     "**/.git": true,
     "**/.ruff_cache": true,
     "**/.venv": true,
-    "**/typestubs": true,
     "**/Thumbs.db": true,
+    "**/typestubs": true,
     "**/venv": true
   },
   "files.watcherExclude": {
@@ -15,8 +15,8 @@
     "**/.git": true,
     "**/.ruff_cache": true,
     "**/.venv": true,
-    "**/typestubs": true,
     "**/Thumbs.db": true,
+    "**/typestubs": true,
     "**/venv": true
   },
   "search.exclude": {
@@ -25,8 +25,8 @@
     "**/.git": true,
     "**/.ruff_cache": true,
     "**/.venv": true,
-    "**/typestubs": true,
     "**/Thumbs.db": true,
+    "**/typestubs": true,
     "**/venv": true
   },
   "python.defaultInterpreterPath": "./.venv/bin/python",
@@ -60,6 +60,7 @@
     "nonblock",
     "poolclass",
     "psycopg",
+    "PYTHONUNBUFFERED",
     "qualname",
     "resetdb",
     "setfl",
