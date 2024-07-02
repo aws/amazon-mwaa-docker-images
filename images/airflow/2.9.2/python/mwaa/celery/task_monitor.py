@@ -61,9 +61,9 @@ IDLENESS_CHECK_WARMUP_WAIT_PERIOD = timedelta(minutes=3)
 CLEANUP_ABANDONED_RESOURCES_WARMUP_WAIT_PERIOD = timedelta(minutes=3)
 # Allow at least 1 second between any two consecutive idleness checks.
 IDLENESS_CHECK_DELAY_PERIOD = timedelta(seconds=1)
-# The worker should be idle for at least 15 consecutive idleness check before being
+# The worker should be idle for at least 2 consecutive idleness check before being
 # declared idle.
-CONSECUTIVE_IDLENESS_CHECK_THRESHOLD = 15
+CONSECUTIVE_IDLENESS_CHECK_THRESHOLD = 2
 # Allow at least 1 minute between any two consecutive abandoned resource cleanups.
 CLEANUP_ABANDONED_RESOURCES_DELAY_PERIOD = timedelta(minutes=1)
 # If in the improbable case of the worker picking up new tasks after having paused its
