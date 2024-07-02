@@ -22,6 +22,11 @@ repository maintenance.
   enforce the use of a special command we provide called `safe-pip-install` for
   installing pip packages, which meets certain criteria for compatibility.
 
+- `trufflehog_scan.sh`: This script scans the repository for sensitive 
+  information or secrets using TruffleHog. It helps in identifying potential
+  security vulnerabilities by detecting secrets, such as API keys, passwords,
+  or other sensitive data, that may have been accidentally committed.
+
 ## Usage
 
 The easiest way to run all checks is to run the `run_all.py` script. If you would
