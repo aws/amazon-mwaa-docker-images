@@ -359,6 +359,7 @@ class WorkerTaskMonitor:
         shutdown procedure. Setting it to 1 will block anymore SQS messages from being
         consumed by the worker.
         """
+        logger.info("Pausing task consumption.")
         self.celery_work_consumption_block.buf[0] = 1
 
     def unpause_task_consumption(self):
@@ -368,6 +369,7 @@ class WorkerTaskMonitor:
         shutdown procedure. Setting it to 0 will reset the blockage created via
         pause_task_consumption method.
         """
+        logger.info("Unpausing task consumption.")
         self.celery_work_consumption_block.buf[0] = 0
 
     def reset_monitor_state(self):

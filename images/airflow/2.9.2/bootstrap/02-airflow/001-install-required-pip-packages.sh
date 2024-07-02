@@ -20,4 +20,4 @@ REQUIRED_PACKAGES=(
 
 # safe-pip-install always install all required packages, along with whatever
 # the user provides, hence we don't need to provide anything here.
-safe-pip-install "${REQUIRED_PACKAGES[@]}" 
+safe-pip-install -c "${AIRFLOW_CONSTRAINTS_FILE}" "${REQUIRED_PACKAGES[@]}" 

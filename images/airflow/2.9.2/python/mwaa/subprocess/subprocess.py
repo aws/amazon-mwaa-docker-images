@@ -10,6 +10,7 @@ helps support CloudWatch Logs integration.
 # Python imports
 from datetime import timedelta
 from subprocess import Popen
+from types import TracebackType
 from typing import Any, Dict, List
 import atexit
 import fcntl
@@ -98,6 +99,23 @@ class Subprocess:
         else:
             return ""
 
+    def __enter__(self):
+        """
+        Enter the runtime context related to this object.
+        """
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException],
+        exc_value: BaseException,
+        traceback: TracebackType,
+    ):
+        """
+        Exit the runtime context related to this object.
+        """
+        self.close()
+
     def start(
         self,
         auto_enter_execution_loop: bool = True,
@@ -123,12 +141,8 @@ class Subprocess:
         try:
             self.process = self._start_process()
 
-            # Create a function closure that knows how to cleanup
-            def cleanup():
-                if self.process is not None:
-                    self._kill_subprocess(self.process)
-
-            atexit.register(cleanup)
+            # Stop the process at exit.
+            atexit.register(self.close)
 
             self.process_status = ProcessStatus.RUNNING_WITH_NO_LOG_READ
 
@@ -152,13 +166,16 @@ class Subprocess:
     def stop(self):
         """Stop the subprocess."""
         if self.process:
-            self._kill_subprocess(self.process)
+            module_logger.info(f"Stopping process {self}.")
+            self._kill(self.process)
             self.process = None
 
     def close(self):
         """
         Close the subprocess.
         """
+        # Stop the process if not already stopped.
+        self.stop()
         for condition in self.conditions:
             condition.close()
 
@@ -198,16 +215,16 @@ class Subprocess:
         failed_conditions = self._check_process_conditions()
 
         if failed_conditions:
-            self.dual_logger.error(
+            module_logger.error(
                 f"""
-{self} failed due to the following conditions failing:
+{self} is being stopped due to the following:
 
 {os.linesep.join([' - ' + c.message for c in failed_conditions])}
 
 A SIGTERM followed potentially by a SIGKILL will be sent to terminate the process.
             """.strip()
             )
-            self._kill_subprocess(self.process)
+            self._kill(self.process)
             self.process_status = ProcessStatus.FINISHED_WITH_NO_MORE_LOGS
 
         return self.process_status != ProcessStatus.FINISHED_WITH_NO_MORE_LOGS
@@ -261,19 +278,19 @@ A SIGTERM followed potentially by a SIGKILL will be sent to terminate the proces
         else:
             return ProcessStatus.RUNNING_WITH_NO_LOG_READ
 
-    def _kill_subprocess(self, process: Popen[Any]):
+    def _kill(self, process: Popen[Any]):
         # Do nothing if process has already terminated
         if process.poll() is not None:
             return
         module_logger.info(f"Killing {str(self)}")
         try:
-            os.kill(process.pid, signal.SIGTERM)
+            process.terminate()
         except OSError:
             module_logger.error(
                 f"Failed to kill {str(self)} with a SIGTERM signal. "
                 f"Failed to send signal {signal.SIGTERM}. Sending SIGKILL..."
             )
-            os.kill(process.pid, signal.SIGKILL)
+            process.kill()
         sigterm_patience_interval_secs = self.sigterm_patience_interval.total_seconds()
         try:
             outs, _ = process.communicate(timeout=sigterm_patience_interval_secs)
@@ -285,7 +302,7 @@ A SIGTERM followed potentially by a SIGKILL will be sent to terminate the proces
                 f"respond to SIGTERM after {sigterm_patience_interval_secs} "
                 "seconds. Sending SIGKILL..."
             )
-            os.kill(process.pid, signal.SIGKILL)
+            process.kill()
         module_logger.info("Process killed. Return code %s" % process.returncode)
 
 
