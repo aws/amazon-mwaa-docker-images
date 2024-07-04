@@ -10,8 +10,8 @@ helps support CloudWatch Logs integration.
 # Python imports
 from datetime import timedelta
 from subprocess import Popen
-from types import TracebackType
-from typing import Any, Dict, List
+from types import FrameType, TracebackType
+from typing import Any, Callable, Dict, List, Optional
 import atexit
 import fcntl
 import logging
@@ -36,6 +36,9 @@ _SIGTERM_DEFAULT_PATIENCE_INTERVAL = timedelta(seconds=90)
 module_logger = logging.getLogger(__name__)
 
 
+_ALL_SUBPROCESSES: List["Subprocess"] = []
+
+
 class Subprocess:
     """A class for running sub-processes, monitoring them, and capturing their logs."""
 
@@ -44,10 +47,11 @@ class Subprocess:
         *,
         cmd: List[str],
         env: Dict[str, str] = {**os.environ},
-        logger: logging.Logger = module_logger,
+        process_logger: logging.Logger = module_logger,
         friendly_name: str | None = None,
         conditions: List[ProcessCondition] = [],
         sigterm_patience_interval: timedelta = _SIGTERM_DEFAULT_PATIENCE_INTERVAL,
+        on_sigterm: Optional[Callable[[], None]] = None,
     ):
         """
         Initialize the Subprocess object.
@@ -65,7 +69,7 @@ class Subprocess:
         """
         self.cmd = cmd
         self.env = env
-        self.process_logger = logger if logger else module_logger
+        self.process_logger = process_logger if process_logger else module_logger
         # The dual logger is used in case we want to publish logs using both, the logger
         # of the process and the logger of this Python module. This is useful in case
         # some messages are useful to both, the customer (typically the customer's
@@ -77,11 +81,27 @@ class Subprocess:
             *set([self.process_logger, module_logger]),
         )
         self.friendly_name = friendly_name
+        self.name = "Unknown"
         self.conditions = conditions
         self.sigterm_patience_interval = sigterm_patience_interval
+        self.on_sigterm = on_sigterm
 
         self.start_time: float | None = None
         self.process: Popen[Any] | None = None
+
+        self.is_shut_down = False
+
+        # Add this subprocess to the global list of subprocesses to be able to stop it
+        # in case of SIGTERM signal.
+        _ALL_SUBPROCESSES.append(self)
+
+    def _set_name(self):
+        if self.process and self.friendly_name:
+            self.name = f'Process "{self.friendly_name}" (PID {self.process.pid})'
+        elif self.process:
+            self.name = f"Process with PID {self.process.pid}"
+        else:
+            self.name = "Unknown"
 
     def __str__(self):
         """
@@ -92,12 +112,7 @@ class Subprocess:
 
         :return A string identifying the sub-process.
         """
-        if self.process and self.friendly_name:
-            return f"Process {self.friendly_name} (PID {self.process.pid})"
-        elif self.process:
-            return f"Process with PID {self.process.pid}"
-        else:
-            return ""
+        return self.name
 
     def __enter__(self):
         """
@@ -114,7 +129,7 @@ class Subprocess:
         """
         Exit the runtime context related to this object.
         """
-        self.close()
+        self.shutdown()
 
     def start(
         self,
@@ -139,10 +154,12 @@ class Subprocess:
             condition.prepare()
 
         try:
-            self.process = self._start_process()
+            self.process = self._create_python_subprocess()
+            # Stores a friendly name for the process for logging purposes.
+            self._set_name()
 
             # Stop the process at exit.
-            atexit.register(self.close)
+            atexit.register(self.shutdown)
 
             self.process_status = ProcessStatus.RUNNING_WITH_NO_LOG_READ
 
@@ -159,25 +176,6 @@ class Subprocess:
                 f"for command '{self.cmd}': {ex}",
                 exc_info=sys.exc_info(),
             )
-
-            # TODO Create a handler that can be used to hook the code that gracefully
-            # shutdowns the worker.
-
-    def stop(self):
-        """Stop the subprocess."""
-        if self.process:
-            module_logger.info(f"Stopping process {self}.")
-            self._kill(self.process)
-            self.process = None
-
-    def close(self):
-        """
-        Close the subprocess.
-        """
-        # Stop the process if not already stopped.
-        self.stop()
-        for condition in self.conditions:
-            condition.close()
 
     @throttle(60)  # so we don't make excessive calls to process conditions
     def _check_process_conditions(self) -> List[ProcessConditionResponse]:
@@ -202,7 +200,8 @@ class Subprocess:
         :return: True if the process is still running and/or there are more logs to read.
         """
         if not self.process:
-            raise RuntimeError("Process is not started")
+            # Process is not running anymore.
+            return False
 
         if self.process_status == ProcessStatus.FINISHED_WITH_NO_MORE_LOGS:
             # The process has finished and there are no more logs to read so we
@@ -211,25 +210,35 @@ class Subprocess:
 
         self.process_status = self._capture_output_line_from_process(self.process)
 
-        # Filter out the unsuccessful conditions
-        failed_conditions = self._check_process_conditions()
+        process_completed_and_logs_processed = (
+            self.process_status == ProcessStatus.FINISHED_WITH_NO_MORE_LOGS
+        )
 
-        if failed_conditions:
-            module_logger.error(
-                f"""
-{self} is being stopped due to the following:
+        if process_completed_and_logs_processed:
+            # We are done; call shutdown to ensure that we free all resources.
+            self.shutdown()
+        elif self.process_status in [
+            ProcessStatus.RUNNING_WITH_NO_LOG_READ,
+            ProcessStatus.RUNNING_WITH_LOG_READ,
+        ]:
+            # The process is still running, so we need to check conditions.
+            failed_conditions = self._check_process_conditions()
 
-{os.linesep.join([' - ' + c.message for c in failed_conditions])}
+            if failed_conditions:
+                module_logger.warning(
+                    f"""
+{self} is being stopped due to the following reason(s): {' '.join([
+    f'{i+1}) {c.message}' for i, c in enumerate(failed_conditions)
+])}
+""".strip()
+                )
+                self.shutdown()
+                self.process_status = ProcessStatus.FINISHED_WITH_NO_MORE_LOGS
+                process_completed_and_logs_processed = True
 
-A SIGTERM followed potentially by a SIGKILL will be sent to terminate the process.
-            """.strip()
-            )
-            self._kill(self.process)
-            self.process_status = ProcessStatus.FINISHED_WITH_NO_MORE_LOGS
+        return not process_completed_and_logs_processed
 
-        return self.process_status != ProcessStatus.FINISHED_WITH_NO_MORE_LOGS
-
-    def _start_process(self) -> Popen[Any]:
+    def _create_python_subprocess(self) -> Popen[Any]:
         module_logger.info(f"Starting new subprocess for command '{self.cmd}'...")
         self.start_time = time.time()
         process = subprocess.Popen(
@@ -278,32 +287,52 @@ A SIGTERM followed potentially by a SIGKILL will be sent to terminate the proces
         else:
             return ProcessStatus.RUNNING_WITH_NO_LOG_READ
 
-    def _kill(self, process: Popen[Any]):
-        # Do nothing if process has already terminated
-        if process.poll() is not None:
+    def shutdown(self):
+        """Stop and close the subprocess and its resources."""
+        if self.is_shut_down:
+            # Already shut down.
             return
-        module_logger.info(f"Killing {str(self)}")
+        self.is_shut_down = True
+
+        if self.process and self.process_status in [
+            ProcessStatus.RUNNING_WITH_NO_LOG_READ,
+            ProcessStatus.RUNNING_WITH_LOG_READ,
+        ]:
+            self._shutdown_python_subprocess(self.process)
+        self.process = None
+
+        for condition in self.conditions:
+            condition.close()
+
+    def _shutdown_python_subprocess(self, process: Popen[Any]):
+        # Do nothing if process has already terminated
+        if self.process is None or self.process.poll() is not None:
+            return
+        module_logger.info(f"Shutting down {self}")
         try:
-            process.terminate()
+            module_logger.info(f"Sending SIGTERM to {self}")
+            self.process.terminate()
+            action_taken = "terminated"
         except OSError:
-            module_logger.error(
-                f"Failed to kill {str(self)} with a SIGTERM signal. "
-                f"Failed to send signal {signal.SIGTERM}. Sending SIGKILL..."
-            )
-            process.kill()
+            module_logger.error(f"Failed to send SIGTERM to {self}. Sending SIGKILL...")
+            self.process.kill()
+            action_taken = "killed"
         sigterm_patience_interval_secs = self.sigterm_patience_interval.total_seconds()
         try:
-            outs, _ = process.communicate(timeout=sigterm_patience_interval_secs)
+            outs, _ = self.process.communicate(timeout=sigterm_patience_interval_secs)
             if outs:
                 self.process_logger.info(outs.decode("utf-8"))
         except subprocess.TimeoutExpired:
             module_logger.error(
-                f"Failed to kill {str(self)} with a SIGTERM signal. Process didn't "
+                f"Failed to kill {self} with a SIGTERM signal. Process didn't "
                 f"respond to SIGTERM after {sigterm_patience_interval_secs} "
                 "seconds. Sending SIGKILL..."
             )
-            process.kill()
-        module_logger.info("Process killed. Return code %s" % process.returncode)
+            self.process.kill()
+            action_taken = "killed"
+        module_logger.info(
+            f"Process {action_taken}. Return code is {self.process.returncode}."
+        )
 
 
 def run_subprocesses(
@@ -351,15 +380,42 @@ def run_subprocesses(
 
         if finished_essential_processes:
             names = [str(p) for p in finished_essential_processes]
-            module_logger.error(
+            module_logger.warning(
                 f"The following essential process(es) exited: {', '.join(names)}. "
                 "Terminating other subprocesses..."
             )
             for s in subprocesses:
-                s.stop()
+                s.shutdown()
             break
 
         if not read_some_logs:
             # We didn't read any logs from any process. Sleep for a bit so we don't
             # enter into a tight loop that spikes the CPU.
             time.sleep(1)
+
+
+def _sigterm_handler(signal: int, frame: Optional[FrameType]):
+    # TODO The shutdown() method blocks for up to 90 seconds (as specified by
+    # _SIGTERM_DEFAULT_PATIENCE_INTERVAL), which is problematic with multiple processes,
+    # especially on Fargate (used by MWAA), as the total time could exceed Fargate's
+    # 2-minute limit before SIGKILL.
+    #
+    # Currently, however, only the worker takes a long time to shut down, and in that
+    # case we don't have multiple processes running. In the future, however, we need to
+    # convert this class to use asyncio to send SIGTERMs in parallel. This work will be
+    # tracked here: https://github.com/aws/amazon-mwaa-docker-images/issues/110.
+
+    module_logger.info("Caught SIGTERM, shutting down running processes...")
+
+    while _ALL_SUBPROCESSES:
+        p = _ALL_SUBPROCESSES.pop()
+        if not p.is_shut_down and p.on_sigterm:
+            p.on_sigterm()
+        p.shutdown()
+
+
+# TODO We need to make sure that no other part in the code base makes use of this method
+# as this will remove our handler. We can do this via a quality check script that scans
+# our code and ensures this, similar to the pip_install_check.py script. This will be
+# tracked here: https://github.com/aws/amazon-mwaa-docker-images/issues/111
+signal.signal(signal.SIGTERM, _sigterm_handler)

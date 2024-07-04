@@ -87,12 +87,6 @@ RUN chmod +x /bootstrap/02-airflow/001-install-required-pip-packages.sh
 USER airflow
 RUN /bootstrap/02-airflow/001-install-required-pip-packages.sh
 
-USER root
-COPY ./bootstrap/02-airflow/999-licensecheck.py /bootstrap/02-airflow/999-licensecheck.py
-RUN chmod +x /bootstrap/02-airflow/999-licensecheck.py
-USER airflow
-RUN /bootstrap/02-airflow/999-licensecheck.py
-
 # Revert the PATH and user.
 ENV PATH=${PATH_DEFAULT}
 USER root

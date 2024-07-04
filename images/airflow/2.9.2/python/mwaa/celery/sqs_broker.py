@@ -408,9 +408,6 @@ class Channel(virtual.Channel):
         if self.idle_worker_monitoring_enabled:
             logger.info('Idle working monitoring will be enabled because '
                         'MWAA__CORE__TASK_MONITORING_ENABLED is set to true.')
-        else:
-            logger.info('Idle working monitoring will NOT be enabled because '
-                        'MWAA__CORE__TASK_MONITORING_ENABLED is not set to true.')
 
         # These are the shared memory blocks which the Worker Task Monitor and the Celery SQS Channel uses to share the internal
         # state of current work load across the two processes.

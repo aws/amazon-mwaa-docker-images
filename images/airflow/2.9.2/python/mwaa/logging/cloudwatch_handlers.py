@@ -177,10 +177,7 @@ class BaseLogHandler(logging.Handler):
             # level. We should, however, fix this issue by setting to True the
             # `metrics_use_pattern_match` flag.
             # More context: https://github.com/aws/amazon-mwaa-docker-images/issues/98
-            if (
-                "RemovedInAirflow3Warning: The basic metric validator will be deprecated"
-                in record.getMessage()
-            ):
+            if "The basic metric validator will be deprecated" in record.getMessage():
                 return
             try:
                 self.handler.emit(record)  # type: ignore
