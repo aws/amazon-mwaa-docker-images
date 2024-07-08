@@ -3,20 +3,21 @@
 ## Overview
 
 This repository contains the Docker Images that [Amazon
-MWAA](https://aws.amazon.com/managed-workflows-for-apache-airflow/) will use in future versions of
-Airflow. Eventually, we will deprecate
-[aws-mwaa-local-runner](https://github.com/aws/aws-mwaa-local-runner) in favour of this package.
-However, at this point, this repository is still under development.
+MWAA](https://aws.amazon.com/managed-workflows-for-apache-airflow/) uses to run Airflow.
+
+You can also use it locally if you want to run a MWAA-like environment for testing, experimentation,
+and development purposes.
+
+Currently, Airflow v2.9.2 is supported. Future versions in parity with Amazon MWAA will be added as
+well. _Notice, however, that we do not plan to support previous Airflow versions supported by MWAA._
 
 ## Using the Airflow Image
 
-Currently, Airflow v2.9.2 is supported. Future versions in parity with Amazon MWAA will be added.
-
 To experiment with the image using a vanilla Docker setup, follow these steps:
 
-0. Ensure you have:
+0. _(Prerequisites)_ Ensure you have:
    - Python 3.11 or later.
-   - Docker and Docker Compose.
+   - [Docker](https://docs.docker.com/desktop/) and [Docker Compose](https://docs.docker.com/compose/install/)
 1. Clone this repository.
 2. This repository makes use of Python virtual environments. To create them, from the root of the
    package, execute the following command:
@@ -25,13 +26,7 @@ To experiment with the image using a vanilla Docker setup, follow these steps:
 python3 create_venvs.py
 ```
 
-3. Build the `fake-statsd-server` image:
-```
-cd <amazon-mwaa-docker-images path>/images/fake-statsd-server
-./build.sh
-```
-
-4. Build the Airflow v2.9.2 Docker image using:
+3. Build the Airflow v2.9.2 Docker image using:
 
 ```
 cd <amazon-mwaa-docker-images path>/images/airflow/2.9.2
@@ -40,17 +35,7 @@ cd <amazon-mwaa-docker-images path>/images/airflow/2.9.2
 
 Airflow should be up and running now. You can access the web server on your localhost on port 8080.
 
-Optionally, if you also want to publish the image to ECR, you can execute the following command:
-
-```
-./push_to_ecr.sh
-```
-
-Notice that this command requires you to have valid AWS credentials in your `~/.aws/credentials`
-file or environment variables, and that the credentials you use have the necessary permissions to
-create an ECR repository and push a Docker image.
-
-### Note on the Generated Docker Images
+### Generated Docker Images
 
 When you build the Docker images of a certain Airflow version, using either `build.sh` or `run.sh`
 (which automatically also calls `build.sh` for you), multiple Docker images will actually be
