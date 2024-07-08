@@ -99,6 +99,7 @@ class ProcessCondition:
         """
         self.name = name if name else self.__class__.__name__
         self.history: Deque[ProcessConditionResponse] = deque(maxlen=max_history)
+        self.closed = False
 
     def prepare(self):
         """
@@ -110,6 +111,12 @@ class ProcessCondition:
         """
         Free any resources obtained by the condition.
         """
+        if self.closed:
+            return
+        self._close()
+        self.closed = True
+
+    def _close(self):
         pass
 
     def __enter__(self) -> ProcessCondition:
@@ -128,7 +135,7 @@ class ProcessCondition:
         """
         Exit the runtime context related to this object.
         """
-        self.close()
+        self._close()
 
     def check(self, process_status: ProcessStatus) -> ProcessConditionResponse:
         """
@@ -204,7 +211,7 @@ class SidecarHealthCondition(ProcessCondition):
         self.socket.bind(("127.0.0.1", self.port))
         self.socket.settimeout(_SOCKET_TIMEOUT_SECONDS)
 
-    def close(self):
+    def _close(self):
         """
         Free the socket that was created.
         """
@@ -458,19 +465,15 @@ class AutoScalingCondition(ProcessCondition):
     def __init__(
         self,
         worker_task_monitor: WorkerTaskMonitor,
-        worker_shutdown_handler: Callable[[int, Optional[FrameType]], None],
     ):
         """
         Initialize the instance.
 
         :param worker_task_monitor: The worker task monitor. See the implementation of
           WorkerTaskMonitor for more details on what this monitor does.
-        :param worker_shutdown_handler: A handler for gracefully shutting down a worker
-          in case it is idle.
         """
         super().__init__()
         self.worker_task_monitor = worker_task_monitor
-        self.worker_shutdown_handler = worker_shutdown_handler
 
     def prepare(self):
         """
@@ -478,7 +481,7 @@ class AutoScalingCondition(ProcessCondition):
         """
         pass
 
-    def close(self):
+    def _close(self):
         """
         Close the auto scaling condition.
         """
@@ -513,7 +516,7 @@ class AutoScalingCondition(ProcessCondition):
                     logger.info(
                         "Worker picked up new tasks during shutdown, reviving worker."
                     )
-                    self.worker_task_monitor.unpause_task_consumption()
+                    self.worker_task_monitor.resume_task_consumption()
                     self.worker_task_monitor.reset_monitor_state()
             else:
                 logger.info(f"Worker process is NOT idle. No action is needed.")

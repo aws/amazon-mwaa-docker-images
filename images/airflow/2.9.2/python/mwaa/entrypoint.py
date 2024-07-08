@@ -27,14 +27,13 @@ logging.config.dictConfig(LOGGING_CONFIG)
 from datetime import timedelta
 from functools import cache, partial
 from types import FrameType
-from typing import Dict, List, Optional
+from typing import Callable, Dict, List, Optional
 import asyncio
 import json
 import logging
 import os
 import re
 import shlex
-import signal
 import sys
 import time
 
@@ -244,7 +243,7 @@ async def install_user_requirements(cmd: str, environ: dict[str, str]):
         pip_process = Subprocess(
             cmd=["safe-pip-install", "-r", requirements_file, *extra_args],
             env=environ,
-            logger=subprocess_logger,
+            process_logger=subprocess_logger,
             conditions=[
                 TimeoutCondition(USER_REQUIREMENTS_MAX_INSTALL_TIME),
             ],
@@ -287,7 +286,7 @@ def execute_startup_script(cmd: str, environ: Dict[str, str]) -> Dict[str, str]:
         startup_script_process = Subprocess(
             cmd=["/bin/bash", EXECUTE_USER_STARTUP_SCRIPT_PATH],
             env=environ,
-            logger=PROCESS_LOGGER,
+            process_logger=PROCESS_LOGGER,
             conditions=[
                 TimeoutCondition(STARTUP_SCRIPT_MAX_EXECUTION_TIME),
             ],
@@ -303,7 +302,7 @@ def execute_startup_script(cmd: str, environ: Dict[str, str]) -> Dict[str, str]:
         verification_process = Subprocess(
             cmd=["/bin/bash", POST_STARTUP_SCRIPT_VERIFICATION_PATH],
             env=environ,
-            logger=PROCESS_LOGGER,
+            process_logger=PROCESS_LOGGER,
             conditions=[
                 TimeoutCondition(STARTUP_SCRIPT_MAX_EXECUTION_TIME),
             ],
@@ -374,6 +373,7 @@ def create_airflow_subprocess(
     logger_name: str,
     friendly_name: str,
     conditions: List[ProcessCondition] = [],
+    on_sigterm: Optional[Callable[[], None]] = None,
 ):
     """
     Create a subprocess for an Airflow command.
@@ -391,9 +391,10 @@ def create_airflow_subprocess(
     return Subprocess(
         cmd=["airflow", *args],
         env=environ,
-        logger=logger,
+        process_logger=logger,
         friendly_name=friendly_name,
         conditions=conditions,
+        on_sigterm=on_sigterm,
     )
 
 
@@ -478,41 +479,6 @@ def _get_sidecar_health_port():
         return SIDECAR_DEFAULT_HEALTH_PORT
 
 
-def _initiate_worker_shutdown(
-    worker_logger: logging.Logger,
-    worker_task_monitor: Optional[WorkerTaskMonitor],
-    environ: Dict[str, str],
-    signal: int,
-    frame: Optional[FrameType],
-) -> None:
-    # First we pause the consumption and wait 5 seconds in order for any in-flight
-    # messages in the SQS broker layer to be processed and corresponding Airflow task
-    # instance to be created. Once that is done, we can start gracefully shutting down
-    # the worker. Without this, the SQS broker may consume messages from the queue,
-    # terminate before creating the corresponding Airflow task instance and abandon SQS
-    # messages in-flight.
-    if worker_task_monitor:
-        worker_task_monitor.pause_task_consumption()
-        time.sleep(5)
-        task_count = worker_task_monitor.get_current_task_count()
-        if task_count > 0:
-            logger.warning("SIGTERM received for a worker with non-zero ongoing tasks.")
-        stats = get_statsd()
-        stats.incr(f"mwaa.task_monitor.interrupted_tasks_at_shutdown", task_count)  # type: ignore
-
-    logger.info("Caught SIGTERM, shutting down worker")
-
-    # Stop celery worker in a subprocess
-    worker_logger.info("Initiating Airflow Worker shutdown...")
-    Subprocess(
-        cmd=["airflow", "celery", "stop"],
-        env=environ,
-        logger=worker_logger,
-        friendly_name="airflow celery stop",
-    ).start()
-    worker_logger.info("Airflow Worker shutdown initiated.")
-
-
 def _run_airflow_worker(environ: Dict[str, str]):
     conditions: List[ProcessCondition] = [
         AirflowDbReachableCondition(airflow_component="worker"),
@@ -525,8 +491,6 @@ def _run_airflow_worker(environ: Dict[str, str]):
                 port=_get_sidecar_health_port(),
             ),
         )
-
-    worker_logger = logging.getLogger(WORKER_LOGGER_NAME)
 
     # Dynamic workers have the MWAA__CORE__TASK_MONITORING_ENABLED set to 'true'.
     # This will be used to determine if idle worker checks are to be enabled.
@@ -541,18 +505,19 @@ def _run_airflow_worker(environ: Dict[str, str]):
         logger.info("Worker task monitoring is NOT enabled.")
         worker_task_monitor = None
 
-    worker_shutdown_handler = partial(
-        _initiate_worker_shutdown,
-        worker_logger,
-        worker_task_monitor,
-        environ,
-    )
-    signal.signal(signal.SIGTERM, worker_shutdown_handler)
-
     if worker_task_monitor:
-        conditions.append(
-            AutoScalingCondition(worker_task_monitor, worker_shutdown_handler)
-        )
+        conditions.append(AutoScalingCondition(worker_task_monitor))
+
+    def on_sigterm() -> None:
+        # When a SIGTERM is caught, we pause the consumption and wait 5 seconds in order
+        # for any in-flight messages in the SQS broker layer to be processed and
+        # corresponding Airflow task instance to be created. Once that is done, we can
+        # start gracefully shutting down the worker. Without this, the SQS broker may
+        # consume messages from the queue, terminate before creating the corresponding
+        # Airflow task instance and abandon SQS messages in-flight.
+        if worker_task_monitor:
+            worker_task_monitor.pause_task_consumption()
+            time.sleep(5)
 
     # Finally, run the worker subprocess.
     run_subprocesses(
@@ -563,6 +528,7 @@ def _run_airflow_worker(environ: Dict[str, str]):
                 logger_name=WORKER_LOGGER_NAME,
                 friendly_name="worker",
                 conditions=conditions,
+                on_sigterm=on_sigterm,
             )
         ]
     )
@@ -721,11 +687,17 @@ async def main() -> None:
         case "spy":
             while True:
                 time.sleep(1)
-        case "resetdb":
-            # Perform the resetdb functionality
-            await airflow_db_reset(environ)
-            # After resetting the db, initialize it again
-            await airflow_db_init(environ)
+        # Disabling the "resetdb" command for now, as it is pretty risky to have such
+        # a destructive command adjacent to other commands used in production; a simple
+        # code mistake can result in wiping out production databases. Instead, testing
+        # commands like this should be in a completely isolated boundary, with
+        # protection mechanism to ensure they are not accidentally executed in
+        # production.
+        # case "resetdb":
+        #     # Perform the resetdb functionality
+        #     await airflow_db_reset(environ)
+        #     # After resetting the db, initialize it again
+        #     await airflow_db_init(environ)
         case "scheduler" | "webserver" | "worker":
             run_airflow_command(command, environ)
         case _:

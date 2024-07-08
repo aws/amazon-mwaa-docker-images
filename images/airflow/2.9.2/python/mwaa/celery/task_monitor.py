@@ -247,7 +247,7 @@ def _cleanup_undead_process(process_id: int):
     """
     logger.info(f"Cleaning up undead process with ID: {process_id}")
 
-    # For calculating behvaioural metrics.
+    # For calculating behavioral metrics.
     clean_undead_process_graceful_success = 0
     clean_undead_process_forceful_success = 0
     clean_undead_process_forceful_failure = 0
@@ -308,6 +308,8 @@ class WorkerTaskMonitor:
 
         self.stats = get_statsd()
 
+        self.closed = False
+
     def is_worker_idle(self):
         """
         Checks if the worker has gone idle or not. For this to happen, a worker will
@@ -315,6 +317,14 @@ class WorkerTaskMonitor:
 
         :return: True if the worker has gone idle. False otherwise.
         """
+
+        if self.closed:
+            logger.warning(
+                "Using is_worker_idle() of a task monitor after it has been closed."
+            )
+            # Since the worker task monitor has been closed, we are going to assume
+            # the worker is idle.
+            return True
 
         # If the warmup timestamp has not expired yet, then we treat worker as busy.
         if datetime.now(tz=tz.tzutc()) < self.idleness_check_warmup_timestamp:
@@ -327,7 +337,7 @@ class WorkerTaskMonitor:
             datetime.now(tz=tz.tzutc()) + IDLENESS_CHECK_DELAY_PERIOD
         )
 
-        idleness_check_result = self.get_current_task_count() == 0
+        idleness_check_result = self._get_current_task_count() == 0
         self.consecutive_idleness_count = (
             self.consecutive_idleness_count + 1 if idleness_check_result else 0
         )
@@ -336,7 +346,7 @@ class WorkerTaskMonitor:
         )
         return self.last_idleness_check_result
 
-    def get_current_task_count(self):
+    def _get_current_task_count(self):
         """
         Get count of tasks currently getting executed on the worker. Any task present in
         both celery_state and cleanup_celery_state is considered as not running on the
@@ -359,24 +369,43 @@ class WorkerTaskMonitor:
         shutdown procedure. Setting it to 1 will block anymore SQS messages from being
         consumed by the worker.
         """
+        if self.closed:
+            logger.warning(
+                "Using pause_task_consumption() of a task monitor "
+                "after it has been closed."
+            )
+            return
+
         logger.info("Pausing task consumption.")
         self.celery_work_consumption_block.buf[0] = 1
 
-    def unpause_task_consumption(self):
+    def resume_task_consumption(self):
         """
         celery_work_consumption_block represents the toggle switch for accepting any
         more incoming SQS message from the celery queue which will be used during the
         shutdown procedure. Setting it to 0 will reset the blockage created via
         pause_task_consumption method.
         """
+        if self.closed:
+            logger.warning(
+                "Using resume_task_consumption() of a task monitor "
+                "after it has been closed."
+            )
+            return
         logger.info("Unpausing task consumption.")
         self.celery_work_consumption_block.buf[0] = 0
 
     def reset_monitor_state(self):
         """
         This will be used in case the SQS message consumption on the worker process is
-        unpaused.  We backoff for 1 min before checking for idleness again.
+        unpaused. We backoff for 1 min before checking for idleness again.
         """
+        if self.closed:
+            logger.warning(
+                "Using reset_monitor_state() of a task monitor "
+                "after it has been closed."
+            )
+            return
         self.idleness_check_warmup_timestamp = (
             datetime.now(tz=tz.tzutc()) + IDLENESS_RESET_BACKOFF_PERIOD
         )
@@ -386,6 +415,12 @@ class WorkerTaskMonitor:
         Cleanup any abandoned SQS messages from the Celery SQS Channel and undead/zombie
         task processes.
         """
+        if self.closed:
+            logger.warning(
+                "Using cleanup_abandoned_resources() of a task monitor "
+                "after it has been closed."
+            )
+            return
 
         # If the warmup timestamp has not expired yet, then we do nothing.
         if datetime.now(tz=tz.tzutc()) < self.cleanup_check_warmup_timestamp:
@@ -410,16 +445,34 @@ class WorkerTaskMonitor:
         warning message showing up in the customer side logs causing unnecessary
         confusion.
         """
+        if self.closed:
+            # Already closed.
+            return
+
+        logger.info("Closing task monitor...")
+
+        # Report a metric about the number of current task, and a warning in case this
+        # is greater than zero.
+        task_count = self._get_current_task_count()
+        if task_count > 0:
+            logger.warning("There are non-zero ongoing tasks.")
+        self.stats.incr(f"mwaa.task_monitor.interrupted_tasks_at_shutdown", task_count)  # type: ignore
+
+        # Close shared memory objects.
         self.celery_state.close()
         self.celery_work_consumption_block.close()
         self.cleanup_celery_state.close()
+
+        self.closed = True
+
+        logger.info("Task monitor closed.")
 
     def _return_all_abandoned_task_to_queue(
         self,
         current_celery_tasks: List[CeleryTask],
         process_id_map: Dict[str, int],
     ):
-        # For calculating behvaioural metrics.
+        # For calculating behavioral metrics.
         clean_celery_message_error_no_queue = 0
         clean_celery_message_success = 0
         clean_celery_message_error_sqs_op = 0
