@@ -10,7 +10,7 @@ pip==24.0
 pydocstyle==6.3.0
 pyright==1.1.360
 ruff==0.4.2
-setuptools==69.5.1
+setuptools==70.0.0
 snowballstemmer==2.2.0
 trufflehog==2.2.1
 wheel==0.43.0
