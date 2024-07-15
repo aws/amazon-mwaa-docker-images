@@ -25,8 +25,7 @@ logging.config.dictConfig(LOGGING_CONFIG)
 
 # Python imports
 from datetime import timedelta
-from functools import cache, partial
-from types import FrameType
+from functools import cache
 from typing import Callable, Dict, List, Optional
 import asyncio
 import json
@@ -66,7 +65,6 @@ from mwaa.subprocess.conditions import (
 from mwaa.subprocess.subprocess import Subprocess, run_subprocesses
 from mwaa.utils.cmd import run_command
 from mwaa.utils.dblock import with_db_lock
-from mwaa.utils.statsd import get_statsd
 
 
 # Usually, we pass the `__name__` variable instead as that defaults to the
@@ -189,16 +187,28 @@ def create_queue() -> None:
             raise e
 
 
-def _requirements_has_constraints(requirements_file: str):
-    with open(requirements_file, "r") as file:
-        for line in file:
-            # Notice that this regex check will also match lines with commented out
-            # constraints flag. This is intentional as a mechanism for users who
-            # want to avoid enforcing the default Airflow constraints, yet don't want
-            # to provide a constraints file.
-            if re.search(r"-c |--constraint ", line):
-                return True
+def _read_requirements_file(requirements_file: str) -> str:
+    # Use pip's `auto_decode` method to make sure we read the contents of the
+    # requirements.txt file exactly like they do.
+    # NOTE It is not ideal to use an internal function from another library, but
+    # the alternative would be to copy their code, but that has license implication
+    # and can get outdated. Since we rely on pip anyway, the harm from accepting this
+    # bad practice is minimized.
+    from pip._internal.utils.encoding import auto_decode
 
+    with open(requirements_file, "rb") as f:
+        return auto_decode(f.read())
+
+
+def _requirements_has_constraints(requirements_file: str):
+    content = _read_requirements_file(requirements_file)
+    for line in content.splitlines():
+        # Notice that this regex check will also match lines with commented out
+        # constraints flag. This is intentional as a mechanism for users who want to
+        # avoid enforcing the default Airflow constraints, yet don't want to provide a
+        # constraints file.
+        if re.search(r"-c |--constraint ", line):
+            return True
     return False
 
 
@@ -232,12 +242,19 @@ async def install_user_requirements(cmd: str, environ: dict[str, str]):
         )
 
         extra_args = []
-        if not _requirements_has_constraints(requirements_file):
+        try:
+            if not _requirements_has_constraints(requirements_file):
+                subprocess_logger.warning(
+                    "WARNING: Constraints should be specified for requirements.txt. "
+                    f"Please see {MWAA_DOCS_REQUIREMENTS_GUIDE}"
+                )
+                subprocess_logger.warning("Forcing local constraints")
+                extra_args = ["-c", os.environ["AIRFLOW_CONSTRAINTS_FILE"]]
+        except:
             subprocess_logger.warning(
-                "WARNING: Constraints should be specified for requirements.txt. "
-                f"Please see {MWAA_DOCS_REQUIREMENTS_GUIDE}"
+                "Cannot determine whether the requirements.txt file has constraints "
+                "or not; forcing local constraints."
             )
-            subprocess_logger.warning("Forcing local constraints")
             extra_args = ["-c", os.environ["AIRFLOW_CONSTRAINTS_FILE"]]
 
         pip_process = Subprocess(
