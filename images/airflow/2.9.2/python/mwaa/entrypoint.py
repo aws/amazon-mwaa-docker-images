@@ -545,8 +545,8 @@ def _get_airflow_scheduler_subprocesses(environ: Dict[str, str], conditions: Lis
     Get the scheduler subproceses: scheduler, dag-processor, and triggerer.
     
     :param environ: A dictionary containing the environment variables.
-    :param conditions: A list of process conditions.
-    :returns: A list of conditions for the given Airflow command.
+    :param conditions: A list of subprocess conditions.
+    :returns: Scheduler subprocesses.
     """
     return [
             create_airflow_subprocess(
@@ -566,7 +566,7 @@ def _get_airflow_scheduler_subprocesses(environ: Dict[str, str], conditions: Lis
 
 def _get_conditions(airflow_cmd: str):
     """
-    Get healthcheck conditions for the given Airflow command.
+    Get conditions for the given Airflow command.
     
     :param airflow_cmd: The command to get conditions for, e.g. "scheduler"
     :returns: A list of conditions for the given Airflow command.
