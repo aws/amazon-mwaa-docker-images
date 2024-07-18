@@ -199,7 +199,8 @@ def _configure():
             logging_enabled=logging_enabled,
         )
 
-
+# Airflow has a dedicated logger for the DAG Processor Manager
+DAG_PROCESSOR_LOGGER_NAME = "airflow.processor_manager"
 SCHEDULER_LOGGER_NAME = "mwaa.scheduler"
 SCHEDULER_REQUIREMENTS_LOGGER_NAME = "mwaa.scheduler_requirements"
 SCHEDULER_STARTUP_LOGGER_NAME = "mwaa.scheduler_startup"
