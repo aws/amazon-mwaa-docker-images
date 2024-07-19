@@ -272,6 +272,14 @@ def _get_essential_airflow_api_config() -> Dict[str, str]:
     if os.environ.get("MWAA__CORE__AUTH_TYPE", "").lower() == "none":
         api_config["AIRFLOW__API__AUTH_BACKENDS"] = "airflow.api.auth.backend.default"
 
+    if os.environ.get("MWAA__API__ALLOWED_HEADERS"):
+        api_config["AIRFLOW__API__ACCESS_CONTROL_ALLOW_HEADERS"] = os.environ.get("MWAA__API__ALLOWED_HEADERS") 
+    if os.environ.get("MWAA__API__ALLOWED_METHODS"):
+        api_config["AIRFLOW__API__ACCESS_CONTROL_ALLOW_METHODS"] = os.environ.get("MWAA__API__ALLOWED_METHODS")
+    if os.environ.get("MWAA__API__ALLOWED_ORIGINS"):
+        api_config["AIRFLOW__API__ACCESS_CONTROL_ALLOW_ORIGINS"] = os.environ.get("MWAA__API__ALLOWED_ORIGINS")
+
+
     return api_config
 
 
