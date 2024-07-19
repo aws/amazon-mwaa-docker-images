@@ -23,6 +23,7 @@ jobs:
           dnf update -y
           dnf install -y \
             gcc \
+            git \
             gzip \
             libcurl-devel \
             postgresql-devel \
@@ -38,6 +39,9 @@ jobs:
 
       - name: Check out code...
         uses: actions/checkout@v2
+
+      - name: Configure Git to allow the current directory as safe
+        run: git config --global --add safe.directory /__w/amazon-mwaa-docker-images/amazon-mwaa-docker-images
 
       - name: Create the necessary Python virtual environments...
         run: python3.11 ./create_venvs.py
