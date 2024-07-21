@@ -259,7 +259,6 @@ async def install_user_requirements(cmd: str, environ: dict[str, str]):
 
         pip_process = Subprocess(
             cmd=["safe-pip-install", "-r", requirements_file, *extra_args],
-            env=environ,
             process_logger=subprocess_logger,
             conditions=[
                 TimeoutCondition(USER_REQUIREMENTS_MAX_INSTALL_TIME),
@@ -683,6 +682,7 @@ async def main() -> None:
     # being captured and sent to the service hosting.
     logger.debug(f"Environment variables: %s", environ)
 
+    await install_user_requirements(command, environ)
     await airflow_db_init(environ)
     if os.environ.get("MWAA__CORE__AUTH_TYPE", "").lower() == "testing":
         # In "simple" auth mode, we create an admin user "airflow" with password
@@ -691,7 +691,6 @@ async def main() -> None:
         # production environments.
         await create_airflow_user(environ)
     create_queue()
-    await install_user_requirements(command, environ)
 
     # Export the environment variables to .bashrc and .bash_profile to enable
     # users to run a shell on the container and have the necessary environment
