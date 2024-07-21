@@ -113,6 +113,9 @@ RUN chmod +x /bootstrap/03-root-secondpass/002-make-airflow-sudoer.sh && /bootst
 COPY ./bootstrap/03-root-secondpass/100-chown-airflow-folder.sh /bootstrap/03-root-secondpass/100-chown-airflow-folder.sh
 RUN chmod +x /bootstrap/03-root-secondpass/100-chown-airflow-folder.sh && /bootstrap/03-root-secondpass/100-chown-airflow-folder.sh
 
+COPY ./bootstrap/03-root-secondpass/999-generate-bill-of-materials.sh /bootstrap/03-root-secondpass/999-generate-bill-of-materials.sh
+RUN chmod +x /bootstrap/03-root-secondpass/999-generate-bill-of-materials.sh && /bootstrap/03-root-secondpass/999-generate-bill-of-materials.sh
+
 #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 # END marker for root user, second pass bootstrapping steps.
 #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<

@@ -22,6 +22,7 @@ PIP_INSTALL_ALLOWLIST = [
     # Bootstrap steps that install Python will usually include updating `pip`
     # itself so they need to make direct use of `pip`.
     "images/airflow/*/bootstrap/*/*-install-python.sh",
+    "images/airflow/*/bootstrap/03-root-secondpass/999-generate-bill-of-materials.sh",
 ]
 
 
