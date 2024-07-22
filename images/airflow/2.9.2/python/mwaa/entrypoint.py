@@ -620,10 +620,11 @@ def run_airflow_command(cmd: str, environ: Dict[str, str]):
             # The Sidecar healthcheck is currently limited to one healthcheck per port
             # so the hybrid container can only include healthchecks for one subprocess.
             # Only the worker healcheck conditions are enabled to monitor container health, so
-            # we pass an empty list of conditions to the scheduler process.
+            # we pass an empty list of conditions to the scheduler process and make worker
+            # process essential.
             scheduler_subprocesses = _get_airflow_scheduler_subprocesses(environ, [])
             worker_subprocesses = _get_airflow_worker_subprocesses(environ)
-            run_subprocesses(worker_subprocesses + scheduler_subprocesses)
+            run_subprocesses(scheduler_subprocesses, worker_subprocesses)
 
         case _:
             raise ValueError(f"Unexpected command: {cmd}")
