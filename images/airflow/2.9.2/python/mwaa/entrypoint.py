@@ -97,6 +97,8 @@ USER_REQUIREMENTS_MAX_INSTALL_TIME = timedelta(minutes=9)
 # related to sidecar endpoint not reporting health messages.
 CONTAINER_START_TIME = time.time()
 
+HYBRID_WORKER_SIGTERM_PATIENCE_INTERVAL = timedelta(seconds=130)
+
 
 @with_db_lock(1234)
 async def airflow_db_init(environ: dict[str, str]):
@@ -393,6 +395,7 @@ def create_airflow_subprocess(
     friendly_name: str,
     conditions: List[ProcessCondition] = [],
     on_sigterm: Optional[Callable[[], None]] = None,
+    sigterm_patience_interval: timedelta | None = None
 ):
     """
     Create a subprocess for an Airflow command.
@@ -407,13 +410,18 @@ def create_airflow_subprocess(
     :returns The created subprocess.
     """
     logger: logging.Logger = logging.getLogger(logger_name)
+    kwargs = {
+            "cmd": ["airflow", *args],
+            "env": environ,
+            "process_logger": logger,
+            "friendly_name": friendly_name,
+            "conditions": conditions,
+            "on_sigterm": on_sigterm,
+    }
+    if sigterm_patience_interval is not None:
+        kwargs['sigterm_patience_interval'] = sigterm_patience_interval
     return Subprocess(
-        cmd=["airflow", *args],
-        env=environ,
-        process_logger=logger,
-        friendly_name=friendly_name,
-        conditions=conditions,
-        on_sigterm=on_sigterm,
+        **kwargs
     )
 
 
@@ -498,8 +506,8 @@ def _get_sidecar_health_port():
         return SIDECAR_DEFAULT_HEALTH_PORT
 
 
-def _get_airflow_worker_subprocesses(environ: Dict[str, str]):
-    conditions = _get_conditions('worker')
+def _create_airflow_worker_subprocesses(environ: Dict[str, str], sigterm_patience_interval: timedelta | None = None):
+    conditions = _create_airflow_conditions('worker')
     # Dynamic workers have the MWAA__CORE__TASK_MONITORING_ENABLED set to 'true'.
     # This will be used to determine if idle worker checks are to be enabled.
     task_monitoring_enabled = (
@@ -536,11 +544,12 @@ def _get_airflow_worker_subprocesses(environ: Dict[str, str]):
                 friendly_name="worker",
                 conditions=conditions,
                 on_sigterm=on_sigterm,
+                sigterm_patience_interval=sigterm_patience_interval
             )
         ]
 
 
-def _get_airflow_scheduler_subprocesses(environ: Dict[str, str], conditions: List):
+def _create_airflow_scheduler_subprocesses(environ: Dict[str, str], conditions: List):
     """
     Get the scheduler subproceses: scheduler, dag-processor, and triggerer.
     
@@ -564,7 +573,7 @@ def _get_airflow_scheduler_subprocesses(environ: Dict[str, str], conditions: Lis
         ]
 
 
-def _get_conditions(airflow_cmd: str):
+def _create_airflow_conditions(airflow_cmd: str):
     """
     Get conditions for the given Airflow command.
     
@@ -592,14 +601,14 @@ def run_airflow_command(cmd: str, environ: Dict[str, str]):
     """
     match cmd:
         case "scheduler":
-            conditions = _get_conditions('scheduler')
-            subprocesses = _get_airflow_scheduler_subprocesses(environ, conditions)
+            conditions = _create_airflow_conditions('scheduler')
+            subprocesses = _create_airflow_scheduler_subprocesses(environ, conditions)
             # Schedulers, triggers, and DAG processors are all essential processes and
             # if any fails, we want to exit the container and let it restart.
             run_subprocesses(subprocesses, essential_subprocesses=subprocesses)
 
         case "worker":
-            run_subprocesses(_get_airflow_worker_subprocesses(environ))
+            run_subprocesses(_create_airflow_worker_subprocesses(environ))
         case "webserver":
             run_subprocesses(
                 [
@@ -622,9 +631,10 @@ def run_airflow_command(cmd: str, environ: Dict[str, str]):
             # Only the worker healcheck conditions are enabled to monitor container health, so
             # we pass an empty list of conditions to the scheduler process and make worker
             # process essential.
-            scheduler_subprocesses = _get_airflow_scheduler_subprocesses(environ, [])
-            worker_subprocesses = _get_airflow_worker_subprocesses(environ)
-            run_subprocesses(scheduler_subprocesses, worker_subprocesses)
+            scheduler_subprocesses = _create_airflow_scheduler_subprocesses(environ, [])
+            worker_subprocesses = _create_airflow_worker_subprocesses(environ,
+                                                                   sigterm_patience_interval=HYBRID_WORKER_SIGTERM_PATIENCE_INTERVAL)
+            run_subprocesses([], scheduler_subprocesses + worker_subprocesses)
 
         case _:
             raise ValueError(f"Unexpected command: {cmd}")
