@@ -97,7 +97,10 @@ USER_REQUIREMENTS_MAX_INSTALL_TIME = timedelta(minutes=9)
 # related to sidecar endpoint not reporting health messages.
 CONTAINER_START_TIME = time.time()
 
-HYBRID_WORKER_SIGTERM_PATIENCE_INTERVAL = timedelta(seconds=130)
+# Hybrid container runs both scheduler and worker as essential subprocesses.
+# Therefore the default worker patience is increased to mitigate task
+# failures due to scheduler failure.
+HYBRID_WORKER_SIGTERM_PATIENCE_INTERVAL_DEFAULT = timedelta(seconds=130)
 
 
 @with_db_lock(1234)
@@ -507,7 +510,7 @@ def _get_sidecar_health_port():
 
 
 def _create_airflow_worker_subprocesses(environ: Dict[str, str], sigterm_patience_interval: timedelta | None = None):
-    conditions = _create_airflow_conditions('worker')
+    conditions = _create_airflow_process_conditions('worker')
     # Dynamic workers have the MWAA__CORE__TASK_MONITORING_ENABLED set to 'true'.
     # This will be used to determine if idle worker checks are to be enabled.
     task_monitoring_enabled = (
@@ -573,7 +576,7 @@ def _create_airflow_scheduler_subprocesses(environ: Dict[str, str], conditions: 
         ]
 
 
-def _create_airflow_conditions(airflow_cmd: str):
+def _create_airflow_process_conditions(airflow_cmd: str):
     """
     Get conditions for the given Airflow command.
     
@@ -601,7 +604,7 @@ def run_airflow_command(cmd: str, environ: Dict[str, str]):
     """
     match cmd:
         case "scheduler":
-            conditions = _create_airflow_conditions('scheduler')
+            conditions = _create_airflow_process_conditions('scheduler')
             subprocesses = _create_airflow_scheduler_subprocesses(environ, conditions)
             # Schedulers, triggers, and DAG processors are all essential processes and
             # if any fails, we want to exit the container and let it restart.
@@ -632,8 +635,22 @@ def run_airflow_command(cmd: str, environ: Dict[str, str]):
             # we pass an empty list of conditions to the scheduler process and make worker
             # process essential.
             scheduler_subprocesses = _create_airflow_scheduler_subprocesses(environ, [])
+
+            # Since both scheduler and workers are launched together as essential
+            # the default patience interval for worker needs to be increased to better
+            # allow for in-flight tasks to complete in case of scheduler failure.
+            try:
+                worker_patience_interval_seconds = os.getenv('MWAA__HYBRID_CONTAINER__SIGTERM_PATIENCE_INTERVAL', None)
+                if worker_patience_interval_seconds is not None:
+                    worker_patience_interval = timedelta(seconds=int(worker_patience_interval_seconds))
+                else:
+                    worker_patience_interval = HYBRID_WORKER_SIGTERM_PATIENCE_INTERVAL_DEFAULT
+            except (ValueError, TypeError):
+                print("BANNA!")
+                worker_patience_interval = HYBRID_WORKER_SIGTERM_PATIENCE_INTERVAL_DEFAULT
+
             worker_subprocesses = _create_airflow_worker_subprocesses(environ,
-                                                                   sigterm_patience_interval=HYBRID_WORKER_SIGTERM_PATIENCE_INTERVAL)
+                                                                   sigterm_patience_interval=worker_patience_interval)
             run_subprocesses([], scheduler_subprocesses + worker_subprocesses)
 
         case _:
