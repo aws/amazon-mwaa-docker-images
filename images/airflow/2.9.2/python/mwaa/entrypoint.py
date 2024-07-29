@@ -646,7 +646,6 @@ def run_airflow_command(cmd: str, environ: Dict[str, str]):
                 else:
                     worker_patience_interval = HYBRID_WORKER_SIGTERM_PATIENCE_INTERVAL_DEFAULT
             except (ValueError, TypeError):
-                print("BANNA!")
                 worker_patience_interval = HYBRID_WORKER_SIGTERM_PATIENCE_INTERVAL_DEFAULT
 
             worker_subprocesses = _create_airflow_worker_subprocesses(environ,
