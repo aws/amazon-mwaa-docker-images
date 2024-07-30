@@ -14,6 +14,7 @@ after setting up the necessary configurations.
 # fmt: off
 import logging.config
 from mwaa.logging.config import (
+    DAG_PROCESSOR_LOGGER_NAME,
     LOGGING_CONFIG,
     SCHEDULER_LOGGER_NAME,
     TRIGGERER_LOGGER_NAME,
@@ -79,6 +80,7 @@ AVAILABLE_COMMANDS = [
     "webserver",
     "scheduler",
     "worker",
+    "hybrid",
     "shell",
     "resetdb",
     "spy",
@@ -94,6 +96,11 @@ USER_REQUIREMENTS_MAX_INSTALL_TIME = timedelta(minutes=9)
 # monitoring because we need to have a grace period before we start reporting timeouts
 # related to sidecar endpoint not reporting health messages.
 CONTAINER_START_TIME = time.time()
+
+# Hybrid container runs both scheduler and worker as essential subprocesses.
+# Therefore the default worker patience is increased to mitigate task
+# failures due to scheduler failure.
+HYBRID_WORKER_SIGTERM_PATIENCE_INTERVAL_DEFAULT = timedelta(seconds=130)
 
 
 @with_db_lock(1234)
@@ -390,6 +397,7 @@ def create_airflow_subprocess(
     friendly_name: str,
     conditions: List[ProcessCondition] = [],
     on_sigterm: Optional[Callable[[], None]] = None,
+    sigterm_patience_interval: timedelta | None = None
 ):
     """
     Create a subprocess for an Airflow command.
@@ -404,13 +412,18 @@ def create_airflow_subprocess(
     :returns The created subprocess.
     """
     logger: logging.Logger = logging.getLogger(logger_name)
+    kwargs = {
+            "cmd": ["airflow", *args],
+            "env": environ,
+            "process_logger": logger,
+            "friendly_name": friendly_name,
+            "conditions": conditions,
+            "on_sigterm": on_sigterm,
+    }
+    if sigterm_patience_interval is not None:
+        kwargs['sigterm_patience_interval'] = sigterm_patience_interval
     return Subprocess(
-        cmd=["airflow", *args],
-        env=environ,
-        process_logger=logger,
-        friendly_name=friendly_name,
-        conditions=conditions,
-        on_sigterm=on_sigterm,
+        **kwargs
     )
 
 
@@ -495,19 +508,8 @@ def _get_sidecar_health_port():
         return SIDECAR_DEFAULT_HEALTH_PORT
 
 
-def _run_airflow_worker(environ: Dict[str, str]):
-    conditions: List[ProcessCondition] = [
-        AirflowDbReachableCondition(airflow_component="worker"),
-    ]
-    if _is_sidecar_health_monitoring_enabled():
-        conditions.append(
-            SidecarHealthCondition(
-                airflow_component="worker",
-                container_start_time=CONTAINER_START_TIME,
-                port=_get_sidecar_health_port(),
-            ),
-        )
-
+def _create_airflow_worker_subprocesses(environ: Dict[str, str], sigterm_patience_interval: timedelta | None = None):
+    conditions = _create_airflow_process_conditions('worker')
     # Dynamic workers have the MWAA__CORE__TASK_MONITORING_ENABLED set to 'true'.
     # This will be used to determine if idle worker checks are to be enabled.
     task_monitoring_enabled = (
@@ -535,9 +537,8 @@ def _run_airflow_worker(environ: Dict[str, str]):
             worker_task_monitor.pause_task_consumption()
             time.sleep(5)
 
-    # Finally, run the worker subprocess.
-    run_subprocesses(
-        [
+    # Finally, return the worker subprocesses.
+    return [
             create_airflow_subprocess(
                 ["celery", "worker"],
                 environ=environ,
@@ -545,11 +546,54 @@ def _run_airflow_worker(environ: Dict[str, str]):
                 friendly_name="worker",
                 conditions=conditions,
                 on_sigterm=on_sigterm,
+                sigterm_patience_interval=sigterm_patience_interval
             )
         ]
-    )
 
 
+def _create_airflow_scheduler_subprocesses(environ: Dict[str, str], conditions: List):
+    """
+    Get the scheduler subproceses: scheduler, dag-processor, and triggerer.
+    
+    :param environ: A dictionary containing the environment variables.
+    :param conditions: A list of subprocess conditions.
+    :returns: Scheduler subprocesses.
+    """
+    return [
+            create_airflow_subprocess(
+                [airflow_cmd],
+                environ=environ,
+                logger_name=logger_name,
+                friendly_name=friendly_name,
+                conditions=conditions if airflow_cmd == "scheduler" else [],
+            )
+            for airflow_cmd, logger_name, friendly_name in [
+                ("scheduler", SCHEDULER_LOGGER_NAME, "scheduler"),
+                ("dag-processor", DAG_PROCESSOR_LOGGER_NAME, "dag-processor"),
+                ("triggerer", TRIGGERER_LOGGER_NAME, "triggerer"),
+            ]
+        ]
+
+
+def _create_airflow_process_conditions(airflow_cmd: str):
+    """
+    Get conditions for the given Airflow command.
+    
+    :param airflow_cmd: The command to get conditions for, e.g. "scheduler"
+    :returns: A list of conditions for the given Airflow command.
+    """
+    conditions: List[ProcessCondition] = [
+        AirflowDbReachableCondition(airflow_component=airflow_cmd),
+    ]
+    if _is_sidecar_health_monitoring_enabled():
+        conditions.append(
+            SidecarHealthCondition(
+                airflow_component=airflow_cmd,
+                container_start_time=CONTAINER_START_TIME,
+                port=_get_sidecar_health_port(),
+            ),
+        )
+    return conditions
 def run_airflow_command(cmd: str, environ: Dict[str, str]):
     """
     Run the given Airflow command in a subprocess.
@@ -559,41 +603,14 @@ def run_airflow_command(cmd: str, environ: Dict[str, str]):
     """
     match cmd:
         case "scheduler":
-            conditions: List[ProcessCondition] = [
-                AirflowDbReachableCondition(airflow_component="scheduler"),
-            ]
-            if _is_sidecar_health_monitoring_enabled():
-                conditions.append(
-                    SidecarHealthCondition(
-                        airflow_component="scheduler",
-                        container_start_time=CONTAINER_START_TIME,
-                        port=_get_sidecar_health_port(),
-                    ),
-                )
-
-            subprocesses = [
-                create_airflow_subprocess(
-                    [airflow_cmd],
-                    environ=environ,
-                    logger_name=logger_name,
-                    friendly_name=friendly_name,
-                    conditions=conditions if airflow_cmd == "scheduler" else [],
-                )
-                for airflow_cmd, logger_name, friendly_name in [
-                    ("scheduler", SCHEDULER_LOGGER_NAME, "scheduler"),
-                    # Airflow has a dedicated logger for the DAG Processor Manager
-                    # So we just use it
-                    ("dag-processor", "airflow.processor_manager", "dag-processor"),
-                    ("triggerer", TRIGGERER_LOGGER_NAME, "triggerer"),
-                ]
-            ]
+            conditions = _create_airflow_process_conditions('scheduler')
+            subprocesses = _create_airflow_scheduler_subprocesses(environ, conditions)
             # Schedulers, triggers, and DAG processors are all essential processes and
             # if any fails, we want to exit the container and let it restart.
             run_subprocesses(subprocesses, essential_subprocesses=subprocesses)
 
         case "worker":
-            _run_airflow_worker(environ)
-
+            run_subprocesses(_create_airflow_worker_subprocesses(environ))
         case "webserver":
             run_subprocesses(
                 [
@@ -608,6 +625,31 @@ def run_airflow_command(cmd: str, environ: Dict[str, str]):
                     ),
                 ]
             )
+
+        # Hybrid runs the scheduler and celery worker processes is a single container.
+        case "hybrid":
+            # The Sidecar healthcheck is currently limited to one healthcheck per port
+            # so the hybrid container can only include healthchecks for one subprocess.
+            # Only the worker healcheck conditions are enabled to monitor container health, so
+            # we pass an empty list of conditions to the scheduler process and make worker
+            # process essential.
+            scheduler_subprocesses = _create_airflow_scheduler_subprocesses(environ, [])
+
+            # Since both scheduler and workers are launched together as essential
+            # the default patience interval for worker needs to be increased to better
+            # allow for in-flight tasks to complete in case of scheduler failure.
+            try:
+                worker_patience_interval_seconds = os.getenv('MWAA__HYBRID_CONTAINER__SIGTERM_PATIENCE_INTERVAL', None)
+                if worker_patience_interval_seconds is not None:
+                    worker_patience_interval = timedelta(seconds=int(worker_patience_interval_seconds))
+                else:
+                    worker_patience_interval = HYBRID_WORKER_SIGTERM_PATIENCE_INTERVAL_DEFAULT
+            except (ValueError, TypeError):
+                worker_patience_interval = HYBRID_WORKER_SIGTERM_PATIENCE_INTERVAL_DEFAULT
+
+            worker_subprocesses = _create_airflow_worker_subprocesses(environ,
+                                                                   sigterm_patience_interval=worker_patience_interval)
+            run_subprocesses([], scheduler_subprocesses + worker_subprocesses)
 
         case _:
             raise ValueError(f"Unexpected command: {cmd}")
@@ -714,7 +756,7 @@ async def main() -> None:
         #     await airflow_db_reset(environ)
         #     # After resetting the db, initialize it again
         #     await airflow_db_init(environ)
-        case "scheduler" | "webserver" | "worker":
+        case "scheduler" | "webserver" | "worker" | "hybrid":
             run_airflow_command(command, environ)
         case _:
             raise ValueError(f"Invalid command: {command}")

@@ -355,14 +355,15 @@ def run_subprocesses(
       if any of them fails, e.g. the scheduler container, which contains the scheduler,
       triggerer, and DAG processor.
     """
-    for s in subprocesses:
+    all_processes = subprocesses + essential_subprocesses
+    for s in all_processes:
         s.start(False)  # False since we want to run the subprocesses in parallel
-
+    running_processes = all_processes
     read_some_logs = True
-    while len(subprocesses) > 0:
+    while len(running_processes) > 0:
         read_some_logs = False
         finished_processes: List[Subprocess] = []
-        for s in subprocesses:
+        for s in running_processes:
             if not s.execution_loop_iter():
                 finished_processes.append(s)
             if s.process_status in [
@@ -372,7 +373,7 @@ def run_subprocesses(
                 read_some_logs = True
 
         # Remove finished processes from the list of running processes.
-        subprocesses = [s for s in subprocesses if s not in finished_processes]
+        running_processes = [s for s in running_processes if s not in finished_processes]
 
         finished_essential_processes = [
             s for s in finished_processes if s in essential_subprocesses
@@ -384,7 +385,7 @@ def run_subprocesses(
                 f"The following essential process(es) exited: {', '.join(names)}. "
                 "Terminating other subprocesses..."
             )
-            for s in subprocesses:
+            for s in running_processes:
                 s.shutdown()
             break
 
