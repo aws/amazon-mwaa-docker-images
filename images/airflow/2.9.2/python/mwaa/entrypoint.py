@@ -103,7 +103,6 @@ CONTAINER_START_TIME = time.time()
 HYBRID_WORKER_SIGTERM_PATIENCE_INTERVAL_DEFAULT = timedelta(seconds=130)
 
 
-@with_db_lock(1234)
 async def airflow_db_init(environ: dict[str, str]):
     """
     Initialize Airflow database.
@@ -112,13 +111,9 @@ async def airflow_db_init(environ: dict[str, str]):
     function does this. This function is called in the entrypoint to make sure that,
     for any Airflow component, the database is initialized before it starts.
 
-    This function uses a DB lock to make sure that no two processes execute this
-    function at the same time.
-
     :param environ: A dictionary containing the environment variables.
     """
-    logger.info("Calling 'airflow db migrate' to initialize the database.")
-    await run_command("airflow db migrate", env=environ)
+    await run_command("python3 -m mwaa.database.migrate", env=environ)
 
 
 @with_db_lock(4321)
