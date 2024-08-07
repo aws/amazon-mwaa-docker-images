@@ -26,12 +26,19 @@ To experiment with the image using a vanilla Docker setup, follow these steps:
 python3 create_venvs.py
 ```
 
-3. Build the Airflow v2.9.2 Docker image using:
-
-```
-cd <amazon-mwaa-docker-images path>/images/airflow/2.9.2
-./run.sh
-```
+3. Build the Airflow v2.9.2 Docker image
+   - `cd <amazon-mwaa-docker-images path>/images/airflow/2.9.2`
+   - Update `run.sh` file with your account ID, environment name and account credentials. The permissions associated
+   with the provided credentials will be assigned to the Airflow components that would be started with the next step. 
+   So, if you receive any error message indicating lack of permissions, then try providing the permissions to the 
+   identity whose credentials were used.
+   - Create the required log groups in the dev account with the names:
+     - `{ENV_NAME}-DAGProcessing`
+     - `{ENV_NAME}-Scheduler`
+     - `{ENV_NAME}-Worker`
+     - `{ENV_NAME}-Task`
+     - `{ENV_NAME}-WebServer`
+   - `./run.sh` This will build and run all the necessary containers.
 
 Airflow should be up and running now. You can access the web server on your localhost on port 8080.
 
