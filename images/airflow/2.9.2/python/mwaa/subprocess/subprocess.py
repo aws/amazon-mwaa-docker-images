@@ -35,7 +35,7 @@ _SIGTERM_DEFAULT_PATIENCE_INTERVAL = timedelta(seconds=90)
 
 # The time for which the log reader will sleep when subprocess is still running
 # But last log read was empty.
-_SUBPROCESS_LOG_POLL_IDLE_SLEEP_INTERVAL = timedelta(milliseconds=50)
+_SUBPROCESS_LOG_POLL_IDLE_SLEEP_INTERVAL = timedelta(milliseconds=100)
 
 
 module_logger = logging.getLogger(__name__)
@@ -223,12 +223,11 @@ class Subprocess:
         Execute a single iteration of the execution loop.
 
         The execution loop is a loop that continuously monitors the status of the
-        process and captures logs if any. This method executes a single iteration and
-        exit, expecting the caller to repeatedly call this method until it returns
-        `False`, meaning that the process has exited and there are no more logs to
-        ingest.
+        process. This method executes a single iteration and exits, expecting the
+        caller to repeatedly call this method until it returns
+        `False`, meaning that the process has exited.
 
-        :return: True if the process is still running and/or there are more logs to read.
+        :return: True if the process is still running.
         """
         if not self.process:
             # Process is not running anymore.
@@ -244,9 +243,7 @@ class Subprocess:
         if self.process_status == ProcessStatus.FINISHED:
             # We are done; call shutdown to ensure that we free all resources.
             self.shutdown()
-        elif self.process_status in [
-            ProcessStatus.RUNNING
-        ]:
+        elif self.process_status == ProcessStatus.RUNNING:
             # The process is still running, so we need to check conditions.
             failed_conditions = self._check_process_conditions()
 
@@ -295,9 +292,7 @@ class Subprocess:
             return
         self.is_shut_down = True
 
-        if self.process and self.process_status in [
-            ProcessStatus.RUNNING
-        ]:
+        if self.process and self.process_status == ProcessStatus.RUNNING:
             self._shutdown_python_subprocess(self.process)
         self.process = None
 
