@@ -414,6 +414,7 @@ def create_airflow_subprocess(
             "friendly_name": friendly_name,
             "conditions": conditions,
             "on_sigterm": on_sigterm,
+            "is_essential": True
     }
     if sigterm_patience_interval is not None:
         kwargs['sigterm_patience_interval'] = sigterm_patience_interval
@@ -501,6 +502,20 @@ def _get_sidecar_health_port():
         )
     except:
         return SIDECAR_DEFAULT_HEALTH_PORT
+
+
+def _create_airflow_webserver_subprocesses(environ: Dict[str, str]):
+    return [
+        create_airflow_subprocess(
+            ["webserver"],
+            environ=environ,
+            logger_name=WEBSERVER_LOGGER_NAME,
+            friendly_name="webserver",
+            conditions=[
+                AirflowDbReachableCondition(airflow_component="webserver"),
+            ],
+        ),
+    ]
 
 
 def _create_airflow_worker_subprocesses(environ: Dict[str, str], sigterm_patience_interval: timedelta | None = None):
@@ -602,30 +617,11 @@ def run_airflow_command(cmd: str, environ: Dict[str, str]):
             subprocesses = _create_airflow_scheduler_subprocesses(environ, conditions)
             # Schedulers, triggers, and DAG processors are all essential processes and
             # if any fails, we want to exit the container and let it restart.
-            run_subprocesses(
-                subprocesses=[],
-                essential_subprocesses=subprocesses)
-
+            run_subprocesses(subprocesses)
         case "worker":
-            run_subprocesses(
-                subprocesses=[],
-                essential_subprocesses=_create_airflow_worker_subprocesses(environ))
+            run_subprocesses(_create_airflow_worker_subprocesses(environ))
         case "webserver":
-            run_subprocesses(
-                subprocesses=[],
-                essential_subprocesses=[
-                    create_airflow_subprocess(
-                        ["webserver"],
-                        environ=environ,
-                        logger_name=WEBSERVER_LOGGER_NAME,
-                        friendly_name="webserver",
-                        conditions=[
-                            AirflowDbReachableCondition(airflow_component="webserver"),
-                        ],
-                    ),
-                ]
-            )
-
+            run_subprocesses(_create_airflow_webserver_subprocesses(environ))
         # Hybrid runs the scheduler and celery worker processes is a single container.
         case "hybrid":
             # The Sidecar healthcheck is currently limited to one healthcheck per port
@@ -649,7 +645,7 @@ def run_airflow_command(cmd: str, environ: Dict[str, str]):
 
             worker_subprocesses = _create_airflow_worker_subprocesses(environ,
                                                                    sigterm_patience_interval=worker_patience_interval)
-            run_subprocesses([], scheduler_subprocesses + worker_subprocesses)
+            run_subprocesses(scheduler_subprocesses + worker_subprocesses)
 
         case _:
             raise ValueError(f"Unexpected command: {cmd}")
