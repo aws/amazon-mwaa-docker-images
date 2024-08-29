@@ -57,6 +57,7 @@ class Subprocess:
         conditions: List[ProcessCondition] = [],
         sigterm_patience_interval: timedelta = _SIGTERM_DEFAULT_PATIENCE_INTERVAL,
         on_sigterm: Optional[Callable[[], None]] = None,
+        is_essential: bool = False
     ):
         """
         Initialize the Subprocess object.
@@ -71,10 +72,12 @@ class Subprocess:
         :param conditions: The conditions that must be met at all times, otherwise the
           process gets terminated. This can be useful for, for example, monitoring,
           limiting running time of the process, etc.
+        :param is_essential: If process should be considered essential by process managers.
         """
         self.cmd = cmd
         self.env = env
         self.process_logger = process_logger if process_logger else module_logger
+        self.is_essential = is_essential
         # The dual logger is used in case we want to publish logs using both, the logger
         # of the process and the logger of this Python module. This is useful in case
         # some messages are useful to both, the customer (typically the customer's
@@ -340,9 +343,7 @@ class Subprocess:
             self.log_thread.join()
 
 
-def run_subprocesses(
-    subprocesses: List[Subprocess], essential_subprocesses: List[Subprocess] = []
-):
+def run_subprocesses(subprocesses: List[Subprocess]):
     """
     Run the given subprocesses in parallel.
 
@@ -352,19 +353,14 @@ def run_subprocesses(
     value for the auto_enter_execution_loop parameter. This will result into starting
     the process but not monitoring its logs. The caller would then need to manually call
     the loop() method to ingest logs, which is what we do here for all processes.
+    When a subprocess marked as essential exits, all other subprocesses will be shutdown.
 
     :param subprocesses: A list of Subprocess objects to run in parallel.
-    :param essential_subprocesses: A sub-list of the processes that that must continue
-      running, otherwise all sub-processes will be terminated. This is useful when we
-      want to have multiple sub-processes running any container, and exit the container
-      if any of them fails, e.g. the scheduler container, which contains the scheduler,
-      triggerer, and DAG processor.
     """
-    all_processes = subprocesses + essential_subprocesses
-    for s in all_processes:
+    for s in subprocesses:
         s.start(False)  # False since we want to run the subprocesses in parallel
         s.start_log_capture()
-    running_processes = all_processes
+    running_processes = subprocesses
     while len(running_processes) > 0:
         start_time = time.time()
         finished_processes: List[Subprocess] = []
@@ -376,7 +372,7 @@ def run_subprocesses(
         running_processes = [s for s in running_processes if s not in finished_processes]
 
         finished_essential_processes = [
-            s for s in finished_processes if s in essential_subprocesses
+            s for s in finished_processes if s.is_essential
         ]
 
         if finished_essential_processes:
@@ -390,7 +386,7 @@ def run_subprocesses(
             break
         dt = time.time() - start_time
         time.sleep(max(1.0 - dt, 0))
-    for s in all_processes:
+    for s in subprocesses:
         s.finish_log_capture()
 
 
