@@ -494,10 +494,7 @@ class AutoScalingCondition(ProcessCondition):
         :returns A ProcessConditionResponse containing data about the response.
         """
 
-        if process_status in [
-            ProcessStatus.RUNNING_WITH_LOG_READ,
-            ProcessStatus.RUNNING_WITH_NO_LOG_READ,
-        ]:
+        if process_status == ProcessStatus.RUNNING:
             self.worker_task_monitor.cleanup_abandoned_resources()
             if self.worker_task_monitor.is_worker_idle():
                 logger.info(f"Worker process is idle. Pausing task consumption...")
