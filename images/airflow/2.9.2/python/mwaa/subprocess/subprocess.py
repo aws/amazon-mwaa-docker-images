@@ -83,7 +83,7 @@ class Subprocess:
         # some messages are useful to both, the customer (typically the customer's
         # CloudWatch) and the service (Fargate, i.e. the service's CloudWatch).
         self.dual_logger = CompositeLogger(
-            "process_module_dual_logger",  # name can be anything unused.
+            "process_module_dual_logger_{friendly_name}",  # name can be anything unused.
             # We use a set to avoid double logging using the module logger if the user
             # doesn't pass a logger.
             *set([self.process_logger, module_logger]),
@@ -188,7 +188,7 @@ class Subprocess:
                 exc_info=sys.exc_info(),
             )
 
-    @throttle(60)  # so we don't make excessive calls to process conditions
+    @throttle(seconds=60, instance_level_throttling=True) # avoid excessive calls to process conditions
     def _check_process_conditions(self) -> List[ProcessConditionResponse]:
         # Evaluate all conditions
         checked_conditions = [c.check(self.process_status) for c in self.conditions]
@@ -246,7 +246,7 @@ class Subprocess:
         if self.process_status == ProcessStatus.FINISHED:
             # We are done; call shutdown to ensure that we free all resources.
             self.shutdown()
-        elif self.process_status == ProcessStatus.RUNNING:
+        elif self.process_status == ProcessStatus.RUNNING and self.conditions:
             # The process is still running, so we need to check conditions.
             failed_conditions = self._check_process_conditions()
 

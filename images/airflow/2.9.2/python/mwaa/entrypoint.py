@@ -645,7 +645,7 @@ def run_airflow_command(cmd: str, environ: Dict[str, str]):
 
             worker_subprocesses = _create_airflow_worker_subprocesses(environ,
                                                                    sigterm_patience_interval=worker_patience_interval)
-            run_subprocesses(worker_subprocesses + scheduler_subprocesses)
+            run_subprocesses(scheduler_subprocesses + worker_subprocesses)
 
         case _:
             raise ValueError(f"Unexpected command: {cmd}")
