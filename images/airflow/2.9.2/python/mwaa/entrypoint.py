@@ -58,7 +58,7 @@ from mwaa.logging.loggers import CompositeLogger
 from mwaa.subprocess.conditions import (
     SIDECAR_DEFAULT_HEALTH_PORT,
     AirflowDbReachableCondition,
-    AutoScalingCondition,
+    TaskMonitoringCondition,
     ProcessCondition,
     SidecarHealthCondition,
     TimeoutCondition,
@@ -520,21 +520,31 @@ def _create_airflow_webserver_subprocesses(environ: Dict[str, str]):
 
 def _create_airflow_worker_subprocesses(environ: Dict[str, str], sigterm_patience_interval: timedelta | None = None):
     conditions = _create_airflow_process_conditions('worker')
-    # Dynamic workers have the MWAA__CORE__TASK_MONITORING_ENABLED set to 'true'.
-    # This will be used to determine if idle worker checks are to be enabled.
+    # MWAA__CORE__TASK_MONITORING_ENABLED is set to 'true' for workers where we want to monitor count of tasks currently getting
+    # executed on the worker. This will be used to determine if idle worker checks are to be enabled.
     task_monitoring_enabled = (
         os.environ.get("MWAA__CORE__TASK_MONITORING_ENABLED", "false").lower() == "true"
+    )
+    # If MWAA__CORE__TERMINATE_IF_IDLE is set to 'true', then as part of the task monitoring if the task count reaches zero, then the
+    # worker will be terminated.
+    terminate_if_idle = (
+        os.environ.get("MWAA__CORE__TERMINATE_IF_IDLE", "false").lower() == "true" and task_monitoring_enabled
+    )
+    # If MWAA__CORE__MWAA_SIGNAL_HANDLING_ENABLED is set to 'true', then as part of the task monitoring, the monitor will expect certain
+    # signals to be sent from MWAA. These signals will represent MWAA service side events such as start of an environment update.
+    mwaa_signal_handling_enabled = (
+        os.environ.get("MWAA__CORE__MWAA_SIGNAL_HANDLING_ENABLED", "false").lower() == "true" and task_monitoring_enabled
     )
     if task_monitoring_enabled:
         logger.info("Worker task monitoring is enabled.")
         # Initializing the monitor responsible for performing idle worker checks if enabled.
-        worker_task_monitor = WorkerTaskMonitor()
+        worker_task_monitor = WorkerTaskMonitor(mwaa_signal_handling_enabled)
     else:
         logger.info("Worker task monitoring is NOT enabled.")
         worker_task_monitor = None
 
     if worker_task_monitor:
-        conditions.append(AutoScalingCondition(worker_task_monitor))
+        conditions.append(TaskMonitoringCondition(worker_task_monitor, terminate_if_idle))
 
     def on_sigterm() -> None:
         # When a SIGTERM is caught, we pause the consumption and wait 5 seconds in order

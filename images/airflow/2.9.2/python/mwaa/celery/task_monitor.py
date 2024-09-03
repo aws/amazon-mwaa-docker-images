@@ -12,6 +12,8 @@ from datetime import datetime, timedelta
 from enum import Enum
 from multiprocessing import shared_memory
 from builtins import memoryview
+import math
+import time
 from typing import Any, Dict, List
 
 # 3rd-party imports
@@ -70,6 +72,14 @@ CLEANUP_ABANDONED_RESOURCES_DELAY_PERIOD = timedelta(minutes=1)
 # consumption, we reset the worker to non-idle state and backoff from checking for
 # idleness for a minute.
 IDLENESS_RESET_BACKOFF_PERIOD = timedelta(minutes=1)
+# In case of issues, signals can arrive late and out of order. So, we scan all unprocessed signals from the last one hour.
+# Only a handful of signals are expected for each worker, so this repeated processing should be very light.
+SIGNAL_SEARCH_TIME_RANGE = timedelta(hours=1)
+# If a worker activation signal has not been received in the first 10 minute. Then, we give up on waiting anymore for the signal.
+ACTIVATION_WAIT_TIME_LIMIT = timedelta(minutes=10)
+# Worker will be allowed up to 12 hours from the moment of processing a termination signal before they are killed.
+TERMINATION_TIME_LIMIT = timedelta(hours=12)
+
 BOTO_RETRY_CONFIGURATION = botocore.config.Config(  # type: ignore
     retries={
         # The standard retry mode provides exponential backoff with a base of 2 and max
@@ -79,6 +89,7 @@ BOTO_RETRY_CONFIGURATION = botocore.config.Config(  # type: ignore
         "mode": "standard",
     }
 )
+MWAA_SIGNALS_DIRECTORY = "/usr/local/mwaa/signals"
 
 CeleryTask = Dict[str, Any]
 
@@ -136,14 +147,16 @@ def _create_shared_mem_celery_state():
 # will use to signal the toggle of a flag which tells the Celery SQS channel to
 # pause/unpause further consumption of available SQS messages. It is maintained by the
 # worker monitor.
-def _create_shared_mem_work_consumption_block():
+# When MWAA signal handling is enabled, the consumption will be turned off by default and
+# it will be enabled only when the activation signal has been received by the worker.
+def _create_shared_mem_work_consumption_block(mwaa_signal_handling_enabled: bool):
     celery_work_consumption_block_name = (
         f'celery_work_consumption_{os.environ.get("AIRFLOW_ENV_ID", "")}'
     )
     celery_work_consumption_flag_block = shared_memory.SharedMemory(
         create=True, size=1, name=celery_work_consumption_block_name
     )
-    celery_work_consumption_flag_block.buf[0] = 0
+    celery_work_consumption_flag_block.buf[0] = 1 if mwaa_signal_handling_enabled else 0
     return celery_work_consumption_flag_block
 
 
@@ -273,15 +286,48 @@ def _cleanup_undead_process(process_id: int):
     )
 
 
+def _get_next_unprocessed_signal() -> (str, dict):
+    signal_search_start_timestamp = math.ceil((datetime.now(tz=tz.tzutc()) - SIGNAL_SEARCH_TIME_RANGE).timestamp())
+    signal_filenames = os.listdir(MWAA_SIGNALS_DIRECTORY) if os.path.exists(MWAA_SIGNALS_DIRECTORY) else []
+    sorted_filenames = sorted(signal_filenames)
+    for signal_filename in sorted_filenames:
+        # Signals file follow the naming convention "<createTimestamp>_<signalId>.json"
+        file_timestamp = signal_filename.split("_")[0]
+        # In case of issues, signals can arrive late and out of order. So, we scan all unprocessed signals in a search time range.
+        # Only a handful of signals are expected for each worker, so this repeated processing should be very light.
+        if file_timestamp.isdigit() and int(file_timestamp) > signal_search_start_timestamp:
+            signal_file_path = os.path.join(MWAA_SIGNALS_DIRECTORY, signal_filename)
+            with open(signal_file_path, "r") as file_data:
+                signal_data = json.load(file_data)
+                if not signal_data["processed"]:
+                    return signal_file_path, signal_data
+    return None, None
+
+
+def _marked_signal_as_processed(signal_filepath, signal_data):
+    signal_data["processed"] = True
+    with open(signal_filepath, "w") as file_pointer:
+        json.dump(signal_data, file_pointer)
+    logger.info(f"Successfully processed signal {signal_data['executionId']}")
+
+
 class WorkerTaskMonitor:
     """
     Monitor for the task count associated with the worker.
+
+    :param mwaa_signal_handling_enabled: Whether the monitor should expect certain signals to be sent from MWAA.
+           These signals will represent MWAA service side events such as start of an environment update.
     """
 
-    def __init__(self):
+    def __init__(
+        self,
+        mwaa_signal_handling_enabled: bool,
+    ):
         """
         Initialize a WorkerTaskMonitor instance.
         """
+        self.mwaa_signal_handling_enabled = mwaa_signal_handling_enabled
+
         # Allow at least 3 minutes for the worker to warm up before checking for
         # idleness or cleaning abandoned resources.
         self.idleness_check_warmup_timestamp = (
@@ -300,8 +346,25 @@ class WorkerTaskMonitor:
         # CONSECUTIVE_IDLENESS_CHECK_THRESHOLD to declare the worker as idle.
         self.consecutive_idleness_count = 0
 
+        # If MWAA Signal handling is enabled, then monitor will wait for activation signal before starting consumption of work.
+        # Activation signal will be sent when service side changes have been made to ensure that it is safe for worker to start working.
+        self.waiting_for_activation = True if self.mwaa_signal_handling_enabled else False
+        # The monitor keeps track of the start of the period for which it has been waiting for activation. This is used to check
+        # if a time limit has expired and if the monitor should give up.
+        self.activation_wait_start = datetime.now(tz=tz.tzutc())
+        # If MWAA Signal handling is enabled, then monitor will periodically check if a kill signal has been sent by MWAA for the worker.
+        # If the signal is found, the monitor will kill the worker without waiting for the current Airflow tasks to be completed.
+        self.marked_for_kill = False
+        # If MWAA Signal handling is enabled, then monitor will periodically check if a termination signal has been sent by MWAA for the
+        # worker. If the signal is found, the monitor will terminate the worker after waiting for the current Airflow tasks to be completed.
+        self.marked_for_termination = False
+        # If resume and termination signals are received out of order, then processing them out of order can lead to undesired results.
+        # So, we will maintain timestamp of last processed termination or resume signal to check if the latest observed signal should be
+        # processed or not.
+        self.last_termination_or_resume_signal_timestamp = None
+
         self.celery_state = _create_shared_mem_celery_state()
-        self.celery_work_consumption_block = _create_shared_mem_work_consumption_block()
+        self.celery_work_consumption_block = _create_shared_mem_work_consumption_block(self.mwaa_signal_handling_enabled)
         self.cleanup_celery_state = _create_shared_mem_cleanup_celery_state()
         self.abandoned_celery_tasks_from_last_check: List[CeleryTask] = []
         self.undead_process_ids_from_last_check = []
@@ -346,6 +409,26 @@ class WorkerTaskMonitor:
         )
         return self.last_idleness_check_result
 
+    def is_marked_for_kill(self):
+        """
+        Checks if the worker has been marked for kill or not. If MWAA Signal handling is enabled, then monitor will periodically check
+        if a kill signal has been sent by MWAA for the worker. If the signal is found, the monitor will kill the worker without waiting
+        for the current Airflow tasks to be completed.
+
+        :return: True if the worker has been marked for kill. False otherwise.
+        """
+        return self.marked_for_kill
+
+    def is_marked_for_termination(self):
+        """
+        Checks if the worker has been marked for termination or not. If MWAA Signal handling is enabled, then monitor will periodically
+        check if a termination signal has been sent by MWAA for the worker. If the signal is found, the monitor will terminate the worker
+        after waiting for the current Airflow tasks to be completed.
+
+        :return: True if the worker has been marked for termination. False otherwise.
+        """
+        return self.marked_for_termination
+
     def _get_current_task_count(self):
         """
         Get count of tasks currently getting executed on the worker. Any task present in
@@ -362,6 +445,65 @@ class WorkerTaskMonitor:
                 current_task_count += 1
         return current_task_count
 
+    def process_next_signal(self):
+        """
+        This method is used to process any signals sent by MWAA. This method processes the first signal it finds
+        in the chronological order of the available unprocessed signals.
+        """
+        if not self.mwaa_signal_handling_enabled:
+            logger.info("Signal handling is not enabled for this worker.")
+            return
+        if self.closed:
+            logger.warning(
+                "Using process_next_signal() of a task monitor "
+                "after it has been closed."
+            )
+            return
+        signal_filepath, signal_data = _get_next_unprocessed_signal()
+        if not signal_data:
+            logger.info("No new signal found.")
+            return
+        signal_id = signal_data["executionId"]
+        signal_type = signal_data["signalType"]
+        signal_timestamp = signal_data["createdAt"]
+        logger.info(f"Processing signal {signal_id} of type {signal_type} created at {signal_timestamp}")
+        if signal_type == "activation":
+            self.waiting_for_activation = False
+        elif signal_type == "kill":
+            self.marked_for_kill = True
+        elif signal_type == "termination":
+            if (self.last_termination_or_resume_signal_timestamp is None or
+                    self.last_termination_or_resume_signal_timestamp < signal_timestamp):
+                self.marked_for_termination = True
+                self.last_termination_or_resume_signal_timestamp = signal_timestamp
+        elif signal_type == "resume":
+            if (self.last_termination_or_resume_signal_timestamp is None or
+                    self.last_termination_or_resume_signal_timestamp < signal_timestamp):
+                self.marked_for_termination = False
+                self.last_termination_or_resume_signal_timestamp = signal_timestamp
+        else:
+            logger.warning(f"Unknown signal type {signal_type}, ignoring.")
+        should_consume_work = not (self.waiting_for_activation or self.marked_for_kill or self.marked_for_termination)
+        self.resume_task_consumption() if should_consume_work else self.pause_task_consumption()
+        _marked_signal_as_processed(signal_filepath, signal_data)
+
+    def is_activation_wait_time_limit_breached(self):
+        """
+        This method checks if the time limit for waiting for activation has been breached or not.
+        :return: True, if the time limit for waiting for activation has been breached.
+        """
+        return self.waiting_for_activation and datetime.now(tz=tz.tzutc()) > self.activation_wait_start + ACTIVATION_WAIT_TIME_LIMIT
+
+    def is_termination_time_limit_breached(self):
+        """
+        This method checks if the termination time limit has been breached or not.
+        :return: True, if the worker has been marked for termination and the allowed time limit for termination has been breached.
+        """
+        if self.marked_for_termination:
+            termination_time_limit_breach_point = self.last_termination_or_resume_signal_timestamp + TERMINATION_TIME_LIMIT.total_seconds()
+            return datetime.now(tz=tz.tzutc()).timestamp() > termination_time_limit_breach_point
+        return False
+
     def pause_task_consumption(self):
         """
         celery_work_consumption_block represents the toggle switch for accepting any
@@ -376,8 +518,17 @@ class WorkerTaskMonitor:
             )
             return
 
-        logger.info("Pausing task consumption.")
+        was_consumption_unpaused = self.celery_work_consumption_block.buf[0] == 0
         self.celery_work_consumption_block.buf[0] = 1
+        if was_consumption_unpaused:
+            # When we toggle the consumption to paused state, we wait 10 seconds in order
+            # for any in-flight messages in the SQS broker layer to be processed and
+            # corresponding Airflow task instance to be created. Once that is done, we can
+            # start gracefully shutting down the worker. Without this, the SQS broker may
+            # consume messages from the queue, terminate before creating the corresponding
+            # Airflow task instance and abandon SQS messages in-flight.
+            logger.info("Pausing task consumption.")
+            time.sleep(10)
 
     def resume_task_consumption(self):
         """
@@ -392,8 +543,14 @@ class WorkerTaskMonitor:
                 "after it has been closed."
             )
             return
-        logger.info("Unpausing task consumption.")
+        was_consumption_paused = self.celery_work_consumption_block.buf[0] == 1
         self.celery_work_consumption_block.buf[0] = 0
+        if was_consumption_paused:
+            # When we toggle the consumption to unpaused state, we wait 10 seconds in order
+            # for any in-flight messages in the SQS queue to start getting consumed by
+            # the broker layer before checking for worker idleness.
+            logger.info("Unpausing task consumption.")
+            time.sleep(10)
 
     def reset_monitor_state(self):
         """
@@ -451,12 +608,18 @@ class WorkerTaskMonitor:
 
         logger.info("Closing task monitor...")
 
-        # Report a metric about the number of current task, and a warning in case this
-        # is greater than zero.
+        # Report a metric about the number of current task, and a warning in case this is greater than zero. If the worker was
+        # marked for killing or was marked for termination and the allowed time limit for termination has been breached, then we do
+        # not report this metric because this task interruption is expected and should not be used for alarming.
         task_count = self._get_current_task_count()
         if task_count > 0:
             logger.warning("There are non-zero ongoing tasks.")
-        self.stats.incr(f"mwaa.task_monitor.interrupted_tasks_at_shutdown", task_count)  # type: ignore
+        if self.marked_for_kill or self.is_termination_time_limit_breached():
+            if task_count > 0:
+                logger.warning("Worker is being forcibly shutdown via expected methods, "
+                               "interrupted_tasks_at_shutdown metric will not be emitted.")
+        else:
+            self.stats.incr(f"mwaa.task_monitor.interrupted_tasks_at_shutdown", task_count)  # type: ignore
 
         # Close shared memory objects.
         self.celery_state.close()
