@@ -188,7 +188,7 @@ class Subprocess:
                 exc_info=sys.exc_info(),
             )
 
-    @throttle(60)  # so we don't make excessive calls to process conditions
+    @throttle(seconds=60, instance_level_throttling=True) # avoid excessive calls to process conditions
     def _check_process_conditions(self) -> List[ProcessConditionResponse]:
         # Evaluate all conditions
         checked_conditions = [c.check(self.process_status) for c in self.conditions]
@@ -246,7 +246,7 @@ class Subprocess:
         if self.process_status == ProcessStatus.FINISHED:
             # We are done; call shutdown to ensure that we free all resources.
             self.shutdown()
-        elif self.process_status == ProcessStatus.RUNNING:
+        elif self.process_status == ProcessStatus.RUNNING and self.conditions:
             # The process is still running, so we need to check conditions.
             failed_conditions = self._check_process_conditions()
 
