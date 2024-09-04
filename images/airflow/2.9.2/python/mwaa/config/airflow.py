@@ -29,16 +29,21 @@ def _get_essential_airflow_celery_config() -> Dict[str, str]:
     """
     celery_config_module_path = "mwaa.config.celery.MWAA_CELERY_CONFIG"
 
-    return {
-        "AIRFLOW__CELERY_BROKER_TRANSPORT_OPTIONS__VISIBILITY_TIMEOUT": "43200",
-        "AIRFLOW__CELERY__BROKER_URL": get_sqs_endpoint(),
-        "AIRFLOW__CELERY__CELERY_CONFIG_OPTIONS": celery_config_module_path,
-        "AIRFLOW__CELERY__RESULT_BACKEND": f"db+{get_db_connection_string()}",
-        "AIRFLOW__CELERY__WORKER_ENABLE_REMOTE_CONTROL": "False",
-        # These two are not Celery configs per-se, but are used by the Celery executor.
-        "AIRFLOW__CORE__EXECUTOR": "CeleryExecutor",
-        "AIRFLOW__OPERATORS__DEFAULT_QUEUE": get_sqs_queue_name(),
-    }
+    if os.environ.get("MWAA__SQS__CREATE_QUEUE", "false").lower() == "true":
+        return {
+            "AIRFLOW__CELERY_BROKER_TRANSPORT_OPTIONS__VISIBILITY_TIMEOUT": "43200",
+            "AIRFLOW__CELERY__BROKER_URL": get_sqs_endpoint(),
+            "AIRFLOW__CELERY__CELERY_CONFIG_OPTIONS": celery_config_module_path,
+            "AIRFLOW__CELERY__RESULT_BACKEND": f"db+{get_db_connection_string()}",
+            "AIRFLOW__CELERY__WORKER_ENABLE_REMOTE_CONTROL": "False",
+            # These two are not Celery configs per-se, but are used by the Celery executor.
+            "AIRFLOW__CORE__EXECUTOR": "CeleryExecutor",
+            "AIRFLOW__OPERATORS__DEFAULT_QUEUE": get_sqs_queue_name(),
+        }
+    else:
+        return {
+            "AIRFLOW__CORE__EXECUTOR": "LocalExecutor", # Default to LocalExecutor if no SQS queue is present
+        }
 
 
 def _get_essential_airflow_core_config() -> Dict[str, str]:
@@ -271,6 +276,11 @@ def _get_essential_airflow_api_config() -> Dict[str, str]:
     api_config: Dict[str, str] = {}
     if os.environ.get("MWAA__CORE__AUTH_TYPE", "").lower() == "none":
         api_config["AIRFLOW__API__AUTH_BACKENDS"] = "airflow.api.auth.backend.default"
+
+    if os.environ.get("MWAA__CORE__DISABLE_CORS", "false").lower() == "true":
+        api_config["AIRFLOW__API__ACCESS_CONTROL_ALLOW_HEADERS"] = "*"
+        api_config["AIRFLOW__API__ACCESS_CONTROL_ALLOW_METHODS"] = "*"
+        api_config["AIRFLOW__API__ACCESS_CONTROL_ALLOW_ORIGINS"] = "*"
 
     return api_config
 
