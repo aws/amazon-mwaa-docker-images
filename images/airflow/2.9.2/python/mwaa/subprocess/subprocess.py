@@ -83,7 +83,7 @@ class Subprocess:
         # some messages are useful to both, the customer (typically the customer's
         # CloudWatch) and the service (Fargate, i.e. the service's CloudWatch).
         self.dual_logger = CompositeLogger(
-            "process_module_dual_logger_{friendly_name}",  # name can be anything unused.
+            "process_module_dual_logger",  # name can be anything unused.
             # We use a set to avoid double logging using the module logger if the user
             # doesn't pass a logger.
             *set([self.process_logger, module_logger]),
