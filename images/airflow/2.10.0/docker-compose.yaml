@@ -1,7 +1,7 @@
 version: "3.8"
 
 x-airflow-common: &airflow-common
-  image: amazon-mwaa-docker-images/airflow:2.9.2-dev
+  image: amazon-mwaa-docker-images/airflow:2.10.0-dev
   restart: always
   environment:
     # AWS credentials
@@ -70,7 +70,7 @@ x-airflow-common: &airflow-common
 services:
   postgres:
     image: postgres:13
-    container_name: mwaa-292-db
+    container_name: mwaa-2100-db
     environment:
       POSTGRES_USER: airflow
       POSTGRES_PASSWORD: airflow
@@ -109,12 +109,12 @@ services:
   spy:
     <<: *airflow-common
     command: spy
-    container_name: mwaa-292-spy
+    container_name: mwaa-2100-spy
 
   webserver:
     <<: *airflow-common
     command: webserver
-    container_name: mwaa-292-webserver
+    container_name: mwaa-2100-webserver
     ports:
       - 8080:8080
     expose:
@@ -123,13 +123,13 @@ services:
   scheduler:
     <<: *airflow-common
     command: scheduler
-    container_name: mwaa-292-scheduler
+    container_name: mwaa-2100-scheduler
 
   worker:
     <<: *airflow-common
     command: worker
-    container_name: mwaa-292-worker
+    container_name: mwaa-2100-worker
 
 volumes:
   postgres-db-volume:
-    name: "mwaa-292-db-volume"
+    name: "mwaa-2100-db-volume"
