@@ -29,7 +29,13 @@ def _get_essential_airflow_celery_config() -> Dict[str, str]:
     """
     celery_config_module_path = "mwaa.config.celery.MWAA_CELERY_CONFIG"
 
-    if os.environ.get("MWAA__SQS__CREATE_QUEUE", "false").lower() == "true":
+    executor_type = os.environ.get("MWAA__CORE__EXECUTOR_TYPE", "CeleryExecutor").lower()
+
+    if executor_type == 'localexecutor':
+        return {
+            "AIRFLOW__CORE__EXECUTOR": "LocalExecutor", # Default to LocalExecutor if no SQS queue is present
+        }
+    else:
         return {
             "AIRFLOW__CELERY_BROKER_TRANSPORT_OPTIONS__VISIBILITY_TIMEOUT": "43200",
             "AIRFLOW__CELERY__BROKER_URL": get_sqs_endpoint(),
@@ -39,10 +45,6 @@ def _get_essential_airflow_celery_config() -> Dict[str, str]:
             # These two are not Celery configs per-se, but are used by the Celery executor.
             "AIRFLOW__CORE__EXECUTOR": "CeleryExecutor",
             "AIRFLOW__OPERATORS__DEFAULT_QUEUE": get_sqs_queue_name(),
-        }
-    else:
-        return {
-            "AIRFLOW__CORE__EXECUTOR": "LocalExecutor", # Default to LocalExecutor if no SQS queue is present
         }
 
 

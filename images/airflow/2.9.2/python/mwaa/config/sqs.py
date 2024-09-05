@@ -128,8 +128,9 @@ def should_create_queue() -> bool:
 
     :return: True or False.
     """
-    return os.environ.get("MWAA__SQS__CREATE_QUEUE", "false").lower() == "true"
-
+    executor_type = os.environ.get("MWAA__CORE__EXECUTOR_TYPE", "CeleryExecutor").lower()
+    create_queue = os.environ.get("MWAA__SQS__CREATE_QUEUE", "false").lower()
+    return (executor_type == "celeryexecutor") and (create_queue == "true")
 
 def should_use_ssl() -> bool:
     """
