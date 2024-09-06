@@ -1289,10 +1289,10 @@ UNKNOWN
 UNKNOWN
 
 aiobotocore
-2.13.2
+2.14.0
 Apache Software License
 https://github.com/aio-libs/aiobotocore
-/usr/local/airflow/.local/lib/python3.11/site-packages/aiobotocore-2.13.2.dist-info/LICENSE
+/usr/local/airflow/.local/lib/python3.11/site-packages/aiobotocore-2.14.0.dist-info/LICENSE
 Apache License
                            Version 2.0, January 2004
                         http://www.apache.org/licenses/
@@ -1499,10 +1499,10 @@ UNKNOWN
 UNKNOWN
 
 aiohappyeyeballs
-2.3.5
-Python License (CNRI Python License)
+2.4.0
+Other/Proprietary License; Python Software Foundation License
 https://github.com/aio-libs/aiohappyeyeballs
-/usr/local/airflow/.local/lib/python3.11/site-packages/aiohappyeyeballs-2.3.5.dist-info/LICENSE
+/usr/local/airflow/.local/lib/python3.11/site-packages/aiohappyeyeballs-2.4.0.dist-info/LICENSE
 A. HISTORY OF THE SOFTWARE
 ==========================
 
@@ -1787,10 +1787,10 @@ UNKNOWN
 UNKNOWN
 
 aiohttp
-3.10.3
+3.10.5
 Apache Software License
 https://github.com/aio-libs/aiohttp
-/usr/local/airflow/.local/lib/python3.11/site-packages/aiohttp-3.10.3.dist-info/LICENSE.txt
+/usr/local/airflow/.local/lib/python3.11/site-packages/aiohttp-3.10.5.dist-info/LICENSE.txt
    Copyright aio-libs contributors.
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -1809,10 +1809,10 @@ UNKNOWN
 UNKNOWN
 
 aioitertools
-0.11.0
+0.12.0
 MIT License
-https://aioitertools.omnilib.dev
-/usr/local/airflow/.local/lib/python3.11/site-packages/aioitertools-0.11.0.dist-info/LICENSE
+UNKNOWN
+/usr/local/airflow/.local/lib/python3.11/site-packages/aioitertools-0.12.0.dist-info/LICENSE
 MIT License
 
 Copyright (c) 2022 Amethyst Reese
@@ -2162,7 +2162,7 @@ UNKNOWN
 UNKNOWN
 
 apache-airflow
-2.10.0
+2.10.1
 Apache Software License
 https://airflow.apache.org/
 /usr/local/airflow/.local/lib/python3.11/site-packages/airflow/www/static/dist/swagger-ui/LICENSE
@@ -2375,9 +2375,9 @@ Copyright 2020-2021 SmartBear Software Inc.
 /usr/local/airflow/.local/lib/python3.11/site-packages/airflow/www/static/dist/swagger-ui/NOTICE
 
 apache-airflow-providers-amazon
-8.27.0
+8.28.0
 Apache Software License
-https://airflow.apache.org/docs/apache-airflow-providers-amazon/8.27.0/changelog.html
+https://airflow.apache.org/docs/apache-airflow-providers-amazon/8.28.0/changelog.html
 /usr/local/airflow/.local/lib/python3.11/site-packages/airflow/providers/amazon/LICENSE
                               Apache License
                         Version 2.0, January 2004
@@ -2637,9 +2637,9 @@ UNKNOWN
 UNKNOWN
 
 apache-airflow-providers-celery
-3.7.3
+3.8.1
 Apache Software License
-https://airflow.apache.org/docs/apache-airflow-providers-celery/3.7.3/changelog.html
+https://airflow.apache.org/docs/apache-airflow-providers-celery/3.8.1/changelog.html
 /usr/local/airflow/.local/lib/python3.11/site-packages/airflow/providers/celery/LICENSE
                               Apache License
                         Version 2.0, January 2004
@@ -2899,9 +2899,9 @@ UNKNOWN
 UNKNOWN
 
 apache-airflow-providers-common-compat
-1.1.0
+1.2.0
 Apache Software License
-https://airflow.apache.org/docs/apache-airflow-providers-common-compat/1.1.0/changelog.html
+https://airflow.apache.org/docs/apache-airflow-providers-common-compat/1.2.0/changelog.html
 /usr/local/airflow/.local/lib/python3.11/site-packages/airflow/providers/common/compat/LICENSE
                               Apache License
                         Version 2.0, January 2004
@@ -3423,9 +3423,9 @@ UNKNOWN
 UNKNOWN
 
 apache-airflow-providers-common-sql
-1.15.0
+1.16.0
 Apache Software License
-https://airflow.apache.org/docs/apache-airflow-providers-common-sql/1.15.0/changelog.html
+https://airflow.apache.org/docs/apache-airflow-providers-common-sql/1.16.0/changelog.html
 /usr/local/airflow/.local/lib/python3.11/site-packages/airflow/providers/common/sql/LICENSE
                               Apache License
                         Version 2.0, January 2004
@@ -3685,9 +3685,9 @@ UNKNOWN
 UNKNOWN
 
 apache-airflow-providers-fab
-1.2.2
+1.3.0
 Apache Software License
-https://airflow.apache.org/docs/apache-airflow-providers-fab/1.2.2/changelog.html
+https://airflow.apache.org/docs/apache-airflow-providers-fab/1.3.0/changelog.html
 /usr/local/airflow/.local/lib/python3.11/site-packages/airflow/providers/fab/LICENSE
                               Apache License
                         Version 2.0, January 2004
@@ -3947,9 +3947,9 @@ UNKNOWN
 UNKNOWN
 
 apache-airflow-providers-ftp
-3.10.1
+3.11.0
 Apache Software License
-https://airflow.apache.org/docs/apache-airflow-providers-ftp/3.10.1/changelog.html
+https://airflow.apache.org/docs/apache-airflow-providers-ftp/3.11.0/changelog.html
 /usr/local/airflow/.local/lib/python3.11/site-packages/airflow/providers/ftp/LICENSE
                               Apache License
                         Version 2.0, January 2004
@@ -4209,9 +4209,9 @@ UNKNOWN
 UNKNOWN
 
 apache-airflow-providers-http
-4.12.0
+4.13.0
 Apache Software License
-https://airflow.apache.org/docs/apache-airflow-providers-http/4.12.0/changelog.html
+https://airflow.apache.org/docs/apache-airflow-providers-http/4.13.0/changelog.html
 /usr/local/airflow/.local/lib/python3.11/site-packages/airflow/providers/http/LICENSE
                               Apache License
                         Version 2.0, January 2004
@@ -4471,9 +4471,9 @@ UNKNOWN
 UNKNOWN
 
 apache-airflow-providers-imap
-3.6.1
+3.7.0
 Apache Software License
-https://airflow.apache.org/docs/apache-airflow-providers-imap/3.6.1/changelog.html
+https://airflow.apache.org/docs/apache-airflow-providers-imap/3.7.0/changelog.html
 /usr/local/airflow/.local/lib/python3.11/site-packages/airflow/providers/imap/LICENSE
                               Apache License
                         Version 2.0, January 2004
@@ -4692,7 +4692,7 @@ Third party Apache 2.0 licenses
 
 The following components are provided under the Apache 2.0 License.
 See project link for details. The text of each license is also included
-at licenses/LICENSE-[project].txt.
+at 3rd-party-licenses/LICENSE-[project].txt.
 
     (ALv2 License) hue v4.3.0 (https://github.com/cloudera/hue/)
     (ALv2 License) jqclock v2.3.0 (https://github.com/JohnRDOrazio/jQuery-Clock-Plugin)
@@ -4704,7 +4704,7 @@ MIT licenses
 ========================================================================
 
 The following components are provided under the MIT License. See project link for details.
-The text of each license is also included at licenses/LICENSE-[project].txt.
+The text of each license is also included at 3rd-party-licenses/LICENSE-[project].txt.
 
     (MIT License) jquery v3.5.1 (https://jquery.org/license/)
     (MIT License) dagre-d3 v0.6.4 (https://github.com/cpettitt/dagre-d3)
@@ -4720,22 +4720,22 @@ The text of each license is also included at licenses/LICENSE-[project].txt.
 BSD 3-Clause licenses
 ========================================================================
 The following components are provided under the BSD 3-Clause license. See project links for details.
-The text of each license is also included at licenses/LICENSE-[project].txt.
+The text of each license is also included at 3rd-party-licenses/LICENSE-[project].txt.
 
     (BSD 3 License) d3 v5.16.0 (https://d3js.org)
     (BSD 3 License) d3-shape v2.1.0 (https://github.com/d3/d3-shape)
     (BSD 3 License) cgroupspy 0.2.1 (https://github.com/cloudsigma/cgroupspy)
 
 ========================================================================
-See licenses/LICENSES-ui.txt for packages used in `/airflow/www`
+See 3rd-party-licenses/LICENSES-ui.txt for packages used in `/airflow/www`
 
 UNKNOWN
 UNKNOWN
 
 apache-airflow-providers-postgres
-5.11.3
+5.12.0
 Apache Software License
-https://airflow.apache.org/docs/apache-airflow-providers-postgres/5.11.3/changelog.html
+https://airflow.apache.org/docs/apache-airflow-providers-postgres/5.12.0/changelog.html
 /usr/local/airflow/.local/lib/python3.11/site-packages/airflow/providers/postgres/LICENSE
                               Apache License
                         Version 2.0, January 2004
@@ -4995,9 +4995,9 @@ UNKNOWN
 UNKNOWN
 
 apache-airflow-providers-smtp
-1.7.1
+1.8.0
 Apache Software License
-https://airflow.apache.org/docs/apache-airflow-providers-smtp/1.7.1/changelog.html
+https://airflow.apache.org/docs/apache-airflow-providers-smtp/1.8.0/changelog.html
 /usr/local/airflow/.local/lib/python3.11/site-packages/airflow/providers/smtp/LICENSE
                               Apache License
                         Version 2.0, January 2004
@@ -5216,7 +5216,7 @@ Third party Apache 2.0 licenses
 
 The following components are provided under the Apache 2.0 License.
 See project link for details. The text of each license is also included
-at licenses/LICENSE-[project].txt.
+at 3rd-party-licenses/LICENSE-[project].txt.
 
     (ALv2 License) hue v4.3.0 (https://github.com/cloudera/hue/)
     (ALv2 License) jqclock v2.3.0 (https://github.com/JohnRDOrazio/jQuery-Clock-Plugin)
@@ -5228,7 +5228,7 @@ MIT licenses
 ========================================================================
 
 The following components are provided under the MIT License. See project link for details.
-The text of each license is also included at licenses/LICENSE-[project].txt.
+The text of each license is also included at 3rd-party-licenses/LICENSE-[project].txt.
 
     (MIT License) jquery v3.5.1 (https://jquery.org/license/)
     (MIT License) dagre-d3 v0.6.4 (https://github.com/cpettitt/dagre-d3)
@@ -5244,22 +5244,22 @@ The text of each license is also included at licenses/LICENSE-[project].txt.
 BSD 3-Clause licenses
 ========================================================================
 The following components are provided under the BSD 3-Clause license. See project links for details.
-The text of each license is also included at licenses/LICENSE-[project].txt.
+The text of each license is also included at 3rd-party-licenses/LICENSE-[project].txt.
 
     (BSD 3 License) d3 v5.16.0 (https://d3js.org)
     (BSD 3 License) d3-shape v2.1.0 (https://github.com/d3/d3-shape)
     (BSD 3 License) cgroupspy 0.2.1 (https://github.com/cloudsigma/cgroupspy)
 
 ========================================================================
-See licenses/LICENSES-ui.txt for packages used in `/airflow/www`
+See 3rd-party-licenses/LICENSES-ui.txt for packages used in `/airflow/www`
 
 UNKNOWN
 UNKNOWN
 
 apache-airflow-providers-sqlite
-3.8.2
+3.9.0
 Apache Software License
-https://airflow.apache.org/docs/apache-airflow-providers-sqlite/3.8.2/changelog.html
+https://airflow.apache.org/docs/apache-airflow-providers-sqlite/3.9.0/changelog.html
 /usr/local/airflow/.local/lib/python3.11/site-packages/airflow/providers/sqlite/LICENSE
                               Apache License
                         Version 2.0, January 2004
@@ -5974,10 +5974,10 @@ UNKNOWN
 UNKNOWN
 
 boto3
-1.34.131
+1.35.7
 Apache Software License
 https://github.com/boto/boto3
-/usr/local/airflow/.local/lib/python3.11/site-packages/boto3-1.34.131.dist-info/LICENSE
+/usr/local/airflow/.local/lib/python3.11/site-packages/boto3-1.35.7.dist-info/LICENSE
 
                                  Apache License
                            Version 2.0, January 2004
@@ -6159,13 +6159,13 @@ https://github.com/boto/boto3
 boto3
 Copyright 2013-2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 
-/usr/local/airflow/.local/lib/python3.11/site-packages/boto3-1.34.131.dist-info/NOTICE
+/usr/local/airflow/.local/lib/python3.11/site-packages/boto3-1.35.7.dist-info/NOTICE
 
 boto3-stubs
-1.35.9
+1.35.13.post1
 MIT License
 https://github.com/youtype/mypy_boto3_builder
-/usr/local/airflow/.local/lib/python3.11/site-packages/boto3_stubs-1.35.9.dist-info/LICENSE
+/usr/local/airflow/.local/lib/python3.11/site-packages/boto3_stubs-1.35.13.post1.dist-info/LICENSE
 MIT License
 
 Copyright (c) 2024 Vlad Emelianov
@@ -6191,10 +6191,10 @@ UNKNOWN
 UNKNOWN
 
 botocore
-1.34.131
+1.35.7
 Apache Software License
 https://github.com/boto/botocore
-/usr/local/airflow/.local/lib/python3.11/site-packages/botocore-1.34.131.dist-info/LICENSE.txt
+/usr/local/airflow/.local/lib/python3.11/site-packages/botocore-1.35.7.dist-info/LICENSE.txt
 
                                  Apache License
                            Version 2.0, January 2004
@@ -6434,13 +6434,13 @@ one at http://mozilla.org/MPL/2.0/.
 
 ***** END LICENSE BLOCK *****
 
-/usr/local/airflow/.local/lib/python3.11/site-packages/botocore-1.34.131.dist-info/NOTICE
+/usr/local/airflow/.local/lib/python3.11/site-packages/botocore-1.35.7.dist-info/NOTICE
 
 botocore-stubs
-1.35.9
+1.35.13
 MIT License
 https://github.com/youtype/botocore-stubs
-/usr/local/airflow/.local/lib/python3.11/site-packages/botocore_stubs-1.35.9.dist-info/LICENSE
+/usr/local/airflow/.local/lib/python3.11/site-packages/botocore_stubs-1.35.13.dist-info/LICENSE
 MIT License
 
 Copyright (c) 2022 Vlad Emelianov
@@ -6568,10 +6568,10 @@ UNKNOWN
 UNKNOWN
 
 certifi
-2024.7.4
+2024.8.30
 Mozilla Public License 2.0 (MPL 2.0)
 https://github.com/certifi/python-certifi
-/usr/local/airflow/.local/lib/python3.11/site-packages/certifi-2024.7.4.dist-info/LICENSE
+/usr/local/airflow/.local/lib/python3.11/site-packages/certifi-2024.8.30.dist-info/LICENSE
 This package contains a modified version of ca-bundle.crt:
 
 ca-bundle.crt -- Bundle of CA Root Certificates
@@ -6897,10 +6897,10 @@ UNKNOWN
 UNKNOWN
 
 cron-descriptor
-1.4.3
+1.4.5
 MIT License
 https://github.com/Salamek/cron-descriptor
-/usr/local/airflow/.local/lib/python3.11/site-packages/cron_descriptor-1.4.3.dist-info/LICENSE
+/usr/local/airflow/.local/lib/python3.11/site-packages/cron_descriptor-1.4.5.dist-info/LICENSE
 The MIT License (MIT)
 
 Copyright (c) 2016 Adam Schubert
@@ -6942,10 +6942,10 @@ UNKNOWN
 UNKNOWN
 
 cryptography
-41.0.7
+42.0.8
 Apache Software License; BSD License
 https://github.com/pyca/cryptography
-/usr/local/airflow/.local/lib/python3.11/site-packages/cryptography-41.0.7.dist-info/LICENSE
+/usr/local/airflow/.local/lib/python3.11/site-packages/cryptography-42.0.8.dist-info/LICENSE
 This software is made available under the terms of *either* of the licenses
 found in LICENSE.APACHE or LICENSE.BSD. Contributions to cryptography are made
 under the terms of *both* these licenses.
@@ -7872,10 +7872,10 @@ UNKNOWN
 UNKNOWN
 
 googleapis-common-protos
-1.63.2
+1.65.0
 Apache Software License
 https://github.com/googleapis/python-api-common-protos
-/usr/local/airflow/.local/lib/python3.11/site-packages/googleapis_common_protos-1.63.2.dist-info/LICENSE
+/usr/local/airflow/.local/lib/python3.11/site-packages/googleapis_common_protos-1.65.0.dist-info/LICENSE
 
                                  Apache License
                            Version 2.0, January 2004
@@ -8122,10 +8122,10 @@ UNKNOWN
 UNKNOWN
 
 grpcio
-1.65.4
+1.66.1
 Apache Software License
 https://grpc.io
-/usr/local/airflow/.local/lib/python3.11/site-packages/grpcio-1.65.4.dist-info/LICENSE
+/usr/local/airflow/.local/lib/python3.11/site-packages/grpcio-1.66.1.dist-info/LICENSE
 
                                  Apache License
                            Version 2.0, January 2004
@@ -8890,10 +8890,10 @@ UNKNOWN
 UNKNOWN
 
 idna
-3.7
+3.8
 BSD License
 https://github.com/kjd/idna
-/usr/local/airflow/.local/lib/python3.11/site-packages/idna-3.7.dist-info/LICENSE.md
+/usr/local/airflow/.local/lib/python3.11/site-packages/idna-3.8.dist-info/LICENSE.md
 BSD 3-Clause License
 
 Copyright (c) 2013-2024, Kim Davies and contributors.
@@ -9141,10 +9141,10 @@ UNKNOWN
 UNKNOWN
 
 importlib_resources
-6.4.0
+6.4.4
 Apache Software License
 https://github.com/python/importlib_resources
-/usr/local/airflow/.local/lib/python3.11/site-packages/importlib_resources-6.4.0.dist-info/LICENSE
+/usr/local/airflow/.local/lib/python3.11/site-packages/importlib_resources-6.4.4.dist-info/LICENSE
 
                                  Apache License
                            Version 2.0, January 2004
@@ -9940,10 +9940,10 @@ UNKNOWN
 UNKNOWN
 
 marshmallow
-3.21.3
+3.22.0
 MIT License
 https://github.com/marshmallow-code/marshmallow
-/usr/local/airflow/.local/lib/python3.11/site-packages/marshmallow-3.21.3.dist-info/LICENSE
+/usr/local/airflow/.local/lib/python3.11/site-packages/marshmallow-3.22.0.dist-info/LICENSE
 Copyright Steven Loria and contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -10196,10 +10196,10 @@ UNKNOWN
 UNKNOWN
 
 mypy-boto3-logs
-1.35.0
+1.35.12
 MIT License
 https://github.com/youtype/mypy_boto3_builder
-/usr/local/airflow/.local/lib/python3.11/site-packages/mypy_boto3_logs-1.35.0.dist-info/LICENSE
+/usr/local/airflow/.local/lib/python3.11/site-packages/mypy_boto3_logs-1.35.12.dist-info/LICENSE
 MIT License
 
 Copyright (c) 2024 Vlad Emelianov
@@ -10254,10 +10254,10 @@ UNKNOWN
 UNKNOWN
 
 opentelemetry-api
-1.26.0
+1.27.0
 Apache Software License
 https://github.com/open-telemetry/opentelemetry-python/tree/main/opentelemetry-api
-/usr/local/airflow/.local/lib/python3.11/site-packages/opentelemetry_api-1.26.0.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.11/site-packages/opentelemetry_api-1.27.0.dist-info/licenses/LICENSE
                                  Apache License
                            Version 2.0, January 2004
                         http://www.apache.org/licenses/
@@ -10464,10 +10464,10 @@ UNKNOWN
 UNKNOWN
 
 opentelemetry-exporter-otlp
-1.26.0
+1.27.0
 Apache Software License
 https://github.com/open-telemetry/opentelemetry-python/tree/main/exporter/opentelemetry-exporter-otlp
-/usr/local/airflow/.local/lib/python3.11/site-packages/opentelemetry_exporter_otlp-1.26.0.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.11/site-packages/opentelemetry_exporter_otlp-1.27.0.dist-info/licenses/LICENSE
                                  Apache License
                            Version 2.0, January 2004
                         http://www.apache.org/licenses/
@@ -10674,10 +10674,10 @@ UNKNOWN
 UNKNOWN
 
 opentelemetry-exporter-otlp-proto-common
-1.26.0
+1.27.0
 Apache Software License
 https://github.com/open-telemetry/opentelemetry-python/tree/main/exporter/opentelemetry-exporter-otlp-proto-common
-/usr/local/airflow/.local/lib/python3.11/site-packages/opentelemetry_exporter_otlp_proto_common-1.26.0.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.11/site-packages/opentelemetry_exporter_otlp_proto_common-1.27.0.dist-info/licenses/LICENSE
                                  Apache License
                            Version 2.0, January 2004
                         http://www.apache.org/licenses/
@@ -10884,10 +10884,10 @@ UNKNOWN
 UNKNOWN
 
 opentelemetry-exporter-otlp-proto-grpc
-1.26.0
+1.27.0
 Apache Software License
 https://github.com/open-telemetry/opentelemetry-python/tree/main/exporter/opentelemetry-exporter-otlp-proto-grpc
-/usr/local/airflow/.local/lib/python3.11/site-packages/opentelemetry_exporter_otlp_proto_grpc-1.26.0.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.11/site-packages/opentelemetry_exporter_otlp_proto_grpc-1.27.0.dist-info/licenses/LICENSE
                                  Apache License
                            Version 2.0, January 2004
                         http://www.apache.org/licenses/
@@ -11094,10 +11094,10 @@ UNKNOWN
 UNKNOWN
 
 opentelemetry-exporter-otlp-proto-http
-1.26.0
+1.27.0
 Apache Software License
 https://github.com/open-telemetry/opentelemetry-python/tree/main/exporter/opentelemetry-exporter-otlp-proto-http
-/usr/local/airflow/.local/lib/python3.11/site-packages/opentelemetry_exporter_otlp_proto_http-1.26.0.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.11/site-packages/opentelemetry_exporter_otlp_proto_http-1.27.0.dist-info/licenses/LICENSE
                                  Apache License
                            Version 2.0, January 2004
                         http://www.apache.org/licenses/
@@ -11304,10 +11304,10 @@ UNKNOWN
 UNKNOWN
 
 opentelemetry-proto
-1.26.0
+1.27.0
 Apache Software License
 https://github.com/open-telemetry/opentelemetry-python/tree/main/opentelemetry-proto
-/usr/local/airflow/.local/lib/python3.11/site-packages/opentelemetry_proto-1.26.0.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.11/site-packages/opentelemetry_proto-1.27.0.dist-info/licenses/LICENSE
                                  Apache License
                            Version 2.0, January 2004
                         http://www.apache.org/licenses/
@@ -11514,10 +11514,10 @@ UNKNOWN
 UNKNOWN
 
 opentelemetry-sdk
-1.26.0
+1.27.0
 Apache Software License
 https://github.com/open-telemetry/opentelemetry-python/tree/main/opentelemetry-sdk
-/usr/local/airflow/.local/lib/python3.11/site-packages/opentelemetry_sdk-1.26.0.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.11/site-packages/opentelemetry_sdk-1.27.0.dist-info/licenses/LICENSE
                                  Apache License
                            Version 2.0, January 2004
                         http://www.apache.org/licenses/
@@ -11724,10 +11724,10 @@ UNKNOWN
 UNKNOWN
 
 opentelemetry-semantic-conventions
-0.47b0
+0.48b0
 Apache Software License
 https://github.com/open-telemetry/opentelemetry-python/tree/main/opentelemetry-semantic-conventions
-/usr/local/airflow/.local/lib/python3.11/site-packages/opentelemetry_semantic_conventions-0.47b0.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.11/site-packages/opentelemetry_semantic_conventions-0.48b0.dist-info/licenses/LICENSE
                                  Apache License
                            Version 2.0, January 2004
                         http://www.apache.org/licenses/
@@ -14300,10 +14300,10 @@ UNKNOWN
 UNKNOWN
 
 rich
-13.7.1
+13.8.0
 MIT License
 https://github.com/Textualize/rich
-/usr/local/airflow/.local/lib/python3.11/site-packages/rich-13.7.1.dist-info/LICENSE
+/usr/local/airflow/.local/lib/python3.11/site-packages/rich-13.8.0.dist-info/LICENSE
 Copyright (c) 2020 Will McGugan
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -14674,13 +14674,13 @@ UNKNOWN
 UNKNOWN
 
 soupsieve
-2.5
+2.6
 MIT License
 https://github.com/facelessuser/soupsieve
-/usr/local/airflow/.local/lib/python3.11/site-packages/soupsieve-2.5.dist-info/licenses/LICENSE.md
+/usr/local/airflow/.local/lib/python3.11/site-packages/soupsieve-2.6.dist-info/licenses/LICENSE.md
 MIT License
 
-Copyright (c) 2018 - 2023 Isaac Muse <isaacmuse@gmail.com>
+Copyright (c) 2018 - 2024 Isaac Muse <isaacmuse@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -15434,10 +15434,10 @@ UNKNOWN
 UNKNOWN
 
 types-awscrt
-0.21.2
+0.21.4
 MIT License
-https://youtype.github.io/mypy_boto3_builder/
-/usr/local/airflow/.local/lib/python3.11/site-packages/types_awscrt-0.21.2.dist-info/LICENSE
+https://github.com/youtype/types-awscrt
+/usr/local/airflow/.local/lib/python3.11/site-packages/types_awscrt-0.21.4.dist-info/LICENSE
 MIT License
 
 Copyright (c) 2022 Vlad Emelianov
@@ -15870,10 +15870,10 @@ UNKNOWN
 UNKNOWN
 
 universal_pathlib
-0.2.2
+0.2.3
 MIT
 https://github.com/fsspec/universal_pathlib
-/usr/local/airflow/.local/lib/python3.11/site-packages/universal_pathlib-0.2.2.dist-info/LICENSE
+/usr/local/airflow/.local/lib/python3.11/site-packages/universal_pathlib-0.2.3.dist-info/LICENSE
 MIT License
 
 Copyright (c) 2022, Andrew Fulton
@@ -16020,10 +16020,10 @@ UNKNOWN
 UNKNOWN
 
 watchtower
-3.2.0
+3.3.1
 Apache Software License
 https://github.com/kislyuk/watchtower
-/usr/local/airflow/.local/lib/python3.11/site-packages/watchtower-3.2.0.dist-info/LICENSE
+/usr/local/airflow/.local/lib/python3.11/site-packages/watchtower-3.3.1.dist-info/LICENSE
                                  Apache License
                            Version 2.0, January 2004
                         http://www.apache.org/licenses/
@@ -16299,10 +16299,10 @@ UNKNOWN
 UNKNOWN
 
 yarl
-1.9.4
+1.9.7
 Apache Software License
 https://github.com/aio-libs/yarl
-/usr/local/airflow/.local/lib/python3.11/site-packages/yarl-1.9.4.dist-info/LICENSE
+/usr/local/airflow/.local/lib/python3.11/site-packages/yarl-1.9.7.dist-info/LICENSE
 
                                  Apache License
                            Version 2.0, January 2004
@@ -16520,13 +16520,13 @@ https://github.com/aio-libs/yarl
    See the License for the specific language governing permissions and
    limitations under the License.
 
-/usr/local/airflow/.local/lib/python3.11/site-packages/yarl-1.9.4.dist-info/NOTICE
+/usr/local/airflow/.local/lib/python3.11/site-packages/yarl-1.9.7.dist-info/NOTICE
 
 zipp
-3.20.0
+3.20.1
 MIT License
 https://github.com/jaraco/zipp
-/usr/local/airflow/.local/lib/python3.11/site-packages/zipp-3.20.0.dist-info/LICENSE
+/usr/local/airflow/.local/lib/python3.11/site-packages/zipp-3.20.1.dist-info/LICENSE
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to
 deal in the Software without restriction, including without limitation the
