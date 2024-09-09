@@ -547,7 +547,7 @@ def _create_airflow_worker_subprocesses(environ: Dict[str, str], sigterm_patienc
         conditions.append(TaskMonitoringCondition(worker_task_monitor, terminate_if_idle))
 
     def on_sigterm() -> None:
-        # When a SIGTERM is caught, we pause the consumption and wait 5 seconds in order
+        # When a SIGTERM is caught, we pause the Airflow Task consumption and wait 5 seconds in order
         # for any in-flight messages in the SQS broker layer to be processed and
         # corresponding Airflow task instance to be created. Once that is done, we can
         # start gracefully shutting down the worker. Without this, the SQS broker may
