@@ -261,6 +261,7 @@ async def install_user_requirements(cmd: str, environ: dict[str, str]):
 
         pip_process = Subprocess(
             cmd=["safe-pip-install", "-r", requirements_file, *extra_args],
+            env=environ,
             process_logger=subprocess_logger,
             conditions=[
                 TimeoutCondition(USER_REQUIREMENTS_MAX_INSTALL_TIME),
