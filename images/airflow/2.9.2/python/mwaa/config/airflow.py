@@ -279,11 +279,6 @@ def _get_essential_airflow_api_config() -> Dict[str, str]:
     if os.environ.get("MWAA__CORE__AUTH_TYPE", "").lower() == "none":
         api_config["AIRFLOW__API__AUTH_BACKENDS"] = "airflow.api.auth.backend.default"
 
-    if os.environ.get("MWAA__CORE__DISABLE_CORS", "false").lower() == "true":
-        api_config["AIRFLOW__API__ACCESS_CONTROL_ALLOW_HEADERS"] = "*"
-        api_config["AIRFLOW__API__ACCESS_CONTROL_ALLOW_METHODS"] = "*"
-        api_config["AIRFLOW__API__ACCESS_CONTROL_ALLOW_ORIGINS"] = "*"
-
     return api_config
 
 
