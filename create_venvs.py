@@ -15,6 +15,7 @@ different from the packages that we need for the various scripts in this reposit
 
 import argparse
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -55,19 +56,45 @@ def create_venv(path: Path, recreate: bool = False):
     pip_install(venv_path, "-U", "pip")
     print("")
 
-    requirements_path = str(path / "requirements.txt")
+    requirements_path = generate_requirements(path)
     print(f"> Install dependencies from {requirements_path}...")
-    pip_install(venv_path, "-r", requirements_path)
+    pip_install(venv_path, "-r", str(requirements_path))
     print("")
 
-    print("> Install/Upgrade development tools: pydocstyle, pyright, ruff...")
-    pip_install(venv_path, "-U", "pydocstyle", "pyright", "ruff")
+    dev_tools = ["pydocstyle", "pyright", "ruff"]
+    print(f"> Install/Upgrade development tools: {dev_tools}...")
+    pip_install(venv_path, "-U", *dev_tools)
     print("")
 
     print(f">>> Finished creating a virtual environment under the path {venv_path}.")
     print("")
     print("")
 
+def generate_requirements(path: Path) -> Path:
+    """
+    If the requirements.txt file at the path needs to be updated for local developement, generate
+    a new requirements file.
+
+    Return the path to the requirements file to be used.
+
+    :param path: The path to the directory containing the requirements.txt file.
+    """
+    requirements_path = path.joinpath("requirements.txt")
+
+    if not re.search(r"images\/airflow\/[2-3]\.[0-9]+\.[0-9]+$", str(path.resolve())):
+        print(f"> No need to create dev requirements for {path.resolve()}.  Using default.")
+        return requirements_path
+
+    with open(requirements_path.resolve(), 'r') as file:
+        # psycopg2-binary is meant for development and removes the requirement to install pg_config
+        filedata = re.sub(r"\bpsycopg2\b", "psycopg2-binary", file.read())
+
+    dev_requirements_path = path.joinpath('requirements-dev.txt')
+    print(f"> Creating {dev_requirements_path} from {requirements_path}")
+    with open(dev_requirements_path.resolve(), 'w') as file:
+        file.write(filedata)
+
+    return dev_requirements_path
 
 def pip_install(venv_dir: Path, *args: str):
     """
