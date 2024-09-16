@@ -18,34 +18,36 @@ from mwaa.config.sqs import get_sqs_endpoint, get_sqs_queue_name
 logger = logging.getLogger(__name__)
 
 
-def _get_essential_airflow_celery_config() -> Dict[str, str]:
+def _get_essential_airflow_executor_config(executor_type: str) -> Dict[str, str]:
     """
-    Retrieve the environment variables required for Celery executor.
+    Retrieve the environment variables required for executor. Currently, two executors
+    are supported:
+        - LocalExecutor: All tasks are run on a local process
+        - CeleryExecutor (Default): All tasks are run on Celery worker processes
 
-    The required environment variables are mostly under the "celery" section, but
-    other sections as well.
+    :param executor_type A string indicating the type of executor to use.
 
     :returns A dictionary containing the environment variables.
     """
-    celery_config_module_path = "mwaa.config.celery.MWAA_CELERY_CONFIG"
 
-    executor_type = os.environ.get("MWAA__CORE__EXECUTOR_TYPE", "CeleryExecutor").lower()
-
-    if executor_type == 'localexecutor':
-        return {
-            "AIRFLOW__CORE__EXECUTOR": "LocalExecutor", # Default to LocalExecutor if no SQS queue is present
-        }
-    else:
-        return {
-            "AIRFLOW__CELERY_BROKER_TRANSPORT_OPTIONS__VISIBILITY_TIMEOUT": "43200",
-            "AIRFLOW__CELERY__BROKER_URL": get_sqs_endpoint(),
-            "AIRFLOW__CELERY__CELERY_CONFIG_OPTIONS": celery_config_module_path,
-            "AIRFLOW__CELERY__RESULT_BACKEND": f"db+{get_db_connection_string()}",
-            "AIRFLOW__CELERY__WORKER_ENABLE_REMOTE_CONTROL": "False",
-            # These two are not Celery configs per-se, but are used by the Celery executor.
-            "AIRFLOW__CORE__EXECUTOR": "CeleryExecutor",
-            "AIRFLOW__OPERATORS__DEFAULT_QUEUE": get_sqs_queue_name(),
-        }
+    match executor_type.lower():
+        case 'localexecutor':
+            return {
+                "AIRFLOW__CORE__EXECUTOR": "LocalExecutor",
+            }
+        case 'celeryexecutor':
+            celery_config_module_path = "mwaa.config.celery.MWAA_CELERY_CONFIG"
+            return {
+                "AIRFLOW__CELERY_BROKER_TRANSPORT_OPTIONS__VISIBILITY_TIMEOUT": "43200",
+                "AIRFLOW__CELERY__BROKER_URL": get_sqs_endpoint(),
+                "AIRFLOW__CELERY__CELERY_CONFIG_OPTIONS": celery_config_module_path,
+                "AIRFLOW__CELERY__RESULT_BACKEND": f"db+{get_db_connection_string()}",
+                "AIRFLOW__CELERY__WORKER_ENABLE_REMOTE_CONTROL": "False",
+                "AIRFLOW__CORE__EXECUTOR": "CeleryExecutor",
+                "AIRFLOW__OPERATORS__DEFAULT_QUEUE": get_sqs_queue_name(),
+            }
+        case _:
+            raise ValueError(f"Executor type {executor_type} is not supported.")
 
 
 def _get_essential_airflow_core_config() -> Dict[str, str]:
@@ -282,16 +284,18 @@ def _get_essential_airflow_api_config() -> Dict[str, str]:
     return api_config
 
 
-def get_essential_airflow_config() -> Dict[str, str]:
+def get_essential_airflow_config(executor_type: str) -> Dict[str, str]:
     """
     Retrieve the environment variables required to set Airflow configurations.
 
     These environment variables are essential and cannot be overridden by the customer.
 
+    :param executor_type A string indicating the type of executor to use.
+
     :returns A dictionary containing the environment variables.
     """
     return {
-        **_get_essential_airflow_celery_config(),
+        **_get_essential_airflow_executor_config(executor_type),
         **_get_essential_airflow_core_config(),
         **_get_essential_airflow_db_config(),
         **_get_essential_airflow_logging_config(),
