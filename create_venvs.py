@@ -124,7 +124,6 @@ def main():
         "--recreate", action="store_true", help="Recreate the venv if it exists"
     )
 
-    # Ensure that a build target is set, rather than using a default to prevent 
     development_target_choice = "development"
     build_targets = [development_target_choice, "production"]
     parser.add_argument(
