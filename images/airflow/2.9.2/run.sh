@@ -1,8 +1,17 @@
 #!/bin/bash
 set -e
 
+# Check if 'podman' or 'finch' is available, otherwise use 'docker'
+if command -v finch &> /dev/null; then
+    CONTAINER_RUNTIME="finch"
+elif command -v podman &> /dev/null; then
+    CONTAINER_RUNTIME="podman"
+else
+    CONTAINER_RUNTIME="docker"
+fi
+
 # Build the Docker image
-./build.sh
+./build.sh $CONTAINER_RUNTIME
 
 ACCOUNT_ID="" # Put your account ID here.
 ENV_NAME="" # Choose an environment name here.
@@ -55,4 +64,4 @@ export MWAA__LOGGING__AIRFLOW_WORKER_LOGS_ENABLED
 export MWAA__LOGGING__AIRFLOW_WORKER_LOG_GROUP_ARN
 export MWAA__LOGGING__AIRFLOW_WORKER_LOG_LEVEL
 
-docker compose up 
+$CONTAINER_RUNTIME compose up 

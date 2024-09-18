@@ -1,12 +1,8 @@
 #!/bin/bash
 set -e
 
-# Check if 'podman' is available, otherwise use 'docker'
-if command -v podman &> /dev/null; then
-    CONTAINER_RUNTIME="podman"
-else
-    CONTAINER_RUNTIME="docker"
-fi
+CONTAINER_RUNTIME=$1
+echo "Using $CONTAINER_RUNTIME runtime in build.sh"
 
 # Generate the Dockerfiles from the templates.
 # shellcheck source=/dev/null
