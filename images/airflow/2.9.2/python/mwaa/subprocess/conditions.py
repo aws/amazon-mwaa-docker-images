@@ -552,8 +552,7 @@ class TaskMonitoringCondition(ProcessCondition):
                 "No need to monitor tasks anymore."
             )
 
-        # The TaskMonitoringCondition always succeeds, unless the worker is idle in which
-        # case we let the worker shut down. This case is covered above.
+        # For all other scenarios, the condition defaults to returning success.
         return ProcessConditionResponse(
             condition=self,
             successful=True,
