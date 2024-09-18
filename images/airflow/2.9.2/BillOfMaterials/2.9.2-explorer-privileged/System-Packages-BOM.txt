@@ -55,8 +55,8 @@ libgcc-11.4.1: GPLv3+ and GPLv3+ with exceptions and GPLv2+ with exceptions and 
 crypto-policies-20220428: LGPLv2+
 publicsuffix-list-dafsa-20240212: MPLv2.0
 ncurses-base-6.2: MIT
-amazon-linux-repo-cdn-2023.5.20240903: MIT
-system-release-2023.5.20240903: MIT
+amazon-linux-repo-cdn-2023.5.20240916: MIT
+system-release-2023.5.20240916: MIT
 filesystem-3.14: Public Domain
 glibc-minimal-langpack-2.34: LGPLv2+ and LGPLv2+ with exceptions and GPLv2+ and GPLv2+ with exceptions and BSD and Inner-Net and ISC and Public Domain and GFDL
 glibc-2.34: LGPLv2+ and LGPLv2+ with exceptions and GPLv2+ and GPLv2+ with exceptions and BSD and Inner-Net and ISC and Public Domain and GFDL
@@ -138,7 +138,7 @@ libedit-3.1: BSD
 llvm-libs-15.0.7: Apache-2.0 WITH LLVM-exception OR NCSA
 libXau-1.0.9: MIT
 libxcb-1.13.1: MIT
-kernel-headers-6.1.106: GPLv2 and Redistributable, no modification permitted
+kernel-headers-6.1.109: GPLv2 and Redistributable, no modification permitted
 jansson-2.14: MIT
 graphite2-1.3.14: (LGPLv2+ or GPLv2+ or MPLv1.1) and (Netscape or GPLv2+ or LGPLv2+)
 emacs-filesystem-28.2: GPLv3+ and CC0

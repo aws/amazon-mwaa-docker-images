@@ -23,7 +23,7 @@ To experiment with the image using a vanilla Docker setup, follow these steps:
    package, execute the following command:
 
 ```
-python3 create_venvs.py
+python3 create_venvs.py --target <development | production>
 ```
 
 3. Build the Airflow v2.9.2 Docker image

@@ -44,7 +44,7 @@ jobs:
         run: git config --global --add safe.directory /__w/amazon-mwaa-docker-images/amazon-mwaa-docker-images
 
       - name: Create the necessary Python virtual environments...
-        run: python3.11 ./create_venvs.py
+        run: python3.11 ./create_venvs.py --target production
 
       - name: Run quality checks...
         run: python3.11 ./quality-checks/run_all.py

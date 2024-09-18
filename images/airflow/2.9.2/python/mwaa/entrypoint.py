@@ -261,6 +261,7 @@ async def install_user_requirements(cmd: str, environ: dict[str, str]):
 
         pip_process = Subprocess(
             cmd=["safe-pip-install", "-r", requirements_file, *extra_args],
+            env=environ,
             process_logger=subprocess_logger,
             conditions=[
                 TimeoutCondition(USER_REQUIREMENTS_MAX_INSTALL_TIME),
@@ -574,7 +575,7 @@ def _create_airflow_worker_subprocesses(environ: Dict[str, str], sigterm_patienc
 def _create_airflow_scheduler_subprocesses(environ: Dict[str, str], conditions: List):
     """
     Get the scheduler subproceses: scheduler, dag-processor, and triggerer.
-    
+
     :param environ: A dictionary containing the environment variables.
     :param conditions: A list of subprocess conditions.
     :returns: Scheduler subprocesses.
@@ -598,7 +599,7 @@ def _create_airflow_scheduler_subprocesses(environ: Dict[str, str], conditions: 
 def _create_airflow_process_conditions(airflow_cmd: str):
     """
     Get conditions for the given Airflow command.
-    
+
     :param airflow_cmd: The command to get conditions for, e.g. "scheduler"
     :returns: A list of conditions for the given Airflow command.
     """
@@ -681,8 +682,11 @@ async def main() -> None:
 
     logger.info(f"Warming a Docker container for an Airflow {command}.")
 
+    # Get executor type
+    executor_type = os.environ.get("MWAA__CORE__EXECUTOR_TYPE", "CeleryExecutor")
+
     # Add the necessary environment variables.
-    mwaa_essential_airflow_config = get_essential_airflow_config()
+    mwaa_essential_airflow_config = get_essential_airflow_config(executor_type)
     mwaa_opinionated_airflow_config = get_opinionated_airflow_config()
     mwaa_essential_airflow_environ = get_essential_environ(command)
     mwaa_opinionated_airflow_environ = get_opinionated_environ()
@@ -738,7 +742,8 @@ async def main() -> None:
         # having to create a user manually. Needless to say, this shouldn't be used in
         # production environments.
         await create_airflow_user(environ)
-    create_queue()
+    if executor_type.lower() == "celeryexecutor":
+        create_queue()
 
     # Export the environment variables to .bashrc and .bash_profile to enable
     # users to run a shell on the container and have the necessary environment

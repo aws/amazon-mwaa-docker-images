@@ -15,6 +15,7 @@ different from the packages that we need for the various scripts in this reposit
 
 import argparse
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -31,11 +32,12 @@ def verify_python_version():
         sys.exit(1)
 
 
-def create_venv(path: Path, recreate: bool = False):
+def create_venv(path: Path, development_build: bool, recreate: bool = False):
     """
     Create a venv in the given directory and optionally recreate it if it already exists.
 
     :param path: The path to create the venv in.
+    :param development_build: Is this a development build.
     :param recreate: Whether to recreate the venv if it already exists.
     """
     venv_path = path / ".venv"
@@ -55,19 +57,50 @@ def create_venv(path: Path, recreate: bool = False):
     pip_install(venv_path, "-U", "pip")
     print("")
 
-    requirements_path = str(path / "requirements.txt")
+    requirements_path = generate_requirements(path, development_build)
     print(f"> Install dependencies from {requirements_path}...")
-    pip_install(venv_path, "-r", requirements_path)
+    pip_install(venv_path, "-r", str(requirements_path))
     print("")
 
-    print("> Install/Upgrade development tools: pydocstyle, pyright, ruff...")
-    pip_install(venv_path, "-U", "pydocstyle", "pyright", "ruff")
+    dev_tools = ["pydocstyle", "pyright", "ruff"]
+    print(f"> Install/Upgrade development tools: {dev_tools}...")
+    pip_install(venv_path, "-U", *dev_tools)
     print("")
 
     print(f">>> Finished creating a virtual environment under the path {venv_path}.")
     print("")
     print("")
 
+def generate_requirements(path: Path, development_build: bool) -> Path:
+    """
+    If the requirements.txt file at the path needs to be updated for local development, generate
+    a new requirements file.
+
+    Return the path to the requirements file to be used.
+
+    :param path: The path to the directory containing the requirements.txt file.
+    :param development_build: Is this a development build.
+    """
+    requirements_path = path.joinpath("requirements.txt")
+
+    if not development_build:
+        print("> Production build selected. Using default requirements.")
+        return requirements_path
+
+    if not re.search(r"images\/airflow\/[2-3]\.[0-9]+\.[0-9]+$", str(path.resolve())):
+        print(f"> No need to create dev requirements for {path.resolve()}.  Using default.")
+        return requirements_path
+
+    with open(requirements_path.resolve(), 'r') as file:
+        # psycopg2-binary is meant for development and removes the requirement to install pg_config
+        filedata = re.sub(r"\bpsycopg2\b", "psycopg2-binary", file.read())
+
+    dev_requirements_path = path.joinpath('requirements-dev.txt')
+    print(f"> Creating {dev_requirements_path} from {requirements_path}")
+    with open(dev_requirements_path.resolve(), 'w') as file:
+        file.write(filedata)
+
+    return dev_requirements_path
 
 def pip_install(venv_dir: Path, *args: str):
     """
@@ -91,6 +124,12 @@ def main():
         "--recreate", action="store_true", help="Recreate the venv if it exists"
     )
 
+    development_target_choice = "development"
+    build_targets = [development_target_choice, "production"]
+    parser.add_argument(
+        "--target", choices=build_targets, required=True, help="Sets the build target"
+    )
+
     # Parse the arguments
     args = parser.parse_args()
 
@@ -101,7 +140,11 @@ def main():
     ]  # Include main project dir and each image dir
     for dir_path in project_dirs:
         if dir_path.is_dir() and (dir_path / "requirements.txt").exists():
-            create_venv(dir_path, recreate=args.recreate)
+            create_venv(
+                dir_path,
+                development_build=args.target == development_target_choice,
+                recreate=args.recreate
+            )
 
 
 if __name__ == "__main__":

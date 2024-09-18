@@ -1,0 +1,16 @@
+{
+  "include": ["./"],
+  "exclude": [
+    "**/__pycache__",
+    "**/.venv",
+    // sqs_broker.py is code largely taken from Kombu (part of Celery) with minor changes
+    // from us. We want to respect the original code and not make a lot of changes, and
+    // just mark the changes we make, hence we ignore linting it.
+    "python/mwaa/celery/sqs_broker.py"
+  ],
+  "strict": ["./"],
+  "pythonVersion": "3.11",
+  "pythonPlatform": "All",
+  "typeCheckingMode": "strict",
+  "stubPath": "python/typestubs"
+}

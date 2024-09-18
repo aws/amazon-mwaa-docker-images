@@ -7,6 +7,10 @@
     {
       "name": "airflow-2.9.2",
       "path": "./images/airflow/2.9.2"
+    },
+    {
+      "name": "airflow-2.10.1",
+      "path": "./images/airflow/2.10.1"
     }
   ],
   "settings": {}

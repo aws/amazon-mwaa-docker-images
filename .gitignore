@@ -5,6 +5,9 @@
 .venv
 venv
 
+# Pyenv local overrides
+.python-version
+
 # Python cache files
 __pycache__/
 *.py[cod]
@@ -12,3 +15,6 @@ __pycache__/
 # Build directories
 build
 
+# Ignore dev requirements files.
+images/airflow/2.*/requirements-dev.txt
+images/airflow/3.*/requirements-dev.txt
