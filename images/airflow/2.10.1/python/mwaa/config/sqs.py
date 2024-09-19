@@ -124,12 +124,11 @@ def get_sqs_queue_name() -> str:
 
 def should_create_queue() -> bool:
     """
-    Determine whether the SQS queue should be created or not.
+    Determine whether the SQS queue should be created or not. Only used with CeleryExecutor.
 
     :return: True or False.
     """
     return os.environ.get("MWAA__SQS__CREATE_QUEUE", "false").lower() == "true"
-
 
 def should_use_ssl() -> bool:
     """
