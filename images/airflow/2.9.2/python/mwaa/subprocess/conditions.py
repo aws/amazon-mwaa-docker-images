@@ -456,15 +456,20 @@ class AirflowDbReachableCondition(ProcessCondition):
         )
 
 
-class AutoScalingCondition(ProcessCondition):
+class TaskMonitoringCondition(ProcessCondition):
     """
     A condition for regularly communicating with the worker task monitor to ensure
     graceful shutdown of workers in case of auto scaling.
+
+    :param worker_task_monitor: The worker task monitor. See the implementation of
+      WorkerTaskMonitor for more details on what this monitor does.
+    :param terminate_if_idle: Whether to terminate the worker if it is idle.
     """
 
     def __init__(
         self,
         worker_task_monitor: WorkerTaskMonitor,
+        terminate_if_idle: bool,
     ):
         """
         Initialize the instance.
@@ -474,6 +479,7 @@ class AutoScalingCondition(ProcessCondition):
         """
         super().__init__()
         self.worker_task_monitor = worker_task_monitor
+        self.terminate_if_idle = terminate_if_idle
 
     def prepare(self):
         """
@@ -487,6 +493,20 @@ class AutoScalingCondition(ProcessCondition):
         """
         self.worker_task_monitor.close()
 
+    def _get_failed_condition_response(self, message: str) -> ProcessConditionResponse:
+        """
+        Get the failed condition response.
+
+        :param message: The message to include in the response.
+        :returns The failed condition response.
+        """
+        logger.info(message)
+        return ProcessConditionResponse(
+            condition=self,
+            successful=False,
+            message=message,
+        )
+
     def _check(self, process_status: ProcessStatus) -> ProcessConditionResponse:
         """
         Execute the condition and return the response.
@@ -496,35 +516,43 @@ class AutoScalingCondition(ProcessCondition):
 
         if process_status == ProcessStatus.RUNNING:
             self.worker_task_monitor.cleanup_abandoned_resources()
-            if self.worker_task_monitor.is_worker_idle():
-                logger.info(f"Worker process is idle. Pausing task consumption...")
+            self.worker_task_monitor.process_next_signal()
+            # If the allowed time limit for waiting for activation signal has been breached, then we give up on further wait and exit.
+            if self.worker_task_monitor.is_activation_wait_time_limit_breached():
+                return self._get_failed_condition_response("Allowed time limit for activation has been breached. Exiting")
+            # If the worker is marked to be killed, then we exit the worker without waiting for the tasks to be completed.
+            elif self.worker_task_monitor.is_marked_for_kill():
+                return self._get_failed_condition_response("Worker has been marked for kill. Exiting.")
+            # If the worker is marked to be terminated, then we exit the worker after waiting for the tasks to be completed.
+            elif self.worker_task_monitor.is_marked_for_termination():
+                logger.info("Worker has been marked for termination, checking for idleness before terminating.")
+                if self.worker_task_monitor.is_worker_idle():
+                    return self._get_failed_condition_response("Worker marked for termination has become idle. Exiting.")
+                elif self.worker_task_monitor.is_termination_time_limit_breached():
+                    return self._get_failed_condition_response("Allowed time limit for graceful termination has been breached. Exiting")
+                else:
+                    logger.info("Worker marked for termination is NOT yet idle. Waiting.")
+            elif self.terminate_if_idle and self.worker_task_monitor.is_worker_idle():
                 # After detecting worker idleness, we pause further work consumption via
                 # Celery, wait and check again for idleness.
+                logger.info("Worker process is idle and needs to be terminated. Pausing task consumption.")
                 self.worker_task_monitor.pause_task_consumption()
-                time.sleep(5)
                 if self.worker_task_monitor.is_worker_idle():
-                    logger.info("Worker has been declared idle. Exiting.")
-                    return ProcessConditionResponse(
-                        condition=self,
-                        successful=False,
-                        message="Worker has been declared idle. Exiting...",
-                    )
+                    return self._get_failed_condition_response("Worker which should be terminated if idle has been "
+                                                               "found to be idle. Exiting.")
                 else:
-                    logger.info(
-                        "Worker picked up new tasks during shutdown, reviving worker."
-                    )
+                    logger.info("Worker picked up new tasks during shutdown, reviving worker.")
                     self.worker_task_monitor.resume_task_consumption()
                     self.worker_task_monitor.reset_monitor_state()
             else:
-                logger.info(f"Worker process is NOT idle. No action is needed.")
+                logger.info("Worker process is either NOT idle or has not been marked for termination. No action is needed.")
         else:
             logger.info(
                 f"Worker process finished (status is {process_status.name}). "
-                "No need to check for idleness anymore."
+                "No need to monitor tasks anymore."
             )
 
-        # The AutoScalingCondition always succeeds, unless the worker is idle in which
-        # case we let the worker shut down. This case is covered above.
+        # For all other scenarios, the condition defaults to returning success.
         return ProcessConditionResponse(
             condition=self,
             successful=True,
