@@ -323,7 +323,7 @@ def get_opinionated_airflow_config() -> Dict[str, str]:
     """
     Retrieve the environment variables required to set Airflow configurations.
 
-    These environment variables are essential and cannot be overridden by the customer.
+    These environment variables can be overridden by the customer.
 
     :returns A dictionary containing the environment variables.
     """
