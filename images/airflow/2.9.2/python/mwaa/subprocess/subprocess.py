@@ -24,7 +24,6 @@ from threading import Thread
 
 # Our imports
 from mwaa.logging.loggers import CompositeLogger
-from mwaa.logging.utils import throttle
 from mwaa.subprocess import ProcessStatus
 from mwaa.subprocess.conditions import ProcessCondition, ProcessConditionResponse
 
@@ -188,13 +187,12 @@ class Subprocess:
                 exc_info=sys.exc_info(),
             )
 
-    @throttle(seconds=60, instance_level_throttling=True) # avoid excessive calls to process conditions
     def _check_process_conditions(self) -> List[ProcessConditionResponse]:
         # Evaluate all conditions
         checked_conditions = [c.check(self.process_status) for c in self.conditions]
 
         # Filter out the unsuccessful conditions
-        failed_conditions = [c for c in checked_conditions if not c.successful]
+        failed_conditions = [c for c in checked_conditions if c and not c.successful]
 
         return failed_conditions
 

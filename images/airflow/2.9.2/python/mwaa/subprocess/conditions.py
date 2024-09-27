@@ -30,6 +30,7 @@ from sqlalchemy.pool import NullPool
 # Our imports
 from mwaa.celery.task_monitor import WorkerTaskMonitor
 from mwaa.config.database import get_db_connection_string
+from mwaa.logging.utils import throttle
 from mwaa.subprocess import ProcessStatus
 from mwaa.utils.plogs import generate_plog
 
@@ -233,6 +234,7 @@ class SidecarHealthCondition(ProcessCondition):
             )
         )
 
+    @throttle(seconds=60, instance_level_throttling=True) # avoid excessive calls to process conditions
     def _check(self, process_status: ProcessStatus) -> ProcessConditionResponse:
         """
         Execute the condition and return the response.
@@ -337,6 +339,7 @@ class TimeoutCondition(ProcessCondition):
         """
         self.start_time = time.time()
 
+    @throttle(seconds=60, instance_level_throttling=True) # avoid excessive calls to process conditions
     def _check(self, process_status: ProcessStatus) -> ProcessConditionResponse:
         """
         Execute the condition and return the response.
@@ -413,6 +416,7 @@ class AirflowDbReachableCondition(ProcessCondition):
             )
         )
 
+    @throttle(seconds=60, instance_level_throttling=True) # avoid excessive calls to process conditions
     def _check(self, process_status: ProcessStatus) -> ProcessConditionResponse:
         """
         Execute the condition and return the response.
@@ -507,6 +511,7 @@ class TaskMonitoringCondition(ProcessCondition):
             message=message,
         )
 
+    @throttle(seconds=10, instance_level_throttling=True) # avoid excessive calls to process conditions
     def _check(self, process_status: ProcessStatus) -> ProcessConditionResponse:
         """
         Execute the condition and return the response.
