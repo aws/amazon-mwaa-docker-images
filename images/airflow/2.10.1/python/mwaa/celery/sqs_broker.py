@@ -400,8 +400,8 @@ class Channel(virtual.Channel):
 
         self.hub = kwargs.get("hub") or get_event_loop()
 
-        # Dynamic workers have the MWAA__CORE__TASK_MONITORING_ENABLED set to 'true'.
-        # This will be used to determine if idle worker checks are to be enabled.
+        # MWAA__CORE__TASK_MONITORING_ENABLED is set to 'true' for workers where we want to monitor count of tasks currently getting
+        # executed on the worker. This will be used to determine if idle worker checks are to be enabled.
         self.idle_worker_monitoring_enabled = (
             os.environ.get("MWAA__CORE__TASK_MONITORING_ENABLED", "false") == "true"
         )
