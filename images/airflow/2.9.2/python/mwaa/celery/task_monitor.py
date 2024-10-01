@@ -46,7 +46,7 @@ EOF_TOKEN = "EOF_TOKEN"
 # blocks without running out of space.
 BUFFER_SIZE_PER_TASK = 2500
 CELERY_WORKER_TASK_LIMIT = int(
-    os.environ.get("AIRFLOW__CELERY__WORKER_AUTOSCALE", "20,20").split(",")[0]
+    os.environ.get("AIRFLOW__CELERY__WORKER_AUTOSCALE", "80,80").split(",")[0]
 )
 CELERY_TASKS_BUFFER_SIZE = CELERY_WORKER_TASK_LIMIT * BUFFER_SIZE_PER_TASK
 
@@ -622,6 +622,7 @@ class WorkerTaskMonitor:
             return
 
         logger.info("Closing task monitor...")
+        self.pause_task_consumption()
 
         # Report a metric about the number of current task, and a warning in case this is greater than zero. If the worker was
         # marked for killing or was marked for termination and the allowed time limit for termination has been breached, then we do
