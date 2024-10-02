@@ -242,6 +242,19 @@ def _get_opinionated_airflow_secrets_config() -> Dict[str, str]:
         "AIRFLOW__SECRETS__BACKEND_KWARGS": json.dumps(connection_lookup_pattern),
     }
 
+def _get_opinionated_airflow_usage_data_config() -> Dict[str, str]:
+    """
+    Retrieve the environment variables for Airflow's usage data configuration section.
+
+    This config can be overridden by the user.
+
+    :returns A dictionary containing the environment variables.
+    """
+
+    return {
+        "AIRFLOW__USAGE_DATA_COLLECTION__ENABLED": "False",
+    }
+
 
 def _get_essential_airflow_webserver_config() -> Dict[str, str]:
     """
@@ -310,7 +323,7 @@ def get_opinionated_airflow_config() -> Dict[str, str]:
     """
     Retrieve the environment variables required to set Airflow configurations.
 
-    These environment variables are essential and cannot be overridden by the customer.
+    These environment variables can be overridden by the customer.
 
     :returns A dictionary containing the environment variables.
     """
@@ -318,4 +331,5 @@ def get_opinionated_airflow_config() -> Dict[str, str]:
         **_get_opinionated_airflow_core_config(),
         **_get_opinionated_airflow_scheduler_config(),
         **_get_opinionated_airflow_secrets_config(),
+        **_get_opinionated_airflow_usage_data_config(),
     }

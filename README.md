@@ -8,7 +8,7 @@ MWAA](https://aws.amazon.com/managed-workflows-for-apache-airflow/) uses to run 
 You can also use it locally if you want to run a MWAA-like environment for testing, experimentation,
 and development purposes.
 
-Currently, Airflow v2.9.2 is supported. Future versions in parity with Amazon MWAA will be added as
+Currently, Airflow v2.9.2 and v2.10.1 are supported. Future versions in parity with Amazon MWAA will be added as
 well. _Notice, however, that we do not plan to support previous Airflow versions supported by MWAA._
 
 ## Using the Airflow Image
@@ -26,7 +26,7 @@ To experiment with the image using a vanilla Docker setup, follow these steps:
 python3 create_venvs.py --target <development | production>
 ```
 
-3. Build the Airflow v2.9.2 Docker image
+3. Build a supported Airflow version Docker image
    - `cd <amazon-mwaa-docker-images path>/images/airflow/2.9.2`
    - Update `run.sh` file with your account ID, environment name and account credentials. The permissions associated
    with the provided credentials will be assigned to the Airflow components that would be started with the next step. 
@@ -46,8 +46,7 @@ Airflow should be up and running now. You can access the web server on your loca
 
 When you build the Docker images of a certain Airflow version, using either `build.sh` or `run.sh`
 (which automatically also calls `build.sh` for you), multiple Docker images will actually be
-generated. For example, for Airflow 2.9 (the only currently supported version), you will notice the
-following images:
+generated. For example, for Airflow 2.9, you will notice the following images:
 
 | Repository                        | Tag                           |
 | --------------------------------- | ----------------------------- |
