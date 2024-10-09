@@ -1,0 +1,10 @@
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directories: 
+      - "/images/airflow/*/etc"
+    schedule:
+      interval: "weekly"
+    ignore:
+      # For Airflow, ignore all updates
+      - dependency-name: "apache-airflow"
