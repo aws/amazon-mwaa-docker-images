@@ -330,7 +330,7 @@ google-cloud-appengine-logging==1.4.5
 google-cloud-audit-log==0.3.0
 google-cloud-automl==2.13.5
 google-cloud-batch==0.17.26
-google-cloud-bigquery-datatransfer==3.15.6
+google-cloud-bigquery-datatransfer==3.16.0
 google-cloud-bigquery==3.20.1
 google-cloud-bigtable==2.26.0
 google-cloud-build==3.24.2
