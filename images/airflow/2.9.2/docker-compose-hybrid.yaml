@@ -18,6 +18,7 @@ x-airflow-common: &airflow-common
     MWAA__CORE__REQUIREMENTS_PATH: ${MWAA__CORE__REQUIREMENTS_PATH}
     MWAA__CORE__AUTH_TYPE: "testing"
     # Additional Airflow configuration can be passed here in JSON form.
+    MWAA__CORE__CREATED_AT: "Tue Sep 18 23:05:58 UTC 2024"
     MWAA__CORE__CUSTOM_AIRFLOW_CONFIGS: "{}"
     MWAA__CORE__FERNET_KEY: '{"FernetKey": "fake-key-nNge+lks3RBeGVrnZ1Dq5GjKerbZKmb7dXNnsNsGy3E="}'
     MWAA__WEBSERVER__SECRET: '{"secret_key": "fake-key-aYDdF6d+Fjznai5yBW63CUAi0IipJqDHlNSWIun6y8o="}'
