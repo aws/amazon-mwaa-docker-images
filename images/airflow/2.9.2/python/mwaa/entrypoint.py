@@ -102,8 +102,6 @@ CONTAINER_START_TIME = time.time()
 # failures due to scheduler failure.
 HYBRID_WORKER_SIGTERM_PATIENCE_INTERVAL_DEFAULT = timedelta(seconds=130)
 
-DEFAULT_POOL_SIZE = 128
-
 async def airflow_db_init(environ: dict[str, str]):
     """
     Initialize Airflow database.
@@ -128,6 +126,8 @@ async def increase_pool_size_if_default_size(environ: dict[str, str]):
     :param environ: A dictionary containing the environment variables.
     """
     created_at = os.environ.get("MWAA__CORE__CREATED_AT")
+    problemaic_pool_size = 128
+
 
     if created_at:
         date_format = "%a %b %d %H:%M:%S %Z %Y"
