@@ -126,7 +126,7 @@ async def increase_pool_size_if_default_size(environ: dict[str, str]):
     :param environ: A dictionary containing the environment variables.
     """
     created_at = os.environ.get("MWAA__CORE__CREATED_AT")
-    problemaic_pool_size = 128
+    problematic_pool_size = 128
 
 
     if created_at:
@@ -144,7 +144,7 @@ async def increase_pool_size_if_default_size(environ: dict[str, str]):
                                env=environ, stdout_logging_method=lambda output : command_output.append(output))
 
             # Increasing the pool size if it is the default size
-            if len(command_output) == 1 and int(command_output[0]) == DEFAULT_POOL_SIZE:
+            if len(command_output) == 1 and int(command_output[0]) == problematic_pool_size:
                 logger.info("Setting default_pool size to 10000.")
                 await run_command("airflow pools set default_pool 10000 default", env=environ)
 
