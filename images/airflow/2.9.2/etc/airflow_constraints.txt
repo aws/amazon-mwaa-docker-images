@@ -441,7 +441,7 @@ limits==3.12.0
 linkify-it-py==2.0.3
 lockfile==0.12.2
 loguru==0.7.2
-looker-sdk==24.8.0
+looker-sdk==24.20.0
 lxml==5.2.2
 lz4==4.3.3
 markdown-it-py==3.0.0
