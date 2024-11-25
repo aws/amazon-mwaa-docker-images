@@ -208,7 +208,7 @@ aws-xray-sdk==2.14.0
 azure-batch==14.2.0
 azure-common==1.1.28
 azure-core==1.30.1
-azure-cosmos==4.7.0
+azure-cosmos==4.9.0
 azure-datalake-store==0.0.53
 azure-identity==1.16.0
 azure-keyvault-secrets==4.8.0
