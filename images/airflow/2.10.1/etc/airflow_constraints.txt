@@ -389,7 +389,7 @@ hatchling==1.25.0
 hdfs==2.7.3
 hmsclient==0.1.1
 hpack==4.0.0
-httpcore==1.0.5
+httpcore==1.0.7
 httplib2==0.22.0
 httpx==0.27.0
 humanize==4.10.0
