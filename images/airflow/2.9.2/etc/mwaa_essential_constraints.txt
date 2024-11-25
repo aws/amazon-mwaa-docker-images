@@ -22,7 +22,7 @@ Flask-WTF==1.2.1
 Flask==2.2.5
 gunicorn==22.0.0
 # Celery and related packages
-billiard==4.2.0
+billiard==4.2.1
 celery==5.4.0
 gevent==24.2.1
 greenlet==3.0.3
