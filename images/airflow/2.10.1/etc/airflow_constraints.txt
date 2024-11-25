@@ -237,7 +237,7 @@ backoff==2.2.1
 backports.tarfile==1.2.0
 bcrypt==4.2.0
 beautifulsoup4==4.12.3
-billiard==4.2.0
+billiard==4.2.1
 bitarray==2.9.2
 black==24.8.0
 blinker==1.8.2
