@@ -473,7 +473,7 @@ multidict==6.0.5
 mypy-boto3-appflow==1.35.0
 mypy-boto3-rds==1.35.0
 mypy-boto3-redshift-data==1.35.10
-mypy-boto3-s3==1.35.2
+mypy-boto3-s3==1.35.67
 mypy-extensions==1.0.0
 mypy==1.9.0
 mysql-connector-python==9.0.0
