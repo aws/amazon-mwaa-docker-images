@@ -54,21 +54,11 @@ def _migrate_db():
         airflow_db_command.migratedb(args)
         logging.info("The database is now migrated.")
 
-@with_db_lock(1234)
-def _create_default_connections():
-    from airflow.cli.commands import connection_command as airflow_connection_command
-
-    try:
-        args = Namespace(verbose=False)
-        airflow_connection_command.create_default_connections(args)
-        logging.info("The default Airflow connections have been created.")
-    except TimeoutError:
-        logging.warning("Timed out on initializatin of default Airflow connections.")
 
 def _main():
     _verify_environ()
     _migrate_db()
-    _create_default_connections()
+
 
 if __name__ == "__main__":
     _main()
