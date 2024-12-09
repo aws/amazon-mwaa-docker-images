@@ -358,7 +358,7 @@ google-cloud-redis==2.16.0
 google-cloud-resource-manager==1.13.0
 google-cloud-run==0.10.10
 google-cloud-secret-manager==2.21.0
-google-cloud-spanner==3.49.1
+google-cloud-spanner==3.51.0
 google-cloud-speech==2.28.0
 google-cloud-storage-transfer==1.13.0
 google-cloud-storage==2.18.2
