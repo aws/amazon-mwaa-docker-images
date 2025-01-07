@@ -1,4 +1,4 @@
-#!/bin/python3
+#!/usr/bin/env python3
 """Run all quality check scripts under the quality-checks/ folder."""
 
 import os
