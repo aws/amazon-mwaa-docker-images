@@ -8,4 +8,4 @@ FROM amazon-mwaa-docker-images/airflow:2.10.1-base
 
 USER airflow
 
-ENTRYPOINT ["/bin/bash"]
+ENTRYPOINT ["/usr/local/bin/tini", "--", "/bin/bash"]

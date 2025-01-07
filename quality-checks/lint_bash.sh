@@ -11,7 +11,7 @@ fi
 
 # Lint all Bash files
 echo "Running ShellCheck on Bash scripts..."
-if ! find . -type f -name "*.sh" -exec shellcheck {} +; then
+if ! find . -type f -name "*.sh" -not -path "./.venv/*" -exec shellcheck {} +; then
     echo "ShellCheck linting failed."
     exit 1
 else

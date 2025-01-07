@@ -30,7 +30,7 @@ RUN rm -rf /bootstrap-dev
 {# This is the standard build type. it is what customer uses.#}
 USER airflow
 
-ENTRYPOINT ["python3", "-m", "mwaa.entrypoint"]
+ENTRYPOINT ["/usr/local/bin/tini", "--", "python3", "-m", "mwaa.entrypoint"]
 
 CMD shell
 {% elif build_type == 'explorer' %}
@@ -42,7 +42,7 @@ require further setup.
 #}
 USER airflow
 
-ENTRYPOINT ["/bin/bash"]
+ENTRYPOINT ["/usr/local/bin/tini", "--", "/bin/bash"]
 {% elif build_type == 'explorer-privileged' %}
 {#
 This is similar to the 'explorer' build type, but additionally uses the root
@@ -51,7 +51,7 @@ thus, install packages, remove packages, or anything else.
 #}
 USER root
 
-ENTRYPOINT ["/bin/bash"]
+ENTRYPOINT ["/usr/local/bin/tini", "--", "/bin/bash"]
 {% else %}
 {{ raise("Invalid build type.") }}
 {% endif %}
