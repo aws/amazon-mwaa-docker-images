@@ -778,6 +778,7 @@ async def main() -> None:
 
     await install_user_requirements(command, environ)
     await airflow_db_init(environ)
+    await increase_pool_size_if_default_size(environ)
     if os.environ.get("MWAA__CORE__AUTH_TYPE", "").lower() == "testing":
         # In "simple" auth mode, we create an admin user "airflow" with password
         # "airflow". We use this to make the Docker Compose setup easy to use without
