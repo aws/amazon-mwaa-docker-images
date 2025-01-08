@@ -723,7 +723,6 @@ async def main() -> None:
         )
 
     logger.info(f"Warming a Docker container for an Airflow {command}.")
-    logger.info(f"Hello world.")
 
     # Get executor type
     executor_type = os.environ.get("MWAA__CORE__EXECUTOR_TYPE", "CeleryExecutor")
