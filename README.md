@@ -8,7 +8,7 @@ MWAA](https://aws.amazon.com/managed-workflows-for-apache-airflow/) uses to run 
 You can also use it locally if you want to run a MWAA-like environment for testing, experimentation,
 and development purposes.
 
-Currently, Airflow v2.9.2 and v2.10.1 are supported. Future versions in parity with Amazon MWAA will be added as
+Currently, Airflow v2.9.2 and above are supported. Future versions in parity with Amazon MWAA will be added as
 well. _Notice, however, that we do not plan to support previous Airflow versions supported by MWAA._
 
 ## Using the Airflow Image
