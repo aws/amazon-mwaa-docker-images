@@ -9,9 +9,9 @@ if [[ "$PWD" != "$REPO_ROOT" ]]; then
     exit 1
 fi
 
-# Lint all Bash files
+# Lint all Bash files, excluding .venv directory
 echo "Running ShellCheck on Bash scripts..."
-if ! find . -type f -name "*.sh" -exec shellcheck {} +; then
+if ! find . -type f -name "*.sh" -not -path "./.venv/*" -exec shellcheck {} +; then
     echo "ShellCheck linting failed."
     exit 1
 else
