@@ -10,6 +10,37 @@ else
     CONTAINER_RUNTIME="docker"
 fi
 
+# Generate valid Fernet key as json
+generate_fernet_key() {
+
+    # Install cryptography package quietly
+    chmod +x temporary-pip-install generate_fernet_key.py
+    ./temporary-pip-install cryptography >/dev/null 2>&1
+    
+    # Generate the key and format as JSON
+    KEY=$(python3 generate_fernet_key.py)
+    
+    # Uninstall cryptography package quietly
+    python3 -m pip uninstall -y cryptography cryptography-vectors &>/dev/null 2>&1
+    
+    echo "$KEY"
+}
+
+# Set up cache directory ; generate if it dosen't exist
+CACHE_DIR="${HOME}/.cache/mwaa-local"
+FERNET_KEY_FILE="${CACHE_DIR}/fernet.key"
+mkdir -p "${CACHE_DIR}"
+
+# Check if we have a cached Fernet key, if not generate and cache it
+if [ ! -f "${FERNET_KEY_FILE}" ]; then
+    generate_fernet_key > "${FERNET_KEY_FILE}"
+    chmod 600 "${FERNET_KEY_FILE}"
+fi
+
+# Read the Fernet key from cache
+FERNET_KEY=$(cat "${FERNET_KEY_FILE}")
+export FERNET_KEY
+
 # Build the Docker image
 ./build.sh $CONTAINER_RUNTIME
 
