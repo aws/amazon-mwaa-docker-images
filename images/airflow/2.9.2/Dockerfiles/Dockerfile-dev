@@ -22,6 +22,6 @@ RUN rm -rf /bootstrap-dev
 
 USER airflow
 
-ENTRYPOINT ["python3", "-m", "mwaa.entrypoint"]
+ENTRYPOINT ["/usr/local/bin/tini", "--", "python3", "-m", "mwaa.entrypoint"]
 
 CMD shell

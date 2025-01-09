@@ -22,4 +22,4 @@ RUN rm -rf /bootstrap-dev
 
 USER airflow
 
-ENTRYPOINT ["/bin/bash"]
+ENTRYPOINT ["/usr/local/bin/tini", "--", "/bin/bash"]

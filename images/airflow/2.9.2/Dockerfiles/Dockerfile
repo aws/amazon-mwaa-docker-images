@@ -8,6 +8,6 @@ FROM amazon-mwaa-docker-images/airflow:2.9.2-base
 
 USER airflow
 
-ENTRYPOINT ["python3", "-m", "mwaa.entrypoint"]
+ENTRYPOINT ["/usr/local/bin/tini", "--", "python3", "-m", "mwaa.entrypoint"]
 
 CMD shell
