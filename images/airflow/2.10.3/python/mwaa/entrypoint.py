@@ -230,14 +230,16 @@ async def install_user_requirements(cmd: str, environ: dict[str, str]):
     logger.info(f"MWAA__CORE__REQUIREMENTS_PATH = {requirements_file}")
     if requirements_file and os.path.isfile(requirements_file):
         logger.info(f"Installing user requirements from {requirements_file}...")
-
+        # For hybrid worker/scheduler containers we publish the requirement install logs
+        # to the worker CloudWatch log group.
+        logger_prefix = "worker" if cmd == "hybrid" else cmd;
         subprocess_logger = CompositeLogger(
             "requirements_composite_logging",  # name can be anything unused.
             # We use a set to avoid double logging to console if the user doesn't
             # use CloudWatch for logging.
             *set(
                 [
-                    logging.getLogger(MWAA_LOGGERS.get(f"{cmd}_requirements")),
+                    logging.getLogger(MWAA_LOGGERS.get(f"{logger_prefix}_requirements")),
                     logger,
                 ]
             ),
@@ -266,7 +268,7 @@ async def install_user_requirements(cmd: str, environ: dict[str, str]):
             conditions=[
                 TimeoutCondition(USER_REQUIREMENTS_MAX_INSTALL_TIME),
             ],
-            friendly_name=f"{cmd}_requirements",
+            friendly_name=f"{logger_prefix}_requirements",
         )
         pip_process.start()
         if pip_process.process and pip_process.process.returncode != 0:
@@ -296,7 +298,10 @@ def execute_startup_script(cmd: str, environ: Dict[str, str]) -> Dict[str, str]:
 
     EXECUTE_USER_STARTUP_SCRIPT_PATH = "execute-user-startup-script"
     POST_STARTUP_SCRIPT_VERIFICATION_PATH = "post-startup-script-verification"
-    PROCESS_LOGGER = logging.getLogger(MWAA_LOGGERS.get(f"{cmd}_startup"))
+    # For hybrid worker/scheduler containers we publish the startup script logs
+    # to the worker CloudWatch log group.
+    PROCESS_LOGGER_PREFIX = "worker" if cmd == "hybrid" else cmd;
+    PROCESS_LOGGER = logging.getLogger(MWAA_LOGGERS.get(f"{PROCESS_LOGGER_PREFIX}_startup"))
 
     if os.path.isfile(startup_script_path):
         logger.info("Executing customer startup script.")
@@ -309,7 +314,7 @@ def execute_startup_script(cmd: str, environ: Dict[str, str]) -> Dict[str, str]:
             conditions=[
                 TimeoutCondition(STARTUP_SCRIPT_MAX_EXECUTION_TIME),
             ],
-            friendly_name=f"{cmd}_startup",
+            friendly_name=f"{PROCESS_LOGGER_PREFIX}_startup",
             sigterm_patience_interval=STARTUP_SCRIPT_SIGTERM_PATIENCE_INTERVAL,
         )
         startup_script_process.start()
@@ -325,7 +330,7 @@ def execute_startup_script(cmd: str, environ: Dict[str, str]) -> Dict[str, str]:
             conditions=[
                 TimeoutCondition(STARTUP_SCRIPT_MAX_EXECUTION_TIME),
             ],
-            friendly_name=f"{cmd}_startup",
+            friendly_name=f"{PROCESS_LOGGER_PREFIX}_startup",
         )
         verification_process.start()
 
