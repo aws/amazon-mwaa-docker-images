@@ -2,6 +2,7 @@ version: "3.8"
 
 x-airflow-common: &airflow-common
   image: amazon-mwaa-docker-images/airflow:2.10.3-dev
+  init: true
   environment:
     # AWS credentials
     AWS_ACCESS_KEY_ID: "FAKE_AWS_ACCESS_KEY_ID"
