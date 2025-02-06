@@ -67,6 +67,7 @@ from mwaa.subprocess.subprocess import Subprocess, run_subprocesses
 from mwaa.utils.cmd import run_command
 from mwaa.utils.dblock import with_db_lock
 from mwaa.utils.statsd import get_statsd
+from mwaa.utils.encoding import auto_decode
 
 # Usually, we pass the `__name__` variable instead as that defaults to the
 # module path, i.e. `mwaa.entrypoint` in this case. However, since this is
@@ -226,14 +227,6 @@ def create_queue() -> None:
 
 
 def _read_requirements_file(requirements_file: str) -> str:
-    # Use pip's `auto_decode` method to make sure we read the contents of the
-    # requirements.txt file exactly like they do.
-    # NOTE It is not ideal to use an internal function from another library, but
-    # the alternative would be to copy their code, but that has license implication
-    # and can get outdated. Since we rely on pip anyway, the harm from accepting this
-    # bad practice is minimized.
-    from pip._internal.utils.encoding import auto_decode
-
     with open(requirements_file, "rb") as f:
         return auto_decode(f.read())
 
@@ -291,7 +284,8 @@ async def install_user_requirements(cmd: str, environ: dict[str, str]):
                 )
                 subprocess_logger.warning("Forcing local constraints")
                 extra_args = ["-c", os.environ["AIRFLOW_CONSTRAINTS_FILE"]]
-        except:
+        except Exception as e:
+            subprocess_logger.warning(f"Unable to scan requirements file: {e}")
             subprocess_logger.warning(
                 "Cannot determine whether the requirements.txt file has constraints "
                 "or not; forcing local constraints."
