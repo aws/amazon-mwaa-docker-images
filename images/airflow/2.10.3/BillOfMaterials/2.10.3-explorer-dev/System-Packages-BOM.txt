@@ -1,5 +1,57 @@
 This Docker image includes the following third-party software/licensing:
 tzdata-2024a: Public Domain
+publicsuffix-list-dafsa-20240212: MPLv2.0
+ncurses-base-6.2: MIT
+amazon-linux-repo-cdn-2023.6.20250203: MIT
+system-release-2023.6.20250203: MIT
+filesystem-3.14: Public Domain
+glibc-minimal-langpack-2.34: LGPLv2+ and LGPLv2+ with exceptions and GPLv2+ and GPLv2+ with exceptions and BSD and Inner-Net and ISC and Public Domain and GFDL
+glibc-2.34: LGPLv2+ and LGPLv2+ with exceptions and GPLv2+ and GPLv2+ with exceptions and BSD and Inner-Net and ISC and Public Domain and GFDL
+xz-libs-5.2.5: Public Domain
+libzstd-1.5.5: BSD and GPLv2
+libxml2-2.10.4: MIT
+libgpg-error-1.42: LGPLv2+
+libffi-3.4.4: MIT
+libuuid-2.37.4: BSD
+pcre2-10.40: BSD
+p11-kit-0.24.1: BSD
+elfutils-libelf-0.188: GPLv2+ or LGPLv3+
+expat-2.6.3: MIT
+libattr-2.5.1: LGPLv2+
+libsmartcols-2.37.4: LGPLv2+
+libidn2-2.3.2: (GPLv2+ or LGPLv3+) and GPLv3+
+libpsl-0.21.1: MIT
+libcomps-0.1.20: GPL-2.0-or-later
+libgcrypt-1.10.2: LGPLv2+
+gdbm-libs-1.19: GPLv3+
+keyutils-libs-1.6.3: GPLv2+ and LGPLv2+
+audit-libs-3.0.6: LGPLv2+
+libgomp-11.4.1: GPLv3+ and GPLv3+ with exceptions and GPLv2+ with exceptions and LGPLv2+ and BSD
+libsepol-3.4: LGPLv2+
+coreutils-single-8.32: GPLv3+
+libblkid-2.37.4: LGPLv2+
+libsigsegv-2.13: GPLv2+
+libtasn1-4.19.0: GPLv3+ and LGPLv2+
+ca-certificates-2023.2.68: Public Domain
+glib2-2.82.2: LGPL-2.1-or-later
+libverto-0.3.2: MIT
+libcurl-minimal-8.5.0: curl
+libxcrypt-4.4.33: LGPL-2.1-or-later AND BSD-3-Clause AND BSD-2-Clause AND BSD-2-Clause-FreeBSD AND 0BSD AND CC0-1.0 AND LicenseRef-Fedora-Public-Domain
+python3-libs-3.9.20: Python
+libyaml-0.2.5: MIT
+libarchive-3.7.4: BSD-2-Clause AND FSFULLR AND GPL-2.0-or-later WITH Libtool-exception AND BSD-3-Clause AND FSFUL
+rpm-libs-4.16.1.3: GPLv2+ and LGPLv2+ with exceptions
+libsolv-0.7.22: BSD
+gnupg2-minimal-2.3.7: GPLv3+
+librepo-1.14.5: LGPLv2+
+python3-libdnf-0.69.0: LGPLv2+
+python3-gpg-1.15.1: LGPLv2+
+elfutils-default-yama-scope-0.188: GPLv2+ or LGPLv3+
+rpm-build-libs-4.16.1.3: GPLv2+ and LGPLv2+ with exceptions
+libreport-filesystem-2.15.2: GPLv2+
+python3-dnf-4.14.0: GPLv2+
+yum-4.14.0: GPLv2+
+libgcc-11.4.1: GPLv3+ and GPLv3+ with exceptions and GPLv2+ with exceptions and LGPLv2+ and BSD
 python3-setuptools-wheel-59.6.0: MIT and (BSD or ASL 2.0)
 pcre2-syntax-10.40: BSD
 ncurses-libs-6.2: MIT
@@ -20,59 +72,7 @@ file-libs-5.39: BSD
 gmp-6.2.1: LGPLv3+ or GPLv2+
 libacl-2.3.1: LGPLv2+
 libunistring-0.9.10: GPLV2+ or LGPLv3+
-libpsl-0.21.1: MIT
-libcomps-0.1.20: GPL-2.0-or-later
-libgcrypt-1.10.2: LGPLv2+
-gdbm-libs-1.19: GPLv3+
-keyutils-libs-1.6.3: GPLv2+ and LGPLv2+
-audit-libs-3.0.6: LGPLv2+
-libgomp-11.4.1: GPLv3+ and GPLv3+ with exceptions and GPLv2+ with exceptions and LGPLv2+ and BSD
-libsepol-3.4: LGPLv2+
-coreutils-single-8.32: GPLv3+
-libblkid-2.37.4: LGPLv2+
-libsigsegv-2.13: GPLv2+
-libtasn1-4.19.0: GPLv3+ and LGPLv2+
-ca-certificates-2023.2.64: Public Domain
-glib2-2.74.7: LGPLv2+
-libverto-0.3.2: MIT
-libcurl-minimal-8.5.0: curl
-libxcrypt-4.4.33: LGPL-2.1-or-later AND BSD-3-Clause AND BSD-2-Clause AND BSD-2-Clause-FreeBSD AND 0BSD AND CC0-1.0 AND LicenseRef-Fedora-Public-Domain
-python3-libs-3.9.16: Python
-libyaml-0.2.5: MIT
-libarchive-3.5.3: BSD
-rpm-libs-4.16.1.3: GPLv2+ and LGPLv2+ with exceptions
-libsolv-0.7.22: BSD
-gnupg2-minimal-2.3.7: GPLv3+
-librepo-1.14.5: LGPLv2+
-python3-libdnf-0.69.0: LGPLv2+
-python3-gpg-1.15.1: LGPLv2+
-elfutils-default-yama-scope-0.188: GPLv2+ or LGPLv3+
-rpm-build-libs-4.16.1.3: GPLv2+ and LGPLv2+ with exceptions
-libreport-filesystem-2.15.2: GPLv2+
-python3-dnf-4.14.0: GPLv2+
-yum-4.14.0: GPLv2+
-libgcc-11.4.1: GPLv3+ and GPLv3+ with exceptions and GPLv2+ with exceptions and LGPLv2+ and BSD
-crypto-policies-20220428: LGPLv2+
-publicsuffix-list-dafsa-20240212: MPLv2.0
-ncurses-base-6.2: MIT
-amazon-linux-repo-cdn-2023.5.20240722: MIT
-system-release-2023.5.20240722: MIT
-filesystem-3.14: Public Domain
-glibc-minimal-langpack-2.34: LGPLv2+ and LGPLv2+ with exceptions and GPLv2+ and GPLv2+ with exceptions and BSD and Inner-Net and ISC and Public Domain and GFDL
-glibc-2.34: LGPLv2+ and LGPLv2+ with exceptions and GPLv2+ and GPLv2+ with exceptions and BSD and Inner-Net and ISC and Public Domain and GFDL
-xz-libs-5.2.5: Public Domain
-libzstd-1.5.5: BSD and GPLv2
-libxml2-2.10.4: MIT
-libgpg-error-1.42: LGPLv2+
-libffi-3.4.4: MIT
-libuuid-2.37.4: BSD
-pcre2-10.40: BSD
-p11-kit-0.24.1: BSD
-elfutils-libelf-0.188: GPLv2+ or LGPLv3+
-expat-2.5.0: MIT
-libattr-2.5.1: LGPLv2+
-libsmartcols-2.37.4: LGPLv2+
-libidn2-2.3.2: (GPLv2+ or LGPLv3+) and GPLv3+
+crypto-policies-20240828: LGPL-2.1-or-later
 mpfr-4.1.0: LGPLv3+
 grep-3.8: GPLv3+
 alternatives-1.15: GPLv2
@@ -87,9 +87,9 @@ gawk-5.1.0: GPLv3+ and GPLv2+ and LGPLv2+ and BSD
 p11-kit-trust-0.24.1: BSD
 openssl-libs-3.0.8: ASL 2.0
 python3-pip-wheel-21.3.1: MIT and Python and ASL 2.0 and BSD and ISC and LGPLv2 and MPLv2.0 and (ASL 2.0 or BSD)
-krb5-libs-1.21: MIT
+krb5-libs-1.21.3: MIT
 curl-minimal-8.5.0: curl
-python3-3.9.16: Python
+python3-3.9.20: Python
 python3-libcomps-0.1.20: GPL-2.0-or-later
 lz4-libs-1.9.4: GPLv2+ and BSD
 rpm-4.16.1.3: GPLv2+
@@ -104,8 +104,6 @@ python3-rpm-4.16.1.3: GPLv2+
 dnf-data-4.14.0: GPLv2+
 dnf-4.14.0: GPLv2+
 gpg-pubkey-d832c631: pubkey
-nettle-3.8: LGPLv3+ or GPLv2+
-gnutls-3.8.0: GPLv3+ and LGPLv2+
 systemd-libs-252.23: LGPLv2+ and MIT
 dbus-libs-1.12.28: (GPLv2+ or AFL) and GPLv2+
 python3-dbus-1.2.18: MIT
@@ -116,49 +114,47 @@ python3-setuptools-59.6.0: MIT and (BSD or ASL 2.0)
 python3-distro-1.5.0: ASL 2.0
 python3-dnf-plugins-core-4.3.0: GPLv2+
 dnf-plugins-core-4.3.0: GPLv2+
-libglvnd-1.3.4: MIT
-mesa-libglapi-22.3.3: MIT
+libglvnd-1.7.0: MIT-feh AND MIT-Modern-Variant AND BSD-1-Clause AND BSD-3-Clause AND GPL-3.0-or-later WITH Autoconf-exception-macro
 libpng-1.6.37: zlib
-libbrotli-1.0.9: MIT
-libX11-xcb-1.7.2: MIT
-fonts-filesystem-2.0.5: MIT
+libX11-xcb-1.8.10: MIT AND X11
 tcl-8.6.10: TCL
-libxshmfence-1.3: MIT
+libxshmfence-1.3.2: HPND-sell-variant
 libmpc-1.2.1: LGPLv3+
 libicu-67.1: MIT and UCD and Public Domain
+libbrotli-1.0.9: MIT
 elfutils-debuginfod-client-0.188: GPLv3+ and (GPLv2+ or LGPLv3+)
 util-linux-core-2.37.4: GPLv2 and GPLv2+ and LGPLv2+ and BSD with advertising and Public Domain
 python3-pyparsing-2.4.7: MIT
-mesa-filesystem-22.3.3: MIT
+python3-packaging-21.3: BSD or ASL 2.0
+mesa-filesystem-24.2.6: MIT AND BSD-3-Clause AND SGI-B-2.0
 libwayland-server-1.22.0: MIT
 libtextstyle-0.21: GPLv3+
 libseccomp-2.5.3: LGPLv2
 libfdisk-2.37.4: LGPLv2+
 libedit-3.1: BSD
-llvm-libs-15.0.7: Apache-2.0 WITH LLVM-exception OR NCSA
-libXau-1.0.9: MIT
-libxcb-1.13.1: MIT
-kernel-headers-6.1.97: GPLv2 and Redistributable, no modification permitted
+libXau-1.0.11: MIT-open-group
+libxcb-1.17.0: X11
+kernel-headers-6.1.127: GPLv2 and Redistributable, no modification permitted
 jansson-2.14: MIT
 graphite2-1.3.14: (LGPLv2+ or GPLv2+ or MPLv1.1) and (Netscape or GPLv2+ or LGPLv2+)
+fonts-filesystem-2.0.5: MIT
 emacs-filesystem-28.2: GPLv3+ and CC0
 binutils-2.39: GPLv3+
 ctags-5.9: GPLv2+
+llvm-libs-15.0.7: Apache-2.0 WITH LLVM-exception OR NCSA
 gettext-libs-0.21: LGPLv2+ and GPLv3+
 gettext-0.21: GPLv3+ and LGPLv2+ and GFDL
-python3-packaging-21.3: BSD or ASL 2.0
+mesa-va-drivers-24.2.6: MIT AND BSD-3-Clause AND SGI-B-2.0
+systemtap-sdt-dtrace-5.2: GPL-2.0-or-later AND CC0-1.0
+brotli-1.0.9: MIT
 boost-regex-1.75.0: Boost and MIT and Python
 source-highlight-3.1.9: GPLv3+
 cpp-11.4.1: GPLv3+ and GPLv3+ with exceptions and GPLv2+ with exceptions and LGPLv2+ and BSD
-abattis-cantarell-fonts-0.301: OFL
-adobe-source-code-pro-fonts-2.030.1.050: OFL
-gsettings-desktop-schemas-40.0: LGPLv2+
-brotli-1.0.9: MIT
-libglvnd-opengl-1.3.4: MIT
+libglvnd-opengl-1.7.0: MIT-feh AND MIT-Modern-Variant AND BSD-1-Clause AND BSD-3-Clause AND GPL-3.0-or-later WITH Autoconf-exception-macro
 xxhash-libs-0.8.0: BSD
 xml-common-0.6.3: GPL+
-xkeyboard-config-2.33: MIT
-libxkbcommon-1.3.0: MIT
+xkeyboard-config-2.41: HPND AND HPND-sell-variant AND X11 AND X11-distribute-modifications-variant AND MIT AND MIT-open-group AND xkeyboard-config-Zinoviev
+libxkbcommon-1.6.0: MIT AND X11 AND MIT-CMU
 unzip-6.0: BSD
 zip-3.0: BSD
 sqlite-3.40.0: Public Domain
@@ -166,7 +162,7 @@ shared-mime-info-2.2: GPLv2+
 rust-srpm-macros-21: MIT
 qrencode-libs-4.1.1: LGPLv2+
 pkgconf-m4-1.8.0: GPLv2+ with exceptions
-pixman-0.40.0: MIT
+pixman-0.43.4: MIT
 perl-srpm-macros-1: GPLv3+
 pcre2-utf32-10.40: BSD
 pcre2-utf16-10.40: BSD
@@ -177,14 +173,11 @@ ncurses-c++-libs-6.2: MIT
 ncurses-6.2: MIT
 m4-1.4.19: GPLv3+
 lua-srpm-macros-1: MIT
+lm_sensors-libs-3.6.0: LGPLv2+
 libwayland-client-1.22.0: MIT
 libtool-ltdl-2.4.7: LGPLv2+
-libstemmer-0: BSD
 libstdc++-devel-11.4.1: GPLv3+ and GPLv3+ with exceptions and GPLv2+ with exceptions and LGPLv2+ and BSD
 libutempter-1.2.1: LGPLv2+
-libproxy-0.4.15: LGPLv2+
-glib-networking-2.68.2: LGPLv2+
-libsoup-2.72.0: LGPLv2
 libpkgconf-1.8.0: ISC
 libjpeg-turbo-2.1.4: IJG
 gdk-pixbuf2-2.42.10: LGPLv2+
@@ -195,28 +188,28 @@ libcbor-0.7.0: MIT
 libfido2-1.10.0: BSD
 libbabeltrace-1.5.8: MIT and GPLv2
 libargon2-20171227: Public Domain or ASL 2.0
-libX11-common-1.7.2: MIT
-libX11-1.7.2: MIT
-libXext-1.3.4: MIT
-libXrender-0.9.10: MIT
-libXxf86vm-1.1.4: MIT
-libXfixes-6.0.0: MIT
+libX11-common-1.8.10: MIT AND X11
+libX11-1.8.10: MIT AND X11
+libXext-1.3.6: MIT-open-group AND X11 AND HPND AND HPND-sell-variant AND SMLNJ AND MIT AND ISC AND HPND-doc AND HPND-doc-sell
+libXrender-0.9.11: HPND-sell-variant
+libXxf86vm-1.1.5: X11-distribute-modifications-variant
+libXfixes-6.0.1: MIT AND HPND-sell-variant
 less-608: GPLv3+ or BSD
 kmod-libs-29: LGPLv2+
 kernel-srpm-macros-1.0: MIT
 json-glib-1.6.6: LGPLv2+
 info-6.7: GPLv3+
-hwdata-0.353: GPLv2+
+hwdata-0.384: GPL-2.0-or-later
 libpciaccess-0.16: MIT
-libdrm-2.4.110: MIT
-mesa-va-drivers-22.3.3: MIT
-mesa-dri-drivers-22.3.3: MIT
-libglvnd-glx-1.3.4: MIT
-mesa-libGL-22.3.3: MIT
-mesa-libgbm-22.3.3: MIT
-libglvnd-egl-1.3.4: MIT
-mesa-libEGL-22.3.3: MIT
-libglvnd-gles-1.3.4: MIT
+libdrm-2.4.123: MIT
+mesa-libglapi-24.2.6: MIT AND BSD-3-Clause AND SGI-B-2.0
+mesa-dri-drivers-24.2.6: MIT AND BSD-3-Clause AND SGI-B-2.0
+mesa-libgbm-24.2.6: MIT AND BSD-3-Clause AND SGI-B-2.0
+libglvnd-egl-1.7.0: MIT-feh AND MIT-Modern-Variant AND BSD-1-Clause AND BSD-3-Clause AND GPL-3.0-or-later WITH Autoconf-exception-macro
+mesa-libEGL-24.2.6: MIT AND BSD-3-Clause AND SGI-B-2.0
+libglvnd-glx-1.7.0: MIT-feh AND MIT-Modern-Variant AND BSD-1-Clause AND BSD-3-Clause AND GPL-3.0-or-later WITH Autoconf-exception-macro
+mesa-libGL-24.2.6: MIT AND BSD-3-Clause AND SGI-B-2.0
+libglvnd-gles-1.7.0: MIT-feh AND MIT-Modern-Variant AND BSD-1-Clause AND BSD-3-Clause AND GPL-3.0-or-later WITH Autoconf-exception-macro
 gzip-1.12: GPLv3+ and GFDL
 cracklib-2.9.6: LGPLv2+
 pam-1.5.1: BSD and GPLv2+
@@ -290,11 +283,11 @@ perl-File-Find-1.37: GPL+ or Artistic
 google-noto-fonts-common-20201206: OFL
 google-noto-sans-vf-fonts-20201206: OFL
 langpacks-core-font-en-3.0: GPLv2+
-cairo-1.17.6: LGPLv2 or MPLv1.1
+cairo-1.18.0: LGPL-2.1-only OR MPL-1.1
 harfbuzz-7.0.0: MIT
-freetype-2.13.0: (FTL or GPLv2+) and BSD and MIT and Public Domain and zlib with acknowledgement
+freetype-2.13.2: (FTL OR GPL-2.0-or-later) AND BSD-3-Clause AND MIT AND MIT-Modern-Variant AND LicenseRef-Fedora-Public-Domain AND Zlib
 fontconfig-2.13.94: MIT and Public Domain and UCD
-libXft-2.3.3: MIT
+libXft-2.3.8: HPND-sell-variant
 tk-8.6.10: TCL
 tix-8.4.3: TCL
 harfbuzz-icu-7.0.0: MIT
@@ -336,12 +329,12 @@ pkgconf-1.8.0: ISC
 python-srpm-macros-3.9: MIT and Python and GPLv2+
 amazon-rpm-config-228: GPL+
 zlib-devel-1.2.11: zlib and Boost
-xorg-x11-proto-devel-2021.4: MIT
+xorg-x11-proto-devel-2024.1: BSD-2-Clause AND HPND AND HPND-sell-variant AND ICU AND MIT AND MIT-open-group AND SGI-B-2.0 AND SMLNJ AND X11 AND X11-distribute-modifications-variant
 pcre2-devel-10.40: BSD
-libXau-devel-1.0.9: MIT
-libxcb-devel-1.13.1: MIT
-libX11-devel-1.7.2: MIT
-libXrender-devel-0.9.10: MIT
+libXau-devel-1.0.11: MIT-open-group
+libxcb-devel-1.17.0: X11
+libX11-devel-1.8.10: MIT AND X11
+libXrender-devel-0.9.11: HPND-sell-variant
 libpng-devel-1.6.37: zlib
 tcl-devel-8.6.10: TCL
 brotli-devel-1.0.9: MIT
@@ -349,8 +342,8 @@ bzip2-devel-1.0.8: BSD
 graphite2-devel-1.3.14: (LGPLv2+ or GPLv2+ or MPLv1.1) and (Netscape or GPLv2+ or LGPLv2+)
 libblkid-devel-2.37.4: LGPLv2+
 libffi-devel-3.4.4: MIT
-libglvnd-core-devel-1.3.4: MIT
-libglvnd-devel-1.3.4: MIT
+libglvnd-core-devel-1.7.0: MIT-feh AND MIT-Modern-Variant AND BSD-1-Clause AND BSD-3-Clause AND GPL-3.0-or-later WITH Autoconf-exception-macro
+libglvnd-devel-1.7.0: MIT-feh AND MIT-Modern-Variant AND BSD-1-Clause AND BSD-3-Clause AND GPL-3.0-or-later WITH Autoconf-exception-macro
 libicu-devel-67.1: MIT and UCD and Public Domain
 libpciaccess-devel-0.16: MIT
 libsepol-devel-3.4: LGPLv2+
@@ -358,23 +351,23 @@ libselinux-devel-3.4: Public Domain
 libmount-devel-2.37.4: LGPLv2+
 ncurses-devel-6.2: MIT
 sysprof-capture-devel-3.40.1: BSD-2-Clause-Patent
-glib2-devel-2.74.7: LGPLv2+
+glib2-devel-2.82.2: LGPL-2.1-or-later
 harfbuzz-devel-7.0.0: MIT
-freetype-devel-2.13.0: (FTL or GPLv2+) and BSD and MIT and Public Domain and zlib with acknowledgement
+freetype-devel-2.13.2: (FTL OR GPL-2.0-or-later) AND BSD-3-Clause AND MIT AND MIT-Modern-Variant AND LicenseRef-Fedora-Public-Domain AND Zlib
 valgrind-devel-3.19.0: GPLv2+
-libdrm-devel-2.4.110: MIT
+libdrm-devel-2.4.123: MIT
 xz-devel-5.2.5: Public Domain
 libxml2-devel-2.10.4: MIT
 fontconfig-devel-2.13.94: MIT and Public Domain and UCD
-libXft-devel-2.3.3: MIT
+libXft-devel-2.3.8: HPND-sell-variant
 gcc-gdb-plugin-11.4.1: GPLv3+ and GPLv3+ with exceptions and GPLv2+ with exceptions and LGPLv2+ and BSD
 gdb-12.1: GPLv3+ and GPLv3+ with exceptions and GPLv2+ and GPLv2+ with exceptions and GPL+ and LGPLv2+ and LGPLv3+ and BSD and Public Domain and GFDL
 tk-devel-8.6.10: TCL
-mesa-libGL-devel-22.3.3: MIT
+mesa-libGL-devel-24.2.6: MIT AND BSD-3-Clause AND SGI-B-2.0
 readline-devel-8.1: GPLv3+
 python3-rpm-generators-12: GPLv2+
 bluez-libs-devel-5.62: GPLv2+
-expat-devel-2.5.0: MIT
+expat-devel-2.6.3: MIT
 gmp-devel-6.2.1: LGPLv3+ or GPLv2+
 libuuid-devel-2.37.4: BSD
 openssl-devel-3.0.8: ASL 2.0
@@ -384,10 +377,10 @@ net-tools-2.0: GPLv2+
 gdbm-devel-1.19: GPLv3+
 tix-devel-8.4.3: TCL
 autoconf-2.69: GPLv2+ and GFDL
-git-core-2.40.1: BSD-3-Clause AND GPL-2.0-only AND GPL-2.0-or-later AND LGPL-2.1-or-later AND MIT
-libappstream-glib-0.7.18: LGPLv2+
-desktop-file-utils-0.26: GPLv2+
-systemtap-sdt-devel-4.8: GPLv2+ and Public Domain
+git-core-2.47.1: BSD-3-Clause AND GPL-2.0-only AND GPL-2.0-or-later AND LGPL-2.1-or-later AND MIT
+libappstream-glib-0.8.3: LGPL-2.1-or-later
+systemtap-sdt-devel-5.2: GPL-2.0-or-later AND CC0-1.0
+desktop-file-utils-0.27: GPL-2.0-or-later
 glibc-gconv-extra-2.34: LGPLv2+ and LGPLv2+ with exceptions and GPLv2+ and GPLv2+ with exceptions and BSD and Inner-Net and ISC and Public Domain and GFDL
 glibc-all-langpacks-2.34: LGPLv2+ and LGPLv2+ with exceptions and GPLv2+ and GPLv2+ with exceptions and BSD and Inner-Net and ISC and Public Domain and GFDL
 bzip2-1.0.8: BSD
@@ -415,28 +408,28 @@ paper-2.3: GPLv3+ and FSFAP
 perl-IPC-Run3-0.048: GPL+ or Artistic or BSD
 psutils-2.05: GPLv3+ and psutils
 groff-1.22.4: GPLv3+ and GFDL and BSD and MIT
-awscli-2-2.15.30: ASL 2.0 and MIT
-libXi-1.7.10: MIT
-libICE-1.0.10: MIT
+awscli-2-2.17.18: ASL 2.0 and MIT
+libXi-1.8.2: MIT-open-group AND SMLNJ AND MIT
+libICE-1.1.1: MIT-open-group
 dejavu-sans-mono-fonts-2.37: Bitstream Vera and Public Domain
 dejavu-sans-fonts-2.37: Bitstream Vera and Public Domain
-libSM-1.2.3: MIT
-libXt-1.2.0: MIT
-libXtst-1.2.3: MIT
-libXrandr-1.5.2: MIT
-libXinerama-1.1.4: MIT
+libSM-1.2.4: MIT AND MIT-open-group
+libXt-1.3.0: MIT AND HPND-sell-variant AND SMLNJ AND MIT-open-group AND X11
+libXtst-1.2.5: MIT-open-group AND HPND-sell-variant AND X11 AND HPND-doc AND HPND-doc-sell
+libXrandr-1.5.4: HPND-sell-variant
+libXinerama-1.1.5: MIT AND MIT-open-group AND X11
 javapackages-filesystem-6.0.0: BSD
 giflib-5.2.1: MIT
 dejavu-serif-fonts-2.37: Bitstream Vera and Public Domain
 chkconfig-1.15: GPLv2
 alsa-lib-1.2.7.2: LGPLv2+
-java-17-amazon-corretto-headless-17.0.12+7: ASL 1.1 and ASL 2.0 and BSD and BSD with advertising and GPL+ and GPLv2 and GPLv2 with exceptions and IJG and LGPLv2+ and MIT and MPLv2.0 and Public Domain and W3C and zlib and ISC and FTL and RSA.
-java-17-amazon-corretto-17.0.12+7: ASL 1.1 and ASL 2.0 and BSD and BSD with advertising and GPL+ and GPLv2 and GPLv2 with exceptions and IJG and LGPLv2+ and MIT and MPLv2.0 and Public Domain and W3C and zlib and ISC and FTL and RSA.
+java-17-amazon-corretto-headless-17.0.14+7: ASL 1.1 and ASL 2.0 and BSD and BSD with advertising and GPL+ and GPLv2 and GPLv2 with exceptions and IJG and LGPLv2+ and MIT and MPLv2.0 and Public Domain and W3C and zlib and ISC and FTL and RSA.
+java-17-amazon-corretto-17.0.14+7: ASL 1.1 and ASL 2.0 and BSD and BSD with advertising and GPL+ and GPLv2 and GPLv2 with exceptions and IJG and LGPLv2+ and MIT and MPLv2.0 and Public Domain and W3C and zlib and ISC and FTL and RSA.
 libcurl-devel-8.5.0: curl
 cyrus-sasl-lib-2.1.27: BSD with advertising
 openldap-2.4.57: OpenLDAP
-libpq-15.7: PostgreSQL
-libpq-devel-15.7: PostgreSQL
+libpq-16.4: PostgreSQL
+libpq-devel-16.4: PostgreSQL
 procps-ng-3.3.17: GPL+ and GPLv2 and GPLv2+ and GPLv3+ and LGPLv2+
 oniguruma-6.9.7.1: BSD
 jq-1.7.1: MIT AND ICU AND CC-BY-3.0
