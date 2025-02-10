@@ -105,10 +105,8 @@ export MWAA__CORE__TASK_MONITORING_ENABLED
 export MWAA__CORE__TERMINATE_IF_IDLE
 export MWAA__CORE__MWAA_SIGNAL_HANDLING_ENABLED
 
-if [ "$COMMAND" == "resetdb" ]; then
-    $CONTAINER_RUNTIME compose -f docker-compose-resetdb.yaml up --abort-on-container-exit
-elif [ "$COMMAND" == "test-requirements" ] || [ "$COMMAND" == "test-startup-script" ]; then
-    $CONTAINER_RUNTIME compose -f docker-compose-commands.yaml up "$COMMAND" --abort-on-container-exit
+if [ "$COMMAND" == "test-requirements" ] || [ "$COMMAND" == "test-startup-script" ]; then
+    $CONTAINER_RUNTIME compose -f docker-compose-test-commands.yaml up "$COMMAND" --abort-on-container-exit
 else
     $CONTAINER_RUNTIME compose up
 fi

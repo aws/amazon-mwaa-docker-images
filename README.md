@@ -98,21 +98,7 @@ Each of the postfixes added to the image tag represents a certain build type, as
 
 #### Reset database
 
-- If you encountered [the following error](https://issues.apache.org/jira/browse/AIRFLOW-3678): `process fails with "dag_stats_table already exists"`, you'll need to reset your database:
-- Go to entrypoint.py for your airflow version and uncomment the section
-```bash
-# case "resetdb":
-#     # Perform the resetdb functionality
-#     await airflow_db_reset(environ)
-#     # After resetting the db, initialize it again
-#     await airflow_db_init(environ)
-```
-
-Then run
-
-```bash
-./run.sh resetdb
-```
+- If you encountered [the following error](https://issues.apache.org/jira/browse/AIRFLOW-3678): `process fails with "dag_stats_table already exists"`, you'll need to reset your database. You just need to restart your container by exiting and rerunning the `run.sh` script
 
 ## Security
 
