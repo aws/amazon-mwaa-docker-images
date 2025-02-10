@@ -6162,17 +6162,10 @@ Copyright 2013-2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 /usr/local/airflow/.local/lib/python3.11/site-packages/boto3-1.35.36.dist-info/NOTICE
 
 boto3-stubs
-<<<<<<< HEAD
-1.36.15
+1.36.16
 MIT License
 https://github.com/youtype/mypy_boto3_builder
-/usr/local/airflow/.local/lib/python3.11/site-packages/boto3_stubs-1.36.15.dist-info/LICENSE
-=======
-1.36.7
-MIT License
-https://github.com/youtype/mypy_boto3_builder
-/usr/local/airflow/.local/lib/python3.11/site-packages/boto3_stubs-1.36.7.dist-info/LICENSE
->>>>>>> b30b772 (Fix github analyzer error)
+/usr/local/airflow/.local/lib/python3.11/site-packages/boto3_stubs-1.36.16.dist-info/LICENSE
 MIT License
 
 Copyright (c) 2025 Vlad Emelianov
@@ -6444,17 +6437,10 @@ one at http://mozilla.org/MPL/2.0/.
 /usr/local/airflow/.local/lib/python3.11/site-packages/botocore-1.35.36.dist-info/NOTICE
 
 botocore-stubs
-<<<<<<< HEAD
-1.36.15
+1.36.16
 MIT License
 https://github.com/youtype/botocore-stubs
-/usr/local/airflow/.local/lib/python3.11/site-packages/botocore_stubs-1.36.15.dist-info/LICENSE
-=======
-1.36.7
-MIT License
-https://github.com/youtype/botocore-stubs
-/usr/local/airflow/.local/lib/python3.11/site-packages/botocore_stubs-1.36.7.dist-info/LICENSE
->>>>>>> b30b772 (Fix github analyzer error)
+/usr/local/airflow/.local/lib/python3.11/site-packages/botocore_stubs-1.36.16.dist-info/LICENSE
 MIT License
 
 Copyright (c) 2022 Vlad Emelianov
@@ -15594,17 +15580,10 @@ UNKNOWN
 UNKNOWN
 
 types-awscrt
-<<<<<<< HEAD
 0.23.9
 MIT License
 https://github.com/youtype/types-awscrt
 /usr/local/airflow/.local/lib/python3.11/site-packages/types_awscrt-0.23.9.dist-info/LICENSE
-=======
-0.23.7
-MIT License
-https://github.com/youtype/types-awscrt
-/usr/local/airflow/.local/lib/python3.11/site-packages/types_awscrt-0.23.7.dist-info/LICENSE
->>>>>>> b30b772 (Fix github analyzer error)
 MIT License
 
 Copyright (c) 2022 Vlad Emelianov
