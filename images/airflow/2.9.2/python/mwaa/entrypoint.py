@@ -85,6 +85,8 @@ AVAILABLE_COMMANDS = [
     "shell",
     "resetdb",
     "spy",
+    "test-requirements",
+    "test-startup-script",
 ]
 MWAA_DOCS_REQUIREMENTS_GUIDE = "https://docs.aws.amazon.com/mwaa/latest/userguide/working-dags-dependencies.html#working-dags-dependencies-test-create"
 STARTUP_SCRIPT_SIGTERM_PATIENCE_INTERVAL = timedelta(seconds=5)
@@ -739,6 +741,11 @@ async def main() -> None:
             **mwaa_essential_airflow_config,
         },
     )
+
+    if command == "test-startup-script":
+        print("Finished testing startup script")
+        return
+
     environ = {
         **os.environ,
         # Custom configuration and environment variables that we think are good, but
@@ -771,6 +778,11 @@ async def main() -> None:
     logger.debug(f"Environment variables: %s", environ)
 
     await install_user_requirements(command, environ)
+
+    if command == "test-requirements":
+        print("Finished testing requirements")
+        return
+
     await airflow_db_init(environ)
     await increase_pool_size_if_default_size(environ)
     if os.environ.get("MWAA__CORE__AUTH_TYPE", "").lower() == "testing":

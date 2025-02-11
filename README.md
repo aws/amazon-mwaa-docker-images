@@ -76,6 +76,30 @@ Each of the postfixes added to the image tag represents a certain build type, as
   install tools like `wget` to make it possible for the user to fetch web pages. For a complete
   listing of what is installed in `dev` images, see the `bootstrap-dev` folders.
 
+
+## Extra commands
+
+#### Requirements
+
+- Add Python dependencies to `requirements/requirements.txt`
+- To test a `requirements.txt` without running Apache Airflow, run:
+```bash
+./run.sh test-requirements
+```
+
+#### Startup script
+
+- There is a folder in each airflow version called `startup_script`. Add your script there as `startup.sh`
+- If there is a need to run additional setup (e.g. install system libraries, setting up environment variables), please modify the `startup.sh` script.
+- To test a `startup.sh` without running Apache Airflow, run:
+```bash
+./run.sh  test-startup-script
+```
+
+#### Reset database
+
+- If you encountered [the following error](https://issues.apache.org/jira/browse/AIRFLOW-3678): `process fails with "dag_stats_table already exists"`, you'll need to reset your database. You just need to restart your container by exiting and rerunning the `run.sh` script
+
 ## Security
 
 See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
