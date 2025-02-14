@@ -40,12 +40,22 @@ def _migrate_db():
         args = Namespace(migration_wait_timeout=1)
         airflow_db_command.check_migrations(args)
         logging.info("The database is already migrated.")
+        args = Namespace(
+            from_revision=None,
+            from_version=None,
+            reserialize_dags=True,
+            show_sql_only=None,
+            to_revision=None,
+            to_version=None,
+            use_migration_files=None,
+        )
+        airflow_db_command.migratedb(args)
     except TimeoutError:
         logging.info("The database is not yet migrated. Migrating...")
         args = Namespace(
             from_revision=None,
             from_version=None,
-            reserialize_dags=None,
+            reserialize_dags=True,
             show_sql_only=None,
             to_revision=None,
             to_version=None,
