@@ -699,6 +699,44 @@ def run_airflow_command(cmd: str, environ: Dict[str, str]):
         case _:
             raise ValueError(f"Unexpected command: {cmd}")
 
+def _extract_log_group_name(log_group_arn):
+    return log_group_arn.split(":")[-1] if log_group_arn else None
+
+def _create_log_group_if_not_exists(log_group_name):
+    """
+    Checks if a CloudWatch log group exists; if not, creates it.
+    """
+    if not log_group_name:
+        logging.warning("Skipping log group creation as no valid log group name was provided.")
+        return
+
+    logging.info(f"Verifying existence of log group: '{log_group_name}'...")
+    client = boto3.client("logs")
+    try:
+        client.create_log_group(logGroupName=log_group_name)
+        logging.info(f"Log group '{log_group_name}' created successfully.")
+    except ClientError as e:
+        if e.response["Error"]["Code"] == "ResourceAlreadyExistsException":
+            logging.info(f"Log group '{log_group_name}' already exists.")
+        else:
+            logging.debug(f"Error creating log group '{log_group_name}': {e}")
+
+def _initialize_airflow_log_groups():
+    """
+    Ensures that all required CloudWatch log groups exist based on environment variables.
+    """
+    log_group_arns = [
+        os.getenv("MWAA__LOGGING__AIRFLOW_DAGPROCESSOR_LOG_GROUP_ARN"),
+        os.getenv("MWAA__LOGGING__AIRFLOW_SCHEDULER_LOG_GROUP_ARN"),
+        os.getenv("MWAA__LOGGING__AIRFLOW_TASK_LOG_GROUP_ARN"),
+        os.getenv("MWAA__LOGGING__AIRFLOW_TRIGGERER_LOG_GROUP_ARN"),
+        os.getenv("MWAA__LOGGING__AIRFLOW_WEBSERVER_LOG_GROUP_ARN"),
+        os.getenv("MWAA__LOGGING__AIRFLOW_WORKER_LOG_GROUP_ARN")
+    ]
+
+    for arn in log_group_arns:
+        log_group_name = _extract_log_group_name(arn)
+        _create_log_group_if_not_exists(log_group_name)
 
 async def main() -> None:
     """Start execution of the script."""
@@ -719,6 +757,7 @@ async def main() -> None:
         )
 
     logger.info(f"Warming a Docker container for an Airflow {command}.")
+    _initialize_airflow_log_groups()
 
     # Get executor type
     executor_type = os.environ.get("MWAA__CORE__EXECUTOR_TYPE", "CeleryExecutor")
