@@ -197,42 +197,6 @@ class Subprocess:
 
         return failed_conditions
 
-    def _parse_airflow_log(self, line: str):
-        log_pattern = re.compile(
-            r'\[(?P<timestamp>[^\]]+)\] '
-            r'\{(?P<component>[^}]+)\} '
-            r'\x1b?\[?\d{0,2}m?(?P<level>INFO|ERROR|WARNING|DEBUG)\x1b?\[?0?m? - '
-            r'(?P<message>.*)'
-        )
-        match = log_pattern.search(line)
-        if match:
-            return {
-                'timestamp': match.group("timestamp"),
-                'component': match.group("component"),
-                'level': match.group("level"),
-                'message': match.group("message")
-            }
-        return None
-
-    def _emit_logs(self, message: str):
-        parsed_log = self._parse_airflow_log(message)
-
-        if parsed_log:
-            level = parsed_log['level']
-            formatted_message = f"[{parsed_log['timestamp']}] {parsed_log['component']} {level} - {parsed_log['message']}"
-
-            if level == 'ERROR':
-                self.process_logger.error(formatted_message)
-            elif level == 'WARNING':
-                self.process_logger.warning(formatted_message)
-            elif level == 'DEBUG':
-                self.process_logger.debug(formatted_message)
-            else:  # INFO or undefined
-                self.process_logger.info(formatted_message)
-        else:
-            # Fallback to original behavior for non-matching logs
-            self.process_logger.info(message)
-
     def _read_subprocess_log_stream(self, process: Popen[Any]):
         """
         Poll process stdout and forward logs to subprocess logger
@@ -253,8 +217,7 @@ class Subprocess:
                 else:
                     time.sleep(_SUBPROCESS_LOG_POLL_IDLE_SLEEP_INTERVAL.total_seconds())
             else:
-                decoded_line = line.decode("utf-8")
-                self._emit_logs(decoded_line)
+                self.process_logger.info(line.decode("utf-8"))
 
     def _get_subprocess_status(self, process: Popen[Any]):
         return ProcessStatus.RUNNING if process.poll() is None else ProcessStatus.FINISHED
