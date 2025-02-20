@@ -45,7 +45,7 @@ def _migrate_db():
         args = Namespace(
             from_revision=None,
             from_version=None,
-            reserialize_dags=None,
+            reserialize_dags=True,
             show_sql_only=None,
             to_revision=None,
             to_version=None,

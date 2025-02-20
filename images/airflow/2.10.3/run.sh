@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
 
+COMMAND=$1
+
 # Check if 'podman' or 'finch' is available, otherwise use 'docker'
 if command -v finch &> /dev/null; then
     CONTAINER_RUNTIME="finch"
@@ -57,6 +59,7 @@ export AWS_SESSION_TOKEN
 
 # MWAA Configuration
 MWAA__CORE__REQUIREMENTS_PATH="/usr/local/airflow/requirements/requirements.txt"
+MWAA__CORE__STARTUP_SCRIPT_PATH="/usr/local/airflow/startup/startup.sh"
 MWAA__LOGGING__AIRFLOW_DAGPROCESSOR_LOGS_ENABLED="true"
 MWAA__LOGGING__AIRFLOW_DAGPROCESSOR_LOG_GROUP_ARN="arn:aws:logs:us-west-2:${ACCOUNT_ID}:log-group:${ENV_NAME}-DAGProcessing"
 MWAA__LOGGING__AIRFLOW_DAGPROCESSOR_LOG_LEVEL="INFO"
@@ -79,6 +82,7 @@ MWAA__CORE__TASK_MONITORING_ENABLED="false"
 MWAA__CORE__TERMINATE_IF_IDLE="false"
 MWAA__CORE__MWAA_SIGNAL_HANDLING_ENABLED="false"
 export MWAA__CORE__REQUIREMENTS_PATH
+export MWAA__CORE__STARTUP_SCRIPT_PATH
 export MWAA__LOGGING__AIRFLOW_DAGPROCESSOR_LOGS_ENABLED
 export MWAA__LOGGING__AIRFLOW_DAGPROCESSOR_LOG_GROUP_ARN
 export MWAA__LOGGING__AIRFLOW_DAGPROCESSOR_LOG_LEVEL
@@ -101,4 +105,8 @@ export MWAA__CORE__TASK_MONITORING_ENABLED
 export MWAA__CORE__TERMINATE_IF_IDLE
 export MWAA__CORE__MWAA_SIGNAL_HANDLING_ENABLED
 
-$CONTAINER_RUNTIME compose up
+if [ "$COMMAND" == "test-requirements" ] || [ "$COMMAND" == "test-startup-script" ]; then
+    $CONTAINER_RUNTIME compose -f docker-compose-test-commands.yaml up "$COMMAND" --abort-on-container-exit
+else
+    $CONTAINER_RUNTIME compose up
+fi

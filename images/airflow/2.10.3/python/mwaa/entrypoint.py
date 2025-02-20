@@ -80,6 +80,8 @@ AVAILABLE_COMMANDS = [
     "shell",
     "resetdb",
     "spy",
+    "test-requirements",
+    "test-startup-script",
 ]
 
 # Save the start time of the container. This is used later to with the sidecar
@@ -199,6 +201,11 @@ async def main() -> None:
     environ = setup_environment_variables(command, executor_type)
 
     await install_user_requirements(command, environ)
+
+    if command == "test-requirements":
+        print("Finished testing requirements")
+        return
+
     await airflow_db_init(environ)
 
     if os.environ.get("MWAA__CORE__AUTH_TYPE", "").lower() == "testing":
