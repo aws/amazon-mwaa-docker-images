@@ -9,6 +9,7 @@ helps support CloudWatch Logs integration.
 
 # Python imports
 from datetime import timedelta
+from os import environ
 from subprocess import Popen
 from types import FrameType, TracebackType
 from typing import Any, Callable, Dict, List, Optional
@@ -16,6 +17,7 @@ import atexit
 import fcntl
 import logging
 import os
+import re
 import signal
 import subprocess
 import sys
@@ -196,6 +198,7 @@ class Subprocess:
 
         return failed_conditions
 
+
     def _read_subprocess_log_stream(self, process: Popen[Any]):
         """
         Poll process stdout and forward logs to subprocess logger
@@ -204,9 +207,11 @@ class Subprocess:
         for small duration to avoid wasted cpu resources.
         """
         stream = process.stdout
+
         while True:
             if not stream or stream.closed:
                 break
+
             line = stream.readline()
             if line == b"":
                 if process.poll() is not None:
@@ -215,7 +220,7 @@ class Subprocess:
                     time.sleep(_SUBPROCESS_LOG_POLL_IDLE_SLEEP_INTERVAL.total_seconds())
             else:
                 self.process_logger.info(line.decode("utf-8"))
-    
+
     def _get_subprocess_status(self, process: Popen[Any]):
         return ProcessStatus.RUNNING if process.poll() is None else ProcessStatus.FINISHED
 
