@@ -291,6 +291,9 @@ def _cleanup_undead_process(process_id: int):
     )
 
 class SignalType(Enum):
+    """
+    Enum representing the different types of signals that can be handled.
+    """
     ACTIVATION = "activation"
     KILL = "kill"
     TERMINATION = "termination"
@@ -307,13 +310,24 @@ class SignalType(Enum):
         return cls(type_string)
 
 class SignalData:
+    """
+    Class representing data associated with a signal.
+    """
+
     def __init__(self):
+        """
+        Initialize a SignalData object with default values.
+        """
         self.signalType: SignalType = SignalType.ACTIVATION
         self.executionId = ""
         self.createdAt = int(datetime.now(tz=tz.tzutc()).timestamp())
         self.processed = False
 
     def __str__(self):
+        """
+        String representation of the SignalData object.
+        :return: String containing signal data in JSON format.
+        """
         return json.dumps({
             'executionId': self.executionId,
             'signalType': self.signalType.value,
@@ -322,6 +336,10 @@ class SignalData:
         })
 
     def to_json(self):
+        """
+        Convert the SignalData object to a JSON object.
+        :return: JSON object containing signal data.
+        """
         return {
             'executionId': self.executionId,
             'signalType': self.signalType.value,
