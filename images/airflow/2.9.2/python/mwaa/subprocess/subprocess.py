@@ -9,7 +9,6 @@ helps support CloudWatch Logs integration.
 
 # Python imports
 from datetime import timedelta
-from os import environ
 from subprocess import Popen
 from types import FrameType, TracebackType
 from typing import Any, Callable, Dict, List, Optional
@@ -17,7 +16,6 @@ import atexit
 import fcntl
 import logging
 import os
-import re
 import signal
 import subprocess
 import sys
