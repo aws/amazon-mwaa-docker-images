@@ -328,12 +328,7 @@ class SignalData:
         String representation of the SignalData object.
         :return: String containing signal data in JSON format.
         """
-        return json.dumps({
-            'executionId': self.executionId,
-            'signalType': self.signalType.value,
-            'createdAt': self.createdAt,
-            'processed': self.processed
-        })
+        return json.dumps(self.to_json())
 
     def to_json(self):
         """
