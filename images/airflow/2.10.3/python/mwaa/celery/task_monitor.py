@@ -738,19 +738,19 @@ class WorkerTaskMonitor:
         self.stats.incr("mwaa.task_monitor.worker_shutdown_termination_timeout", termination_timeout_metric)
 
         # Report a metric about the number of current task at shutdown, and a warning in case this is greater than zero.
-        # If the worker was marked for killing or was marked for termination and the allowed time limit for termination has been breached,
-        # then these interruptions are expected and another metric is also emitted to signify that.
         interrupted_task_count = self._get_current_task_count()
-        unexpected_interrupted_task_count = 0 \
-            if self.marked_for_kill or self.is_termination_time_limit_breached() else interrupted_task_count
-
         if interrupted_task_count > 0:
             logger.warning("There are non-zero ongoing tasks.")
         self.stats.incr(f"mwaa.task_monitor.interrupted_tasks_at_shutdown", interrupted_task_count)
 
-        if unexpected_interrupted_task_count > 0:
-            logger.warning("Worker was not shutdown via expected methods and some tasks were interrupted.")
-        self.stats.incr(f"mwaa.task_monitor.unexpected_interrupted_tasks_at_shutdown", unexpected_interrupted_task_count)
+        if self.mwaa_signal_handling_enabled:
+            # If the worker was marked for killing or was marked for termination and the allowed time limit for termination
+            # has been breached, then these interruptions are expected and another metric is also emitted to signify that.
+            unexpected_interrupted_task_count = 0 \
+                if self.marked_for_kill or self.is_termination_time_limit_breached() else interrupted_task_count
+            if unexpected_interrupted_task_count > 0:
+                logger.warning("Worker was not shutdown via expected methods and some tasks were interrupted.")
+            self.stats.incr(f"mwaa.task_monitor.unexpected_interrupted_tasks_at_shutdown", unexpected_interrupted_task_count)
 
         # Close shared memory objects.
         self.celery_state.close()
