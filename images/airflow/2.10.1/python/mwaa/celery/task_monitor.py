@@ -290,33 +290,82 @@ def _cleanup_undead_process(process_id: int):
         clean_undead_process_forceful_failure,
     )
 
+class SignalType(Enum):
+    """
+    Enum representing the different types of signals that can be handled.
+    """
+    ACTIVATION = "activation"
+    KILL = "kill"
+    TERMINATION = "termination"
+    RESUME = "resume"
 
-def _get_next_unprocessed_signal() -> (str, dict):
-    signal_search_start_timestamp = math.ceil((datetime.now(tz=tz.tzutc()) - SIGNAL_SEARCH_TIME_RANGE).timestamp())
-    signal_filenames = os.listdir(MWAA_SIGNALS_DIRECTORY) if os.path.exists(MWAA_SIGNALS_DIRECTORY) else []
-    sorted_filenames = sorted(signal_filenames)
-    for signal_filename in sorted_filenames:
-        # In case of issues, signals can arrive late and out of order. So, we scan all unprocessed signals in a search time range.
-        # Only a handful of signals are expected for each worker, so this repeated processing should be very light.
-        signal_file_path = os.path.join(MWAA_SIGNALS_DIRECTORY, signal_filename)
-        file_timestamp = os.path.getctime(signal_file_path)
-        if file_timestamp > signal_search_start_timestamp:
-            with open(signal_file_path, "r") as file_data:
-                try:
-                    signal_data = json.load(file_data)
-                except json.JSONDecodeError as e:
-                    logger.info(f"Error decoding file {signal_file_path}, signal will be ignored: {e}")
-                    signal_data = None
-                if signal_data and not signal_data["processed"]:
-                    return signal_file_path, signal_data
-    return None, None
+    @classmethod
+    def from_string(cls, type_string: str) -> 'SignalType':
+        """
+        Creates a SignalType object from a string.
+        :param type_string: String representation of the signal type
+        :return SignalType: New SignalType object with parsed value
+        :raises ValueError: If string is not a valid SignalType
+        """
+        return cls(type_string)
 
+class SignalData:
+    """
+    Class representing data associated with a signal.
+    """
 
-def _marked_signal_as_processed(signal_filepath, signal_data):
-    signal_data["processed"] = True
-    with open(signal_filepath, "w") as file_pointer:
-        json.dump(signal_data, file_pointer)
-    logger.info(f"Successfully processed signal {signal_data['executionId']}")
+    def __init__(self):
+        """
+        Initialize a SignalData object with default values.
+        """
+        self.signalType: SignalType = SignalType.ACTIVATION
+        self.executionId = ""
+        self.createdAt = int(datetime.now(tz=tz.tzutc()).timestamp())
+        self.processed = False
+
+    def __str__(self):
+        """
+        String representation of the SignalData object.
+        :return: String containing signal data in JSON format.
+        """
+        return json.dumps(self.to_json())
+
+    def to_json(self):
+        """
+        Convert the SignalData object to a JSON object.
+        :return: JSON object containing signal data.
+        """
+        return {
+            'executionId': self.executionId,
+            'signalType': self.signalType.value,
+            'createdAt': self.createdAt,
+            'processed': self.processed
+        }
+
+    @classmethod
+    def from_json_string(cls, json_string: str) -> 'SignalData':
+        """
+        Creates a SignalData object from a JSON string.
+        :param json_string: JSON string containing SignalData fields
+        :return SignalData: New SignalData object with parsed values
+        :raises ValueError: If JSON string is missing required fields
+        :raises JSONDecodeError: If JSON string is not a valid JSON
+        """
+        data = json.loads(json_string)
+        # Check for required fields
+        required_fields = {'executionId', 'signalType', 'createdAt'}
+        missing_fields = required_fields - set(data.keys())
+
+        if missing_fields:
+            raise ValueError(f"Signal data from the file is missing required fields: {missing_fields}")
+
+        # Create new SignalData object
+        signal_data = cls()
+        signal_data.executionId = data['executionId']
+        signal_data.signalType = SignalType.from_string(data['signalType'])
+        signal_data.createdAt = data['createdAt']
+        signal_data.processed = data.get('processed', False)
+        return signal_data
 
 
 class WorkerTaskMonitor:
@@ -415,7 +464,9 @@ class WorkerTaskMonitor:
             datetime.now(tz=tz.tzutc()) + IDLENESS_CHECK_DELAY_PERIOD
         )
 
-        idleness_check_result = self._get_current_task_count() == 0
+        current_task_count = self._get_current_task_count()
+        logger.info(f"Current task count is {current_task_count}")
+        idleness_check_result = current_task_count == 0
         self.consecutive_idleness_count = (
             self.consecutive_idleness_count + 1 if idleness_check_result else 0
         )
@@ -460,6 +511,35 @@ class WorkerTaskMonitor:
                 current_task_count += 1
         return current_task_count
 
+    def _get_next_unprocessed_signal(self) -> (str, SignalData):
+        signal_search_start_timestamp = math.ceil((datetime.now(tz=tz.tzutc()) - SIGNAL_SEARCH_TIME_RANGE).timestamp())
+        signal_filenames = os.listdir(MWAA_SIGNALS_DIRECTORY) if os.path.exists(MWAA_SIGNALS_DIRECTORY) else []
+        sorted_filenames = sorted(signal_filenames)
+        for signal_filename in sorted_filenames:
+            # In case of issues, signals can arrive late and out of order. So, we scan all unprocessed signals in a search time range.
+            # Only a handful of signals are expected for each worker, so this repeated processing should be very light.
+            signal_file_path = os.path.join(MWAA_SIGNALS_DIRECTORY, signal_filename)
+            file_timestamp = os.path.getctime(signal_file_path)
+            if file_timestamp > signal_search_start_timestamp:
+                try:
+                    with open(signal_file_path, "r") as file_data:
+                        signal_data = SignalData.from_json_string(file_data.read())
+                        if signal_data and not signal_data.processed:
+                            self.stats.incr(f"mwaa.task_monitor.signal_read_error", 0)
+                            return signal_file_path, signal_data
+                except Exception as e:
+                    logger.error(f"File {signal_file_path} could not be read, signal will be ignored: {e}")
+                    self.stats.incr(f"mwaa.task_monitor.signal_read_error", 1)
+        return None, None
+
+    def _marked_signal_as_processed(self, signal_filepath, signal_data):
+        signal_data.processed = True
+        with open(signal_filepath, "w") as file_pointer:
+            json.dump(signal_data.to_json(), file_pointer)
+        logger.info(f"Successfully processed signal: ID {signal_data.executionId}, "
+                    f"Type {signal_data.signalType}, createdAt {signal_data.createdAt}")
+        self.stats.incr(f"mwaa.task_monitor.signal_processed", 1)
+
     def process_next_signal(self):
         """
         This method is used to process any signals sent by MWAA. This method processes the first signal it finds
@@ -474,35 +554,60 @@ class WorkerTaskMonitor:
                 "after it has been closed."
             )
             return
-        signal_filepath, signal_data = _get_next_unprocessed_signal()
+        signal_filepath, signal_data = self._get_next_unprocessed_signal()
         if not signal_data:
             logger.info("No new signal found.")
             return
-        signal_id = signal_data["executionId"]
-        signal_type = signal_data["signalType"]
-        signal_timestamp = signal_data["createdAt"]
+        signal_id = signal_data.executionId
+        signal_type = signal_data.signalType
+        signal_timestamp = signal_data.createdAt
         logger.info(f"Processing signal {signal_id} of type {signal_type} created at {signal_timestamp}")
-        if signal_type == "activation":
-            self.waiting_for_activation = False
-        elif signal_type == "kill":
-            self.marked_for_kill = True
-        elif signal_type == "termination":
-            if (self.last_termination_or_resume_signal_timestamp is None or
-                    self.last_termination_or_resume_signal_timestamp < signal_timestamp):
-                self.marked_for_termination = True
-                self.last_termination_or_resume_signal_timestamp = signal_timestamp
-                self.last_termination_processing_time = datetime.now(tz=tz.tzutc())
-        elif signal_type == "resume":
-            if (self.last_termination_or_resume_signal_timestamp is None or
-                    self.last_termination_or_resume_signal_timestamp < signal_timestamp):
-                self.marked_for_termination = False
-                self.last_termination_or_resume_signal_timestamp = signal_timestamp
-                self.last_termination_processing_time = None
-        else:
-            logger.warning(f"Unknown signal type {signal_type}, ignoring.")
+        self._process_signal(signal_type, signal_timestamp)
+        self._marked_signal_as_processed(signal_filepath, signal_data)
+
+    def _process_signal(self, signal_type, signal_timestamp):
+        """
+        This method is used to process a signal. It will update the state of work consumption accordingly.
+        :param signal_type: Type of the signal received.
+        :param signal_timestamp: Timestamp at which the signal was generated.
+        :return:
+        """
+        signal_ignored = 0
+        match signal_type:
+            case SignalType.ACTIVATION:
+                # Skipping checking if activation is already present because activation signals are by
+                # design sent in redundant fashion to improve success of a newly created worker from getting
+                # activated by the worker enabler lambda.
+                self.waiting_for_activation = False
+            case SignalType.KILL:
+                if self.marked_for_kill:
+                    logger.warning("Received kill signal but already marked for kill. Ignoring.")
+                    signal_ignored = 1
+                self.marked_for_kill = True
+            case SignalType.TERMINATION:
+                if (self.last_termination_or_resume_signal_timestamp is None or
+                        self.last_termination_or_resume_signal_timestamp < signal_timestamp):
+                    self.marked_for_termination = True
+                    self.last_termination_or_resume_signal_timestamp = signal_timestamp
+                    self.last_termination_processing_time = datetime.now(tz=tz.tzutc())
+                else:
+                    logger.warning("Received termination signal but older than the last termination/resume signal. Ignoring.")
+                    signal_ignored = 1
+            case SignalType.RESUME:
+                if (self.last_termination_or_resume_signal_timestamp is None or
+                        self.last_termination_or_resume_signal_timestamp < signal_timestamp):
+                    self.marked_for_termination = False
+                    self.last_termination_or_resume_signal_timestamp = signal_timestamp
+                    self.last_termination_processing_time = None
+                else:
+                    logger.warning("Received resume signal but older than the last termination/resume signal. Ignoring.")
+                    signal_ignored = 1
+            case _:
+                logger.warning(f"Unknown signal type {signal_type}, ignoring.")
+                signal_ignored = 1
+        self.stats.incr(f"mwaa.task_monitor.signal_ignored", signal_ignored)
         should_consume_work = not (self.waiting_for_activation or self.marked_for_kill or self.marked_for_termination)
         self.resume_task_consumption() if should_consume_work else self.pause_task_consumption()
-        _marked_signal_as_processed(signal_filepath, signal_data)
 
     def is_activation_wait_time_limit_breached(self):
         """
@@ -624,18 +729,28 @@ class WorkerTaskMonitor:
         logger.info("Closing task monitor...")
         self.pause_task_consumption()
 
-        # Report a metric about the number of current task, and a warning in case this is greater than zero. If the worker was
-        # marked for killing or was marked for termination and the allowed time limit for termination has been breached, then we do
-        # not report this metric because this task interruption is expected and should not be used for alarming.
-        task_count = self._get_current_task_count()
-        if task_count > 0:
+        # Report a metric about whether the worker was never activated before its activation time limit was breached.
+        activation_timeout_metric = 1 if self.is_activation_wait_time_limit_breached() else 0
+        self.stats.incr("mwaa.task_monitor.worker_shutdown_activation_timeout", activation_timeout_metric)
+
+        # Report a metric about whether the worker was not able to finish all its tasks before its termination time limit was breached.
+        termination_timeout_metric = 1 if self.is_termination_time_limit_breached() else 0
+        self.stats.incr("mwaa.task_monitor.worker_shutdown_termination_timeout", termination_timeout_metric)
+
+        # Report a metric about the number of current task at shutdown, and a warning in case this is greater than zero.
+        interrupted_task_count = self._get_current_task_count()
+        if interrupted_task_count > 0:
             logger.warning("There are non-zero ongoing tasks.")
-        if self.marked_for_kill or self.is_termination_time_limit_breached():
-            if task_count > 0:
-                logger.warning("Worker is being forcibly shutdown via expected methods, "
-                               "interrupted_tasks_at_shutdown metric will not be emitted.")
-        else:
-            self.stats.incr(f"mwaa.task_monitor.interrupted_tasks_at_shutdown", task_count)  # type: ignore
+        self.stats.incr(f"mwaa.task_monitor.interrupted_tasks_at_shutdown", interrupted_task_count)
+
+        if self.mwaa_signal_handling_enabled:
+            # If the worker was marked for killing or was marked for termination and the allowed time limit for termination
+            # has been breached, then these interruptions are expected and another metric is also emitted to signify that.
+            unexpected_interrupted_task_count = 0 \
+                if self.marked_for_kill or self.is_termination_time_limit_breached() else interrupted_task_count
+            if unexpected_interrupted_task_count > 0:
+                logger.warning("Worker was not shutdown via expected methods and some tasks were interrupted.")
+            self.stats.incr(f"mwaa.task_monitor.unexpected_interrupted_tasks_at_shutdown", unexpected_interrupted_task_count)
 
         # Close shared memory objects.
         self.celery_state.close()
@@ -710,7 +825,7 @@ class WorkerTaskMonitor:
         current_celery_tasks: List[CeleryTask],
         process_id_map: Dict[str, int],
     ):
-        # For calculating behvaioural metrics.
+        # For calculating behavioural metrics.
         clean_undead_process_graceful_success = 0
         clean_undead_process_forceful_success = 0
         clean_undead_process_forceful_failure = 0
@@ -751,7 +866,7 @@ class WorkerTaskMonitor:
         Cleanup the abandoned SQS message from the Celery SQS Channel.
         :param celery_task: Celery task (celery command + SQS receipt handle).
         """
-        # For calculating behvaioural metrics.
+        # For calculating behavioural metrics.
         clean_celery_message_error_no_queue = 0
         clean_celery_message_success = 0
         clean_celery_message_error_sqs_op = 0
@@ -797,7 +912,7 @@ class WorkerTaskMonitor:
                 self.cleanup_celery_state, celery_task, CeleryStateUpdateAction.ADD
             )
 
-        # For calculating behvaioural metrics.
+        # For calculating behavioural metrics.
         return (
             clean_celery_message_error_no_queue,
             clean_celery_message_success,
