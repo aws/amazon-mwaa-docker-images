@@ -51,7 +51,7 @@ def _migrate_db():
             to_version=None,
             use_migration_files=None,
         )
-        airflow_db_command.migratedb(args)
+        airflow_db_command.initdb(args)
         logging.info("The database is now migrated.")
 
 
