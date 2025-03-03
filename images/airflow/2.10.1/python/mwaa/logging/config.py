@@ -29,20 +29,16 @@ from airflow.config_templates.airflow_local_settings import (
     PROCESSOR_FILENAME_TEMPLATE,
 )
 
+# Our imports
 from mwaa.logging import cloudwatch_handlers
 from mwaa.utils import qualified_name
 
-CONSOLE_LOG_LEVEL = os.environ.get('AIRFLOW_CONSOLE_LOG_LEVEL', 'INFO')
 # We adopt the default logging configuration from Airflow and do the necessary changes
 # to setup logging with CloudWatch Logs.
 LOGGING_CONFIG = {
     **DEFAULT_LOGGING_CONFIG,
-    'root': {
-        'handlers': ['console'],
-        'level': CONSOLE_LOG_LEVEL,
-        'filters': ['mask_secrets'],
-    }
 }
+
 
 def _get_kms_key_arn():
     return os.environ.get("MWAA__CORE__KMS_KEY_ARN", None)
@@ -185,7 +181,7 @@ def _configure():
             comp,
             log_group_arn=log_group_arn,
             log_stream_name_prefix=comp.lower(),
-            log_level="DEBUG",  # Customer Log Level handled at root logger
+            log_level=log_level,
             logging_enabled=logging_enabled,
         )
         _configure_subprocesses_logging(
