@@ -18,6 +18,8 @@ x-airflow-common: &airflow-common
     # container is up.
     MWAA__CORE__REQUIREMENTS_PATH: ${MWAA__CORE__REQUIREMENTS_PATH}
     MWAA__CORE__AUTH_TYPE: "testing"
+    # Use this environment variable if you have a custom start-up script.
+    MWAA__CORE__STARTUP_SCRIPT_PATH: ${MWAA__CORE__STARTUP_SCRIPT_PATH}
     # Additional Airflow configuration can be passed here in JSON form.
     MWAA__CORE__CREATED_AT: "Tue Sep 18 23:05:58 UTC 2024"
     MWAA__CORE__CUSTOM_AIRFLOW_CONFIGS: "{}"
