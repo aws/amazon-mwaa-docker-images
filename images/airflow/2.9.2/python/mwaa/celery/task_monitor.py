@@ -436,6 +436,12 @@ class WorkerTaskMonitor:
         self.stats = get_statsd()
 
         self.closed = False
+    
+    def is_closed(self):
+        """
+        Returns true if worker monitor is closed.
+        """
+        return self.closed
 
     def is_worker_idle(self):
         """
@@ -464,7 +470,7 @@ class WorkerTaskMonitor:
             datetime.now(tz=tz.tzutc()) + IDLENESS_CHECK_DELAY_PERIOD
         )
 
-        current_task_count = self._get_current_task_count()
+        current_task_count = self.get_current_task_count()
         logger.info(f"Current task count is {current_task_count}")
         idleness_check_result = current_task_count == 0
         self.consecutive_idleness_count = (
@@ -495,7 +501,7 @@ class WorkerTaskMonitor:
         """
         return self.marked_for_termination
 
-    def _get_current_task_count(self):
+    def get_current_task_count(self):
         """
         Get count of tasks currently getting executed on the worker. Any task present in
         both celery_state and cleanup_celery_state is considered as not running on the
@@ -510,6 +516,15 @@ class WorkerTaskMonitor:
             if _get_celery_task_index(task, current_cleanup_celery_tasks) == -1:
                 current_task_count += 1
         return current_task_count
+
+    def get_cleanup_task_count(self):
+        """
+        Get count of tasks currently marked for cleanup.
+
+        :return: Number of current tasks marked for cleanup.
+        """
+        return _get_celery_tasks(self.cleanup_celery_state)
+
 
     def _get_next_unprocessed_signal(self) -> (str, SignalData):
         signal_search_start_timestamp = math.ceil((datetime.now(tz=tz.tzutc()) - SIGNAL_SEARCH_TIME_RANGE).timestamp())
@@ -738,7 +753,7 @@ class WorkerTaskMonitor:
         self.stats.incr("mwaa.task_monitor.worker_shutdown_termination_timeout", termination_timeout_metric)
 
         # Report a metric about the number of current task at shutdown, and a warning in case this is greater than zero.
-        interrupted_task_count = self._get_current_task_count()
+        interrupted_task_count = self.get_current_task_count()
         if interrupted_task_count > 0:
             logger.warning("There are non-zero ongoing tasks.")
         self.stats.incr(f"mwaa.task_monitor.interrupted_tasks_at_shutdown", interrupted_task_count)
