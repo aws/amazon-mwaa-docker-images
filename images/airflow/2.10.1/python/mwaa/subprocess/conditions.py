@@ -34,6 +34,8 @@ from mwaa.logging.utils import throttle
 from mwaa.subprocess import ProcessStatus
 from mwaa.utils.plogs import generate_plog
 
+from mwaa.utils.statsd import get_statsd
+
 logger = logging.getLogger(__name__)
 
 
@@ -470,6 +472,9 @@ class TaskMonitoringCondition(ProcessCondition):
     :param terminate_if_idle: Whether to terminate the worker if it is idle.
     """
 
+    WORKER_MONITOR_CLOSED_TIME_THRESHOLD = timedelta(seconds=30)
+
+
     def __init__(
         self,
         worker_task_monitor: WorkerTaskMonitor,
@@ -484,6 +489,9 @@ class TaskMonitoringCondition(ProcessCondition):
         super().__init__()
         self.worker_task_monitor = worker_task_monitor
         self.terminate_if_idle = terminate_if_idle
+        self.stats = get_statsd()
+        self.last_check_time = 0
+        self.time_since_closed = 0
 
     def prepare(self):
         """
@@ -510,6 +518,21 @@ class TaskMonitoringCondition(ProcessCondition):
             successful=False,
             message=message,
         )
+
+    def _publish_metrics(self):
+        is_closed = self.worker_task_monitor.is_closed()
+        dt = time.time() - self.last_check_time
+        self.last_check_time = time.time()
+        if not is_closed:
+            self.time_since_closed = 0
+        else:
+            self.time_since_closed += dt
+        self.stats.incr("mwaa.task_monitor.task_count", self.worker_task_monitor.get_current_task_count())
+        self.stats.incr("mwaa.task_monitor.cleanup_task_count", self.worker_task_monitor.get_cleanup_task_count())
+        if self.time_since_closed > TaskMonitoringCondition.WORKER_MONITOR_CLOSED_TIME_THRESHOLD.total_seconds():
+            self.stats.incr("mwaa.task_monitor.worker_shutdown_delayed", 1)
+
+
 
     @throttle(seconds=10, instance_level_throttling=True) # avoid excessive calls to process conditions
     def _check(self, process_status: ProcessStatus) -> ProcessConditionResponse:
@@ -556,6 +579,8 @@ class TaskMonitoringCondition(ProcessCondition):
                 f"Worker process finished (status is {process_status.name}). "
                 "No need to monitor tasks anymore."
             )
+
+        self._publish_metrics()
 
         # For all other scenarios, the condition defaults to returning success.
         return ProcessConditionResponse(
