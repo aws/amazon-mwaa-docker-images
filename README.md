@@ -32,13 +32,12 @@ python3 create_venvs.py --target <development | production>
    with the provided credentials will be assigned to the Airflow components that would be started with the next step. 
    So, if you receive any error message indicating lack of permissions, then try providing the permissions to the 
    identity whose credentials were used.
-   - Create the required log groups in the dev account with the names:
+   - `./run.sh` This will build and run all the necessary containers and automatically create the following CloudWatch log groups:
      - `{ENV_NAME}-DAGProcessing`
      - `{ENV_NAME}-Scheduler`
      - `{ENV_NAME}-Worker`
      - `{ENV_NAME}-Task`
      - `{ENV_NAME}-WebServer`
-   - `./run.sh` This will build and run all the necessary containers.
 
 Airflow should be up and running now. You can access the web server on your localhost on port 8080.
 
