@@ -340,6 +340,10 @@ def execute_startup_script(cmd: str, environ: Dict[str, str]) -> Dict[str, str]:
                 return customer_env_dict
             except Exception as e:
                 logger.error(f"Error reading the customer's environment variables: {e}")
+                PROCESS_LOGGER.error(
+                    "[ERROR] Failed to load environment variables from startup script. "
+                    "Please verify your startup script configuration."
+                )
                 raise Exception(f"Failed to read customer's environment variables from startup script: {e}")
 
         else:
