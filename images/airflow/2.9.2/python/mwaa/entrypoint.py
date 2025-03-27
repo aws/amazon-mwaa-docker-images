@@ -389,7 +389,8 @@ def execute_startup_script(cmd: str, environ: Dict[str, str]) -> Dict[str, str]:
                 "script defines environment variables, this error message indicates that "
                 "those variables won't be exported to the Airflow tasks."
             )
-            return {}
+            PROCESS_LOGGER.error("[ERROR] An unexpected error occurred: Failed to locate environment variables file from startup script.")
+            raise Exception("Failed to access customer environment variables file: Service was unable to create or locate /tmp/customer_env_vars.json")
 
     else:
         logger.info(f"No startup script found at {startup_script_path}.")
