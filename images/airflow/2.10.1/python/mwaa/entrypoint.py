@@ -791,6 +791,6 @@ async def main() -> None:
 
 if __name__ == "__main__":
     asyncio.run(main())
-else:
+elif os.environ["TESTING_MODE"] != "true":
     logger.error("This module cannot be imported.")
     sys.exit(1)
