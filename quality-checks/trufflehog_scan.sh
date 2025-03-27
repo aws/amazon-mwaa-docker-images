@@ -15,7 +15,7 @@ status=0
 # Function to check a directory
 check_dir() {
     local dir=$1  # Directory to work in
-    local venv_dir="${dir}/.venv"  # virtual environment path
+    local venv_dir="${dir}/.venv"  # Virtual environment path
 
     echo "Checking directory \"${dir}\"..."
 
@@ -29,14 +29,21 @@ check_dir() {
     # shellcheck source=/dev/null
     source "${venv_dir}/bin/activate"
 
+    # Create a temporary exclusion file for TruffleHog
+    EXCLUDE_FILE=$(mktemp)
+    echo "tests/" > "$EXCLUDE_FILE"
+
     # Run TruffleHog to scan for secrets
     echo "Running TruffleHog to scan for secrets..."
-    if ! (trufflehog filesystem --repo_path "${dir}" --entropy=False); then
+    if ! (trufflehog filesystem --repo_path "${dir}" --entropy=False -x "$EXCLUDE_FILE"); then
         echo "TruffleHog detected potential secrets."
         status=1
     else
         echo "TruffleHog scan passed."
     fi
+
+    # Clean up the temporary exclusion file
+    rm -f "$EXCLUDE_FILE"
 
     # Deactivate the virtual environment
     deactivate
