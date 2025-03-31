@@ -71,7 +71,7 @@ for coverage_file in "$RESULTS_DIR"/coverage-*.xml; do
     version_name=$(basename "$coverage_file" | sed 's/coverage-//; s/.xml//')
     echo "Checking coverage for new/changed code in ${version_name}..."
 
-    if ! diff-cover "$coverage_file" --fail-under=$COVERAGE_THRESHOLD >> "$COVERAGE_SUMMARY" 2>&1; then
+    if ! diff-cover "$coverage_file" --compare-branch=main --fail-under=$COVERAGE_THRESHOLD >> "$COVERAGE_SUMMARY" 2>&1; then
         echo "❌ ERROR: Coverage below ${COVERAGE_THRESHOLD}% for ${version_name}!" | tee -a "$COVERAGE_SUMMARY"
         FAILED_COVERAGE=1
     else
