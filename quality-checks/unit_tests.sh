@@ -6,14 +6,14 @@ mkdir -p "$RESULTS_DIR"
 COVERAGE_THRESHOLD=80
 FAILED_COVERAGE=0
 COVERAGE_SUMMARY="${RESULTS_DIR}/coverage_summary.log"
+VENV_DIR="./.venv"
+
 
 # Ensure summary file is cleared at the start
 true > "$COVERAGE_SUMMARY"
 
 check_dir() {
     local dir=$1  # Directory containing Airflow version (e.g., ./images/airflow/2.10.1)
-    local venv_dir="./.venv"
-
     local version_name
     version_name=$(basename "$dir")  # Extract Airflow version separately
     local test_dir="tests/images/airflow/${version_name}"
@@ -31,8 +31,8 @@ check_dir() {
     fi
 
     # Check if virtualenv exists, if not, exit with an error message
-    if [[ ! -d "$venv_dir" ]]; then
-        echo "Virtual environment doesn't exist at ${venv_dir}. Please run the script ./create_venvs.py."
+    if [[ ! -d "$VENV_DIR" ]]; then
+        echo "Virtual environment doesn't exist at ${VENV_DIR}. Please run the script ./create_venvs.py."
         exit 1
     fi
 
@@ -44,7 +44,7 @@ check_dir() {
 
     # Activate the virtual environment
     # shellcheck source=/dev/null
-    source "${venv_dir}/bin/activate"
+    source "${VENV_DIR}/bin/activate"
 
     # Run pytest with coverage for this Airflow version and store result in a coverage file
     echo "Running pytest with coverage for Airflow version: ${version_name}..."
@@ -61,6 +61,10 @@ for image_dir in ./images/airflow/*; do
     fi
 done
 
+# Activate the virtual environment
+# shellcheck source=/dev/null
+source "${VENV_DIR}/bin/activate"
+
 # Now run diff-cover and generate a summary at the end
 echo "================= COVERAGE SUMMARY =================" > "$COVERAGE_SUMMARY"
 for coverage_file in "$RESULTS_DIR"/coverage-*.xml; do
@@ -74,6 +78,7 @@ for coverage_file in "$RESULTS_DIR"/coverage-*.xml; do
         echo "✅ Coverage meets requirement for ${version_name}." | tee -a "$COVERAGE_SUMMARY"
     fi
 done
+deactivate
 
 # Print the final coverage summary
 cat "$COVERAGE_SUMMARY"
