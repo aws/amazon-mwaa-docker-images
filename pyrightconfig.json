@@ -5,7 +5,9 @@
     "**/.venv",
     // We ignore the ./images folder since it contains Docker images that
     // have their own different Python packages and thus require runs.
+    "./tests",
     "./images"
+
   ],
   "strict": ["./"],
   "pythonVersion": "3.11",

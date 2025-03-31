@@ -790,6 +790,6 @@ async def main() -> None:
 
 if __name__ == "__main__":
     asyncio.run(main())
-else:
+elif os.environ.get("MWAA__CORE__TESTING_MODE", "false") != "true":
     logger.error("This module cannot be imported.")
     sys.exit(1)
