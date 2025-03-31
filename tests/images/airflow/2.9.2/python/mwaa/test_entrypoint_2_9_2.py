@@ -33,7 +33,7 @@ def test_startup_script_not_found():
 
 def test_uses_mocked_env():
     """Ensure environment variables are correctly set"""
-    assert "true" in os.environ["TESTING_MODE"]
+    assert "true" in os.environ["MWAA__CORE__TESTING_MODE"]
 
 
 @pytest.mark.parametrize("cmd,expected_logger", [

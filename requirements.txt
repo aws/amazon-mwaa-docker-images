@@ -3,6 +3,7 @@
 # running repository scripts and maintenance tasks, such as generating
 # Dockerfiles, linting, testing, and other scripts that help ensure code
 # quality.
+diff-cover==9.2.4
 Jinja2==3.1.4
 MarkupSafe==2.1.5
 nodeenv==1.8.0
@@ -10,6 +11,7 @@ pip==24.0
 pydocstyle==6.3.0
 pyright==1.1.360
 pytest==7.4.0
+pytest-cov==4.1.0
 ruff==0.4.2
 setuptools==70.0.0
 snowballstemmer==2.2.0

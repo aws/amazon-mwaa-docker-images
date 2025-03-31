@@ -24,7 +24,7 @@ def pytest_configure(config):
     # Add to Python path
     sys.path.insert(0, airflow_path)
 
-    os.environ["TESTING_MODE"] = "true"
+    os.environ["MWAA__CORE__TESTING_MODE"] = "true"
     os.environ["MWAA__CORE__STARTUP_SCRIPT_PATH"] = "../../startup/startup.sh"
 
     if os.path.exists(requirements_path):
