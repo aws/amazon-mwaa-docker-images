@@ -12,7 +12,7 @@ true > "$COVERAGE_SUMMARY"
 
 check_dir() {
     local dir=$1  # Directory containing Airflow version (e.g., ./images/airflow/2.10.1)
-    local venv_dir="${dir}/.venv"
+    local venv_dir="./.venv"
 
     local version_name
     version_name=$(basename "$dir")  # Extract Airflow version separately
