@@ -439,6 +439,7 @@ class SubprocessLogHandler(BaseLogHandler):
         stream_name_prefix: str,
         logs_source: str,
         enabled: bool,
+        log_formatter: logging.Formatter | None = None,
     ):
         """
         Initialize the instance.
@@ -457,6 +458,7 @@ class SubprocessLogHandler(BaseLogHandler):
               much changes to the logging configuration.
         """
         super().__init__(log_group_arn, kms_key_arn, enabled)
+        self.formatter = log_formatter
         hostname = socket.gethostname()
         epoch = time.time()
         # Use hostname and epoch timestamp as a combined primary key for stream name.
