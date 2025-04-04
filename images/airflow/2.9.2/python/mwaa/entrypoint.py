@@ -336,6 +336,8 @@ def execute_startup_script(cmd: str, environ: Dict[str, str]) -> Dict[str, str]:
     PROCESS_LOGGER_PREFIX = "worker" if cmd == "hybrid" else cmd;
     PROCESS_LOGGER = logging.getLogger(MWAA_LOGGERS.get(f"{PROCESS_LOGGER_PREFIX}_startup"))
 
+    logger.info("Just adding this line temporarily to test the diff coverage tests in PR workflow")
+
     if os.path.isfile(startup_script_path):
         logger.info("Executing customer startup script.")
 
