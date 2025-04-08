@@ -1,0 +1,20 @@
+[run]
+branch = True
+source = .
+omit = 
+    tests/*
+    */tests/*
+    */.venv/*
+    */setup.py
+    images/airflow/*/tests/*
+    images/airflow/*/.venv/*
+
+[report]
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    if self.debug:
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    pass
+    raise ImportError

@@ -24,3 +24,6 @@ pydocstyle
 pyright
 ruff
 sqlalchemy-stubs
+pytest
+pytest-cov
+diff-cover
