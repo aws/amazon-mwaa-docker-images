@@ -140,7 +140,7 @@ async def increase_pool_size_if_default_size(environ: dict[str, str]):
                     stats = get_statsd()
                     stats.incr("mwaa.pool.increased_default_pool_size", 1)
         except Exception as error:
-            logger.error("Error checking if pool issue is present: " + error)
+            logger.error(f"Error checking if pool issue is present: {error}")
 
 
 @with_db_lock(5678)
