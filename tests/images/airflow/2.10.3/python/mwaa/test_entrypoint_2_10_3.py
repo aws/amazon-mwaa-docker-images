@@ -78,8 +78,11 @@ def test_missing_customer_env_vars_file(mock_environ):
         mock_process = MagicMock()
         mock_subprocess.return_value = mock_process
 
-        result = entrypoint.execute_startup_script("worker", mock_environ)
-        assert result == {}
+        with pytest.raises(Exception) as exc_info:
+            entrypoint.execute_startup_script("worker", mock_environ)
+
+        assert ("Failed to access customer environment variables file: Service was unable "
+                "to create or locate /tmp/customer_env_vars.json") in str(exc_info.value)
 
 
 @pytest.mark.parametrize("subprocess_error", [
