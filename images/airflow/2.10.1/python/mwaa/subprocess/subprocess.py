@@ -215,7 +215,7 @@ class Subprocess:
                     time.sleep(_SUBPROCESS_LOG_POLL_IDLE_SLEEP_INTERVAL.total_seconds())
             else:
                 self.process_logger.info(line.decode("utf-8"))
-
+    
     def _get_subprocess_status(self, process: Popen[Any]):
         return ProcessStatus.RUNNING if process.poll() is None else ProcessStatus.FINISHED
 
