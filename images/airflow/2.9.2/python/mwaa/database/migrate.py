@@ -10,6 +10,7 @@ from argparse import Namespace
 import logging.config
 import os
 import sys
+from datetime import timedelta
 
 from mwaa.utils.dblock import with_db_lock
 
@@ -19,6 +20,7 @@ from mwaa.utils.dblock import with_db_lock
 # have the value of `__main__`, hence we hard-code the module path.
 logger = logging.getLogger("mwaa.database.migrate")
 
+DATABASE_MIGRATION_LOCK_TIMEOUT = timedelta(minutes=10)
 
 def _verify_environ():
     """
@@ -32,7 +34,7 @@ def _verify_environ():
         sys.exit(1)
 
 
-@with_db_lock(1234)
+@with_db_lock(1234, int(DATABASE_MIGRATION_LOCK_TIMEOUT.total_seconds() * 1000))
 def _migrate_db():
     from airflow.cli.commands import db_command as airflow_db_command
 

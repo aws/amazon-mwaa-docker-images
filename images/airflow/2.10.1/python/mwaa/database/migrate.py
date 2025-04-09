@@ -10,9 +10,11 @@ from argparse import Namespace
 import logging.config
 import os
 import sys
+from datetime import timedelta
 
 from mwaa.utils.dblock import with_db_lock
 
+DATABASE_MIGRATION_LOCK_TIMEOUT = timedelta(minutes=10)
 
 # Usually, we pass the `__name__` variable instead as that defaults to the module path,
 # i.e. `mwaa.entrypoint` in this case. However, since this is a script, `__name__` will
@@ -32,7 +34,7 @@ def _verify_environ():
         sys.exit(1)
 
 
-@with_db_lock(1234)
+@with_db_lock(1234, int(DATABASE_MIGRATION_LOCK_TIMEOUT.total_seconds() * 1000))
 def _migrate_db():
     from airflow.cli.commands import db_command as airflow_db_command
 
