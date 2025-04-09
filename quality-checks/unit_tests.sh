@@ -17,23 +17,42 @@ check_dir() {
 
     status=0
 
-    # Check if virtualenv exists, if not create it and install dependencies
-        if [[ ! -d "$venv_dir" ]]; then
-            echo "Virtual environment doesn't exist at ${venv_dir}. Please run the script ./create_venvs.py."
-            exit 1
-        fi
-
-        # shellcheck source=/dev/null
-    source "${venv_dir}/bin/activate"
-
-    # Run pytest directly on the tests directory
-    echo "Running pytest..."
-    if ! pytest tests/ ; then
-        status=1
+    # Check if virtualenv exists
+    if [[ ! -d "$venv_dir" ]]; then
+        echo "Virtual environment doesn't exist at ${venv_dir}. Please run the script ./create_venvs.py."
+        exit 1
     fi
 
-    deactivate
+    # Suppress pip installation messages
+    export PIP_QUIET=1
+
+    # shellcheck source=/dev/null
+    source "${venv_dir}/bin/activate" > /dev/null 2>&1
+
+    # Find all version directories
+    versions_path="tests/images/airflow"
+    for version_dir in "$versions_path"/*/; do
+        if [ -d "$version_dir" ]; then
+            version=$(basename "$version_dir")
+            echo -e "\nTesting Airflow version: $version"
+            echo "----------------------------------------"
+
+            # Run pytest with minimal output
+            if ! pytest "tests/images/airflow/$version/" --quiet --no-header --tb=short -v; then
+                echo "❌ Tests failed for version $version"
+                status=1
+            else
+                echo "✅ All tests passed for version $version"
+            fi
+        fi
+    done
+
+    deactivate > /dev/null 2>&1
 
     exit $status
 }
+
+# Suppress pip warnings
+export PYTHONWARNINGS=ignore::DeprecationWarning
+
 check_dir "."
