@@ -3,7 +3,8 @@
 # running repository scripts and maintenance tasks, such as generating
 # Dockerfiles, linting, testing, and other scripts that help ensure code
 # quality.
-Jinja2==3.1.4
+diff-cover==9.2.4
+Jinja2==3.1.6
 MarkupSafe==2.1.5
 nodeenv==1.8.0
 pip==24.0
