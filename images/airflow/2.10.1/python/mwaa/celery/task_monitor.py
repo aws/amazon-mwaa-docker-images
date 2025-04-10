@@ -379,7 +379,7 @@ class WorkerTaskMonitor:
     def __init__(
         self,
         mwaa_signal_handling_enabled: bool,
-        graceful_shutdown_seconds: int
+        idleness_verification_interval: int
     ):
         """
         Initialize a WorkerTaskMonitor instance.
@@ -438,7 +438,7 @@ class WorkerTaskMonitor:
 
         self.closed = False
 
-        self.graceful_shutdown_seconds = graceful_shutdown_seconds
+        self.idleness_verification_interval = idleness_verification_interval
     
     def is_closed(self):
         """
@@ -665,8 +665,8 @@ class WorkerTaskMonitor:
             # start gracefully shutting down the worker. Without this, the SQS broker may
             # consume messages from the queue, terminate before creating the corresponding
             # Airflow task instance and abandon SQS messages in-flight.
-            logger.info(f"Pausing task consumption, waiting for {self.graceful_shutdown_seconds} seconds for in-flight tasks...")
-            time.sleep(self.graceful_shutdown_seconds)
+            logger.info(f"Pausing task consumption, waiting for {self.idleness_verification_interval} seconds for in-flight tasks...")
+            time.sleep(self.idleness_verification_interval)
 
     def resume_task_consumption(self):
         """

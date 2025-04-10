@@ -544,13 +544,13 @@ def _create_airflow_worker_subprocesses(environ: Dict[str, str], sigterm_patienc
         os.environ.get("MWAA__CORE__MWAA_SIGNAL_HANDLING_ENABLED", "false").lower() == "true" and task_monitoring_enabled
     )
 
-    mwaa_worker_graceful_shutdown_seconds = int(os.environ.get("MWAA__CORE__MWAA_WORKER_GRACEFUL_SHUTDOWN_SECONDS",
-                                                               "20"))
+    mwaa_worker_idleness_verification_interval = int(os.environ.get("MWAA__CORE__WORKER_IDLENESS_VERIFICATION_INTERVAL",
+                                                                    "20"))
     if task_monitoring_enabled:
-        logger.info(f"Worker task monitoring is enabled with graceful shutdown seconds: "
-                    f"{mwaa_worker_graceful_shutdown_seconds}")
+        ogger.info(f"Worker task monitoring is enabled with idleness verification interval: "
+                   f"{mwaa_worker_idleness_verification_interval}")
         # Initializing the monitor responsible for performing idle worker checks if enabled.
-        worker_task_monitor = WorkerTaskMonitor(mwaa_signal_handling_enabled, mwaa_worker_graceful_shutdown_seconds)
+        worker_task_monitor = WorkerTaskMonitor(mwaa_signal_handling_enabled, mwaa_worker_idleness_verification_interval)
     else:
         logger.info("Worker task monitoring is NOT enabled.")
         worker_task_monitor = None
