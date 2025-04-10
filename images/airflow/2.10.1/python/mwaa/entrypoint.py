@@ -547,7 +547,7 @@ def _create_airflow_worker_subprocesses(environ: Dict[str, str], sigterm_patienc
     mwaa_worker_idleness_verification_interval = int(os.environ.get("MWAA__CORE__WORKER_IDLENESS_VERIFICATION_INTERVAL",
                                                                     "20"))
     if task_monitoring_enabled:
-        ogger.info(f"Worker task monitoring is enabled with idleness verification interval: "
+        logger.info(f"Worker task monitoring is enabled with idleness verification interval: "
                    f"{mwaa_worker_idleness_verification_interval}")
         # Initializing the monitor responsible for performing idle worker checks if enabled.
         worker_task_monitor = WorkerTaskMonitor(mwaa_signal_handling_enabled, mwaa_worker_idleness_verification_interval)
