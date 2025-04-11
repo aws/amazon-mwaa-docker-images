@@ -543,7 +543,7 @@ def _create_airflow_worker_subprocesses(environ: Dict[str, str], sigterm_patienc
         os.environ.get("MWAA__CORE__MWAA_SIGNAL_HANDLING_ENABLED", "false").lower() == "true" and task_monitoring_enabled
     )
 
-    mwaa_worker_idleness_verification_interval = int(os.environ.get("MWAA__CORE__WORKER_IDLENESS_VERIFICATION_INTERVAL",
+    mwaa_worker_idleness_verification_interval = int(environ.get("MWAA__CORE__WORKER_IDLENESS_VERIFICATION_INTERVAL",
                                                                "20"))
 
     if task_monitoring_enabled:
