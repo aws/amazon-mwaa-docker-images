@@ -35,6 +35,8 @@ def create_celery_config() -> dict[str, Any]:
             "is_secure": should_use_ssl(),
             "region": get_aws_region(),
         },
+        "pool_pre_ping": True,
+        "pool_recycle": 1200,
     }
 
     return celery_config
