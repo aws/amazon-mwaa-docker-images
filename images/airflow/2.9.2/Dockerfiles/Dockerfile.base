@@ -151,3 +151,6 @@ COPY ./python /python
 # TODO Move this to the bin folder under airflow's home folder.
 COPY healthcheck.sh /healthcheck.sh
 RUN chmod +x /healthcheck.sh
+
+COPY healthcheck.py /healthcheck.py
+RUN chmod +x /healthcheck.py
