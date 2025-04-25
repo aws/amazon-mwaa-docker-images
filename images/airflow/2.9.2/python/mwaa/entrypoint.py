@@ -106,7 +106,7 @@ async def airflow_db_init(environ: dict[str, str]):
     await run_command("python3 -m mwaa.database.migrate", env=environ)
 
 
-async def airflow_db_update(environ: dict[str, str]):
+async def airflow_db_migrate(environ: dict[str, str]):
     """
     Migrate/Initialize Airflow database.
 
@@ -118,7 +118,7 @@ async def airflow_db_update(environ: dict[str, str]):
 
     :param environ: A dictionary containing the environment variables.
     """
-    await run_command("python3 -m mwaa.database.update", env=environ)
+    await run_command("python3 -m mwaa.database.migrate_with_downgrade", env=environ)
 
 
 async def increase_pool_size_if_default_size(environ: dict[str, str]):
@@ -243,7 +243,7 @@ async def main() -> None:
     environ = setup_environment_variables(command, executor_type)
 
     if command == "migrate-db":
-        await airflow_db_update(environ)
+        await airflow_db_migrate(environ)
         print("Finished running db validations")
         return
 

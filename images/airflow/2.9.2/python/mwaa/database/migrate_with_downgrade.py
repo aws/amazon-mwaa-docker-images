@@ -8,6 +8,7 @@ connect to the meta database, thus all configurations need to be set.
 """
 
 from argparse import Namespace
+from packaging.version import Version
 import logging.config
 import os
 import sys
@@ -19,7 +20,7 @@ from airflow.cli.commands import db_command as airflow_db_command
 # Usually, we pass the `__name__` variable instead as that defaults to the module path,
 # i.e. `mwaa.entrypoint` in this case. However, since this is a script, `__name__` will
 # have the value of `__main__`, hence we hard-code the module path.
-logger = logging.getLogger("mwaa.database.update")
+logger = logging.getLogger("mwaa.database.migrate_with_downgrade")
 
 
 def _verify_environ():
@@ -58,8 +59,8 @@ def _migrate_db():
 def _check_downgrade_db():
     target_version = os.environ.get("MWAA__CORE__TARGET_VERSION", None)
     current_version = os.environ.get("AIRFLOW_VERSION", None)
-    if target_version and current_version and current_version != target_version:
-        logging.info(f"Downgrading the database to {target_version}. Migrating...")
+    if target_version and current_version and Version(target_version) < Version(current_version):
+        logging.info(f"Downgrading the database to {target_version}. Downgrading...")
         args = Namespace(
                 from_revision=None,
                 from_version=None,
@@ -82,6 +83,6 @@ if __name__ == "__main__":
     _main()
 else:
     logger.error(
-        "This module cannot be imported. It should be run directly using: python -m mwaa.database.migrate"
+        "This module cannot be imported. It should be run directly using: python -m mwaa.database.migrate_with_downgrade"
     )
     sys.exit(1)
