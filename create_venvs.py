@@ -49,7 +49,7 @@ def create_venv(path: Path, development_build: bool, recreate: bool = False):
 
     if not venv_path.exists():
         print(f"> Creating virtualenv in directory: {venv_path}")
-        venv.create(venv_path, with_pip=True)
+        venv.create(venv_path, with_pip=True, symlinks=True)
     else:
         print(f"> Virtualenv already exists in {venv_path}")
 
