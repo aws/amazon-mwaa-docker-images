@@ -58,6 +58,10 @@ export AWS_ACCESS_KEY_ID
 export AWS_SECRET_ACCESS_KEY
 export AWS_SESSION_TOKEN
 
+# BOM Generation
+GENERATE_BILL_OF_MATERIALS="False"
+export GENERATE_BILL_OF_MATERIALS
+
 # MWAA Configuration
 MWAA__CORE__REQUIREMENTS_PATH="/usr/local/airflow/requirements/requirements.txt"
 MWAA__CORE__STARTUP_SCRIPT_PATH="/usr/local/airflow/startup/startup.sh"
