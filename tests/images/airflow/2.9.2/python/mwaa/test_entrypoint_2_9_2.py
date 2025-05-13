@@ -272,7 +272,7 @@ async def test_main_test_requirements(mock_environ, mock_db_utils):
         mock_install_req.assert_called_once()
 
 @pytest.mark.asyncio
-async def test_main_test_requirements(mock_environ, mock_db_utils):
+async def test_main_migrate_db(mock_environ, mock_db_utils):
     """Test main function with migrate-db command"""
     test_args = ['script.py', 'migrate-db']
     with patch.dict(os.environ, mock_environ), \
