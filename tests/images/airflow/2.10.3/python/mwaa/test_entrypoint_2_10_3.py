@@ -232,6 +232,21 @@ async def test_main_test_requirements(mock_environ, mock_db_utils):
         mock_setup_env.assert_called_once()
         mock_install_req.assert_called_once()
 
+@pytest.mark.asyncio
+async def test_main_test_requirements(mock_environ, mock_db_utils):
+    """Test main function with migrate-db command"""
+    test_args = ['script.py', 'migrate-db']
+    with patch.dict(os.environ, mock_environ), \
+            patch.object(sys, 'argv', test_args), \
+            patch('mwaa.entrypoint.setup_environment_variables') as mock_setup_env, \
+            patch('mwaa.entrypoint.airflow_db_migrate') as mock_db_migrate:
+        mock_setup_env.return_value = mock_environ
+
+        await main()
+
+        mock_setup_env.assert_called_once()
+        mock_db_migrate.assert_called_once()
+
 
 @pytest.mark.asyncio
 async def test_main_missing_arguments():
