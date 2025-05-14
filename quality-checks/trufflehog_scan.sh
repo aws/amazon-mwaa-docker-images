@@ -29,13 +29,9 @@ check_dir() {
     # shellcheck source=/dev/null
     source "${venv_dir}/bin/activate"
 
-    # Create a temporary exclusion file for TruffleHog
-    EXCLUDE_FILE=$(mktemp)
-    echo "tests/" > "$EXCLUDE_FILE"
-
     # Run TruffleHog to scan for secrets
     echo "Running TruffleHog to scan for secrets..."
-    if ! (trufflehog filesystem --repo_path "${dir}" --entropy=False -x "$EXCLUDE_FILE"); then
+    if ! (trufflehog filesystem --repo_path "${dir}" --entropy=False); then
         echo "TruffleHog detected potential secrets."
         status=1
     else
