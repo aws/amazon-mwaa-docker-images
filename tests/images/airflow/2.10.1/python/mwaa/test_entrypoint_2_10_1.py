@@ -12,6 +12,7 @@ from mwaa.entrypoint import (
     _setup_console_log_level,
     _configure_root_logger,
     airflow_db_init,
+    airflow_db_migrate,
     create_airflow_user,
     create_queue,
     main
@@ -102,6 +103,20 @@ async def test_airflow_db_init(mock_db_utils):
             env=environ
         )
 
+@pytest.mark.asyncio
+async def test_airflow_db_migrate(mock_db_utils):
+    """Test Airflow database initialization"""
+    environ = {"PYTHONPATH": os.environ.get("PYTHONPATH", "")}
+
+    async def mock_run_command(cmd, env=None):
+        return 0
+
+    with patch('mwaa.entrypoint.run_command', side_effect=mock_run_command) as mock_cmd:
+        await airflow_db_migrate(environ)
+        mock_cmd.assert_called_once_with(
+            "python3 -m mwaa.database.migrate_with_downgrade",
+            env=environ
+        )
 
 
 @pytest.fixture
@@ -216,6 +231,21 @@ async def test_main_test_requirements(mock_environ, mock_db_utils):
 
         mock_setup_env.assert_called_once()
         mock_install_req.assert_called_once()
+
+@pytest.mark.asyncio
+async def test_main_migrate_db(mock_environ, mock_db_utils):
+    """Test main function with migrate-db command"""
+    test_args = ['script.py', 'migrate-db']
+    with patch.dict(os.environ, mock_environ), \
+            patch.object(sys, 'argv', test_args), \
+            patch('mwaa.entrypoint.setup_environment_variables') as mock_setup_env, \
+            patch('mwaa.entrypoint.airflow_db_migrate') as mock_db_migrate:
+        mock_setup_env.return_value = mock_environ
+
+        await main()
+
+        mock_setup_env.assert_called_once()
+        mock_db_migrate.assert_called_once()
 
 
 @pytest.mark.asyncio

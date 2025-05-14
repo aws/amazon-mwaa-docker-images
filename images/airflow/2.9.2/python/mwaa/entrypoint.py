@@ -78,6 +78,7 @@ AVAILABLE_COMMANDS = [
     "webserver",
     "scheduler",
     "worker",
+    "migrate-db",
     "hybrid",
     "shell",
     "resetdb",
@@ -103,6 +104,21 @@ async def airflow_db_init(environ: dict[str, str]):
     :param environ: A dictionary containing the environment variables.
     """
     await run_command("python3 -m mwaa.database.migrate", env=environ)
+
+
+async def airflow_db_migrate(environ: dict[str, str]):
+    """
+    Migrate/Initialize Airflow database.
+
+    Used in the migrate-db container and will handle both upgrades and downgrades
+
+    Before Airflow can be used, a call to `airflow db migrate` must be done. This
+    function does this. This function is called in the entrypoint to make sure that,
+    for any Airflow component, the database is initialized before it starts.
+
+    :param environ: A dictionary containing the environment variables.
+    """
+    await run_command("python3 -m mwaa.database.migrate_with_downgrade", env=environ)
 
 
 async def increase_pool_size_if_default_size(environ: dict[str, str]):
@@ -226,13 +242,20 @@ async def main() -> None:
     executor_type = os.environ.get("MWAA__CORE__EXECUTOR_TYPE", "CeleryExecutor")
     environ = setup_environment_variables(command, executor_type)
 
+    if command == "migrate-db":
+        await airflow_db_migrate(environ)
+        print("Finished running db validations")
+        return
+
     await install_user_requirements(command, environ)
 
     if command == "test-requirements":
         print("Finished testing requirements")
         return
 
+    # Remove this when we only want the migrate container to update db
     await airflow_db_init(environ)
+
     await increase_pool_size_if_default_size(environ)
     if os.environ.get("MWAA__CORE__AUTH_TYPE", "").lower() == "testing":
         # In "simple" auth mode, we create an admin user "airflow" with password
