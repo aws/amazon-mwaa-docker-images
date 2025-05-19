@@ -8,7 +8,7 @@ FROM public.ecr.aws/amazonlinux/amazonlinux:2023
 
 # Environment variables
 
-ENV AIRFLOW_VERSION=2.10.3
+ENV AIRFLOW_VERSION=3.0.0
 
 ENV AIRFLOW_USER_HOME=/usr/local/airflow
 ENV AIRFLOW_HOME=${AIRFLOW_USER_HOME}

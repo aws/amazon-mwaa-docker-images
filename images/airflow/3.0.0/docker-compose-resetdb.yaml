@@ -1,7 +1,7 @@
 version: "3.8"
 
 x-airflow-common: &airflow-common
-  image: amazon-mwaa-docker-images/airflow:2.10.3-dev
+  image: amazon-mwaa-docker-images/airflow:3.0.0-dev
   environment:
     # AWS credentials
     AWS_ACCESS_KEY_ID: "FAKE_AWS_ACCESS_KEY_ID"
@@ -39,7 +39,7 @@ x-airflow-common: &airflow-common
 services:
   postgres:
     image: postgres:13
-    container_name: mwaa-2103-db
+    container_name: mwaa-300-db
     environment:
       POSTGRES_USER: airflow
       POSTGRES_PASSWORD: airflow
@@ -75,11 +75,11 @@ services:
   resetdb:
     <<: *airflow-common
     command: resetdb
-    container_name: mwaa-2103-resetdb
+    container_name: mwaa-300-resetdb
     depends_on:
       - postgres
     restart: no
 
 volumes:
   postgres-db-volume:
-    name: "mwaa-2103-db-volume"
+    name: "mwaa-300-db-volume"

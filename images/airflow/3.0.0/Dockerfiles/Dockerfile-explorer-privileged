@@ -4,7 +4,7 @@
 # instead.
 #
 
-FROM amazon-mwaa-docker-images/airflow:2.10.3-base
+FROM amazon-mwaa-docker-images/airflow:3.0.0-base
 
 USER root
 

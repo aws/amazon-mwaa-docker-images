@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-# shellcheck source=images/airflow/2.10.3/bootstrap/common.sh
+# shellcheck source=images/airflow/3.0.0/bootstrap/common.sh
 source /bootstrap/common.sh
 
 verify_env_vars_exist \
