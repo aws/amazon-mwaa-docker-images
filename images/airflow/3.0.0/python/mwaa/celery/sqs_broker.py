@@ -247,7 +247,7 @@ def _create_json_request(self, operation, params, queue_url):
     return AWSRequest(method=method, url=url, **param_payload)
 
 
-def make_request(self, operation_name, params, queue_url, verb, callback=None):  # noqa
+def make_request(self, operation_name, params, queue_url, verb, callback=None, protocol_params=None):
     """
     Overide make_request to support different protocols.
 

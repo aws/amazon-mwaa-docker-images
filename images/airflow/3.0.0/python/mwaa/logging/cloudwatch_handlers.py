@@ -239,6 +239,7 @@ class TaskLogHandler(BaseLogHandler, CloudwatchTaskHandler):
             This makes it easier to control enabling and disabling logging without
             much changes to the logging configuration.
         """
+        self.processors = []
         BaseLogHandler.__init__(self, log_group_arn, kms_key_arn, enabled)
         CloudwatchTaskHandler.__init__(
             self,

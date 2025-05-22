@@ -25,6 +25,4 @@ elif os.environ.get("MWAA__CORE__AUTH_TYPE", "").lower() == "none":
     # Disable auth
     AUTH_ROLE_PUBLIC = 'Admin'
 else:
-    from flask_appbuilder.security.manager import AUTH_DB
-
-    AUTH_TYPE = AUTH_DB
+    AUTH_TYPE = None

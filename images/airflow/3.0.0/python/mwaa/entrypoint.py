@@ -508,7 +508,7 @@ def _get_sidecar_health_port():
 def _create_airflow_webserver_subprocesses(environ: Dict[str, str]):
     return [
         create_airflow_subprocess(
-            ["webserver"],
+            ["api-server"],
             environ=environ,
             logger_name=WEBSERVER_LOGGER_NAME,
             friendly_name="webserver",
@@ -661,7 +661,6 @@ def run_airflow_command(cmd: str, environ: Dict[str, str]):
         case _:
             raise ValueError(f"Unexpected command: {cmd}")
 
-
 async def main() -> None:
     """Start execution of the script."""
     try:
@@ -736,12 +735,6 @@ async def main() -> None:
 
     await install_user_requirements(command, environ)
     await airflow_db_init(environ)
-    if os.environ.get("MWAA__CORE__AUTH_TYPE", "").lower() == "testing":
-        # In "simple" auth mode, we create an admin user "airflow" with password
-        # "airflow". We use this to make the Docker Compose setup easy to use without
-        # having to create a user manually. Needless to say, this shouldn't be used in
-        # production environments.
-        await create_airflow_user(environ)
     if executor_type.lower() == "celeryexecutor":
         create_queue()
 

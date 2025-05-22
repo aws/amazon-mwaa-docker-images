@@ -60,6 +60,7 @@ def _get_essential_airflow_core_config() -> Dict[str, str]:
     fernet_key = {}
 
     fernet_secret_json = os.environ.get("MWAA__CORE__FERNET_KEY")
+    api_server_url = os.environ.get("MWAA___CORE__API_SERVER_URL")
     if fernet_secret_json:
         try:
             fernet_key = {
@@ -72,6 +73,7 @@ def _get_essential_airflow_core_config() -> Dict[str, str]:
 
     return {
         "AIRFLOW__CORE__LOAD_EXAMPLES": "False",
+        "AIRFLOW__CORE__EXECUTION_API_SERVER_URL": api_server_url + "/execution",
         **fernet_key,
     }
 
@@ -125,6 +127,33 @@ def _get_essential_airflow_db_config() -> Dict[str, str]:
         "AIRFLOW__DATABASE__SQL_ALCHEMY_CONN": conn_string,
     }
 
+def _get_essential_airflow_auth_config() -> Dict[str, str]:
+    if os.environ.get("MWAA__CORE__AUTH_TYPE", "").lower() == "mwaa-iam":
+        return {
+            "AIRFLOW__CORE__AUTH_MANAGER": "airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager"
+        }
+    # Use default SimpleAuthManager for development. By setting all admins to true, any user/pwd can be used to login.
+    # SIMPLE_AUTH_MANAGER_USERS is in username:role format. Set SIMPLE_AUTH_MANAGER_ALL_ADMINS=false to have dedicated
+    # roles. In that case, the password for each username will be printed in webserver logs.
+    return {
+        "AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS": "admin:admin,admin:viewer",
+        "AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS": "True",
+    }
+
+def _get_essential_airflow_api_auth_config() -> Dict[str, str]:
+
+    """
+    Retrieve the environment variables for Airflow's "api_auth" configuration section.
+
+    :returns A dictionary containing the environment variables.
+    """
+    api_config: Dict[str, str] = {}
+    if os.environ.get("MWAA__CORE__AUTH_TYPE", "").lower() == "testing":
+        api_config["AIRFLOW__API_AUTH__JWT_SECRET"] = "dev-jwt-secret"
+        api_config["AIRFLOW__API_AUTH__JWT_ALGORITHM"] = "HS256"
+
+
+    return api_config
 
 def _get_essential_airflow_logging_config() -> Dict[str, str]:
     """
@@ -316,6 +345,8 @@ def get_essential_airflow_config(executor_type: str) -> Dict[str, str]:
         **_get_essential_airflow_scheduler_config(),
         **_get_essential_airflow_webserver_config(),
         **_get_essential_airflow_api_config(),
+        **_get_essential_airflow_auth_config(),
+        **_get_essential_airflow_api_auth_config()
     }
 
 

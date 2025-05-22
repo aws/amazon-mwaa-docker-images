@@ -31,7 +31,8 @@ def create_celery_config() -> dict[str, Any]:
         "broker_transport": qualified_name(Transport),
         "broker_transport_options": {
             **celery_config["broker_transport_options"],
-            "predefined_queues": {get_sqs_queue_name(): {"url": get_sqs_queue_url()}},
+            "predefined_queues": {get_sqs_queue_name(): {"url": get_sqs_queue_url()},
+                                  "default": {"url": get_sqs_queue_url()}},
             "is_secure": should_use_ssl(),
             "region": get_aws_region(),
         },

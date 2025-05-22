@@ -9,6 +9,7 @@ REQUIRED_PACKAGES=(
     "apache-airflow-providers-amazon[aiobotocore]"
     "apache-airflow[celery,statsd]==${AIRFLOW_VERSION}"
     "apache-airflow-providers-postgres"
+    "apache-airflow-providers-fab"
     "celery[sqs]"
     "boto3-stubs[logs]"
     "boto3-stubs[sqs]"

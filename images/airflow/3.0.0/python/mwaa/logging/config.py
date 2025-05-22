@@ -24,9 +24,7 @@ import os
 # 3rd party imports
 from airflow.config_templates.airflow_local_settings import (
     BASE_LOG_FOLDER,
-    DAG_PROCESSOR_MANAGER_LOG_LOCATION,
     DEFAULT_LOGGING_CONFIG,
-    PROCESSOR_FILENAME_TEMPLATE,
 )
 
 # Our imports
@@ -38,6 +36,9 @@ from mwaa.utils import qualified_name
 LOGGING_CONFIG = {
     **DEFAULT_LOGGING_CONFIG,
 }
+
+DAG_PROCESSOR_MANAGER_LOG_LOCATION = "/usr/local/airflow/logs/processor_manager/dag-processor-manager.log"
+PROCESSOR_FILENAME_TEMPLATE = "dag_processor_{{ filename }}.log"
 
 
 def _get_kms_key_arn():
@@ -199,6 +200,7 @@ def _configure():
             logging_enabled=logging_enabled,
         )
 
+REMOTE_TASK_LOG = None
 # Airflow has a dedicated logger for the DAG Processor Manager
 DAG_PROCESSOR_LOGGER_NAME = "airflow.processor_manager"
 SCHEDULER_LOGGER_NAME = "mwaa.scheduler"
