@@ -74,7 +74,7 @@ x-airflow-common: &airflow-common
 services:
   postgres:
     image: postgres:13
-    container_name: mwaa-300-db
+    container_name: mwaa-301-db
     environment:
       POSTGRES_USER: airflow
       POSTGRES_PASSWORD: airflow
@@ -113,12 +113,12 @@ services:
   spy:
     <<: *airflow-common
     command: spy
-    container_name: mwaa-300-spy
+    container_name: mwaa-301-spy
 
   webserver:
     <<: *airflow-common
     command: webserver
-    container_name: mwaa-300-webserver
+    container_name: mwaa-301-webserver
     ports:
       - 8080:8080
     expose:
@@ -127,13 +127,13 @@ services:
   scheduler:
     <<: *airflow-common
     command: scheduler
-    container_name: mwaa-300-scheduler
+    container_name: mwaa-301-scheduler
 
   worker:
     <<: *airflow-common
     command: worker
-    container_name: mwaa-300-worker
+    container_name: mwaa-301-worker
 
 volumes:
   postgres-db-volume:
-    name: "mwaa-300-db-volume"
+    name: "mwaa-301-db-volume"
