@@ -28,7 +28,8 @@ python3 create_venvs.py --target <development | production>
 
 3. Build a supported Airflow version Docker image
    - `cd <amazon-mwaa-docker-images path>/images/airflow/2.9.2`
-   - Update `run.sh` file with your account ID, environment name and account credentials. The permissions associated
+   - Update `run.sh` file with your account ID, environment name and account credentials, api-server URL 
+   - (`http://host_name:8080`). The permissions associated
    with the provided credentials will be assigned to the Airflow components that would be started with the next step. 
    So, if you receive any error message indicating lack of permissions, then try providing the permissions to the 
    identity whose credentials were used.
@@ -41,6 +42,23 @@ python3 create_venvs.py --target <development | production>
    - `./run.sh` This will build and run all the necessary containers.
 
 Airflow should be up and running now. You can access the web server on your localhost on port 8080.
+
+### Authentication from version 3.0.1 onward
+For environments created using this repository starting with version 3.0.1, we default to using `SimpleAuthManager`, 
+which is also the default auth manager in Airflow 3.0.0+. By default, `SIMPLE_AUTH_MANAGER_ALL_ADMINS` is set to true, 
+which means no username/password is required, and all users will have admin access. You can specify users and roles 
+using the SIMPLE_AUTH_MANAGER_USERS environment variable in the format:
+```
+username:role[,username2:role2,...]
+```
+To enforce authentication with explicit user passwords and roles, set:
+
+```
+SIMPLE_AUTH_MANAGER_ALL_ADMINS=false
+```
+In this mode, a password will be automatically generated for each user and printed in the webserver logs as soon as 
+webserver starts.
+
 
 ### Generated Docker Images
 
