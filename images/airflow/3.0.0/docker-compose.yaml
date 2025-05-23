@@ -1,7 +1,7 @@
 version: "3.8"
 
 x-airflow-common: &airflow-common
-  image: amazon-mwaa-docker-images/airflow:3.0.0-dev
+  image: amazon-mwaa-docker-images/airflow:3.0.1-dev
   restart: always
   environment:
     # AWS credentials

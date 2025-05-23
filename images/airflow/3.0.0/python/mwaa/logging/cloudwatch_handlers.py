@@ -279,6 +279,9 @@ class TaskLogHandler(BaseLogHandler, CloudwatchTaskHandler):
         else:
             self.handler = None
 
+    def _render_filename(self, ti: TaskInstance, try_number: int) -> str:
+        return f"dag_id={ti.dag_id}/run_id={ti.run_id}/task_id={ti.task_id}/attempt={try_number}.log"
+
     def _event_to_str(self, event: Dict[str, str]) -> str:
         # When rendering logs in the UI, the open-source implementation prefixes the
         # logs by their timestamp metadata from the Cloudwatch response. Since the

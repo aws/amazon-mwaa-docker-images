@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-# shellcheck source=images/airflow/3.0.0/bootstrap/common.sh
+# shellcheck source=images/airflow/3.0.1/bootstrap/common.sh
 source /bootstrap/common.sh
 
 # Define an array of required packages
