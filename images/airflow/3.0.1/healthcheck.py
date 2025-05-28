@@ -58,11 +58,13 @@ def get_airflow_process_command(airflow_component: str):
     if airflow_component == "DYNAMIC_ADDITIONAL_WORKER":
         return "MainProcess] -active- (celery worker)"
 
+    # Use 'airflow api_server' instead of '/usr/local/airflow/.local/bin/airflow api-server' because setproctitle()
+    # renames the process. See: airflow/cli/commands/api_server_command.py#L105 in Airflow source
     if airflow_component == "ADDITIONAL_WEBSERVER":
-        return "/usr/local/airflow/.local/bin/airflow api-server"
+        return "airflow api_server"
 
     if airflow_component == "WEB_SERVER":
-        return "/usr/local/airflow/.local/bin/airflow api-server"
+        return "airflow api_server"
 
     exit_with_status(ExitStatus.INVALID_AIRFLOW_COMPONENT)
 
