@@ -5512,6 +5512,7 @@ boto3-stubs
 MIT License
 https://github.com/youtype/mypy_boto3_builder
 /usr/local/airflow/.local/lib/python3.11/site-packages/boto3_stubs-1.38.24.dist-info/licenses/LICENSE
+
 MIT License
 
 Copyright (c) 2025 Vlad Emelianov
@@ -5787,6 +5788,7 @@ botocore-stubs
 MIT License
 https://github.com/youtype/botocore-stubs
 /usr/local/airflow/.local/lib/python3.11/site-packages/botocore_stubs-1.38.24.dist-info/licenses/LICENSE
+
 MIT License
 
 Copyright (c) 2022 Vlad Emelianov
@@ -15923,6 +15925,7 @@ types-s3transfer
 MIT License
 https://github.com/youtype/types-s3transfer
 /usr/local/airflow/.local/lib/python3.11/site-packages/types_s3transfer-0.13.0.dist-info/licenses/LICENSE
+
 MIT License
 
 Copyright (c) 2022 Vlad Emelianov

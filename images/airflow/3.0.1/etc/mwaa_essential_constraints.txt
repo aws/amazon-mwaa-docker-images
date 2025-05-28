@@ -1,7 +1,7 @@
 #
 # NOTE: The constraints below are part of the Airflow constraints:
 #
-# https://raw.githubusercontent.com/apache/airflow/constraints-3.0.1/constraints-3.11.txt
+# https://raw.githubusercontent.com/apache/airflow/constraints-3.0.1/constraints-3.12.txt
 #
 # We consider those to be critical to the functionality of our Airflow image
 # and, thus, do not allow the customer to override them.

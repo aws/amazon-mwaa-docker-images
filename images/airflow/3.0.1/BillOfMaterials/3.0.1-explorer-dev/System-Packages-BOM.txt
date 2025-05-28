@@ -184,6 +184,7 @@ libutempter-1.2.1: LGPLv2+
 libpkgconf-1.8.0: ISC
 libjpeg-turbo-2.1.4: IJG
 gdk-pixbuf2-2.42.12: LGPL-2.1-or-later
+libipt-2.0.4: BSD
 libeconf-0.4.0: MIT
 libdb-5.3.28: BSD and LGPLv2 and Sleepycat
 libcbor-0.7.0: MIT
@@ -296,6 +297,7 @@ tk-8.6.10: TCL
 tix-8.4.3: TCL
 harfbuzz-icu-7.0.0: MIT
 gmp-c++-6.2.1: LGPLv3+ or GPLv2+
+glibc-headers-x86-2.34: LGPLv2+ and LGPLv2+ with exceptions and GPLv2+ and GPLv2+ with exceptions and BSD and Inner-Net and ISC and Public Domain and GFDL
 gl-manpages-1.1: MIT and Open Publication
 ghc-srpm-macros-1.5.0: GPLv2+
 gdbm-1.19: GPLv3+

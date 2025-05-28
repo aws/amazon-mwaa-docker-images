@@ -60,7 +60,7 @@ def _get_essential_airflow_core_config() -> Dict[str, str]:
     fernet_key = {}
 
     fernet_secret_json = os.environ.get("MWAA__CORE__FERNET_KEY")
-    api_server_url = os.environ.get("MWAA___CORE__API_SERVER_URL")
+    api_server_url = os.environ.get("MWAA__CORE__API_SERVER_URL")
     if fernet_secret_json:
         try:
             fernet_key = {
