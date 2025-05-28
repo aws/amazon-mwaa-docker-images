@@ -62,7 +62,7 @@ def get_airflow_process_command(airflow_component: str):
         return "/usr/local/airflow/.local/bin/airflow webserver"
 
     if airflow_component == "WEB_SERVER":
-        return "/usr/local/airflow/.local/bin/airflow webserver"
+        return "/usr/local/airflow/.local/bin/airflow api-server"
 
     exit_with_status(ExitStatus.INVALID_AIRFLOW_COMPONENT)
 
