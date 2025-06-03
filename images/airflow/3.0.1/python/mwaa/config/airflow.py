@@ -308,7 +308,7 @@ def _get_essential_airflow_webserver_config() -> Dict[str, str]:
             )
 
     return {
-        "AIRFLOW__WEBSERVER__CONFIG_FILE": "/python/mwaa/webserver/webserver_config.py",
+        "AIRFLOW__FAB__CONFIG_FILE": "/python/mwaa/webserver/webserver_config.py",
         **flask_secret_key,
     }
 
