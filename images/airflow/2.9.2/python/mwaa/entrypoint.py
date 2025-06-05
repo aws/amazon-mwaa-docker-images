@@ -270,7 +270,20 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except Exception as ex:
+        logger.error("Fatal error in entrypoint: %s", str(ex), exc_info=True)
+        # Create a health check marker file
+        try:
+            with open("/tmp/container_unhealthy", "w") as f:
+                f.write("Container encountered fatal error\n")
+            logger.error("Marked container as unhealthy via /tmp/container_unhealthy")
+        except Exception as file_err:
+            logger.error("Failed to write /tmp/container_unhealthy: %s", str(file_err))
+        # max of (service grace period or container health check startPeriod) + health check (retries * interval)
+        # 1020 + 10 * 75 = ~1800
+        time.sleep(1800)
 elif os.environ.get("MWAA__CORE__TESTING_MODE", "false") != "true":
     logger.error("This module cannot be imported.")
     sys.exit(1)
