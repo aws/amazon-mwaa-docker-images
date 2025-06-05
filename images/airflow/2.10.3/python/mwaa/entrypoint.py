@@ -69,6 +69,29 @@ def _configure_root_logger(command: str):
     from mwaa.logging.config import LOGGING_CONFIG
     logging.config.dictConfig(LOGGING_CONFIG)
 
+def _mark_as_unhealthy():
+    # Create a health check marker file
+
+    # max of (service grace period or container health check startPeriod) + health check (retries * interval)
+    # 1020 + 10 * 75 = ~1800
+    max_timeout = 1800
+
+    try:
+        with open("/tmp/container_unhealthy", "w") as f:
+            f.write("Container encountered fatal error\n")
+        # open('/mwaa/container_unhealthy', 'w').close()
+        logger.error("Marked container as unhealthy via /mwaa/container_unhealthy")
+    except Exception as file_err:
+        logger.error("Failed to write /mwaa/container_unhealthy: %s", str(file_err))
+
+    container_runtime = time.time() - CONTAINER_START_TIME
+    if container_runtime < max_timeout:
+        logger.info("Container running for %s seconds, still in grace period. Sleeping for %s seconds.", 
+                   int(container_runtime), max_timeout)
+        time.sleep(max_timeout)
+    else:
+        logger.info("Container running for %s seconds, not in grace period. Skipping sleep.",
+                   int(container_runtime))
 
 # TODO Fix the "type: ignore"s in this file.
 
@@ -233,16 +256,7 @@ if __name__ == "__main__":
         asyncio.run(main())
     except Exception as ex:
         logger.error("Fatal error in entrypoint: %s", str(ex), exc_info=True)
-        # Create a health check marker file
-        try:
-            with open("/tmp/container_unhealthy", "w") as f:
-                f.write("Container encountered fatal error\n")
-            logger.error("Marked container as unhealthy via /tmp/container_unhealthy")
-        except Exception as file_err:
-            logger.error("Failed to write /tmp/container_unhealthy: %s", str(file_err))
-        # max of (service grace period or container health check startPeriod) + health check (retries * interval)
-        # 1020 + 10 * 75 = ~1800
-        time.sleep(1800)
+        _mark_as_unhealthy()
 elif os.environ.get("MWAA__CORE__TESTING_MODE", "false") != "true":
     logger.error("This module cannot be imported.")
     sys.exit(1)

@@ -67,11 +67,10 @@ def get_airflow_process_command(airflow_component: str):
 
     exit_with_status(ExitStatus.INVALID_AIRFLOW_COMPONENT)
 
-if __name__ == '__main__':
-
+def main():
     # Check if an 'container_unhealthy' marker file is present
-    if os.path.exists("/tmp/container_unhealthy"):
-        print("/tmp/container_unhealthy file found - marking as unhealthy.")
+    if os.path.exists("mwaa/container_unhealthy"):
+        print("mwaa/container_unhealthy file found - marking as unhealthy.")
         exit_with_status(ExitStatus.AIRFLOW_COMPONENT_UNHEALTHY)
 
     if len(sys.argv) != 2:
@@ -87,4 +86,5 @@ if __name__ == '__main__':
         print(f"Airflow process {airflow_component} not found.")
         exit_with_status(ExitStatus.AIRFLOW_COMPONENT_UNHEALTHY)
 
-
+if __name__ == '__main__':
+    main()
