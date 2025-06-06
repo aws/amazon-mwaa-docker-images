@@ -57,7 +57,7 @@ def _migrate_db():
         logging.info("The database is now migrated.")
 
 def _check_downgrade_db():
-    target_version = os.environ.get("MWAA__CORE__TARGET_VERSION", None)
+    target_version = os.environ.get("MWAA__DB__AIRFLOW_TARGET_VERSION", None)
     current_version = os.environ.get("AIRFLOW_VERSION", None)
     if target_version and current_version and Version(target_version) < Version(current_version):
         logging.info(f"Downgrading the database to {target_version}. Downgrading...")
