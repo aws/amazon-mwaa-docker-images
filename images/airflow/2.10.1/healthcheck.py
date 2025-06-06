@@ -69,8 +69,8 @@ def get_airflow_process_command(airflow_component: str):
 
 def main():
     # Check if an 'container_unhealthy' marker file is present
-    if os.path.exists("mwaa/container_unhealthy"):
-        print("mwaa/container_unhealthy file found - marking as unhealthy.")
+    if os.path.exists("/tmp/mwaa/container_unhealthy"):
+        print("/tmp/mwaa/container_unhealthy file found - marking as unhealthy.")
         exit_with_status(ExitStatus.AIRFLOW_COMPONENT_UNHEALTHY)
 
     if len(sys.argv) != 2:

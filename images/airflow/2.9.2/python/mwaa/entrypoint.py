@@ -75,14 +75,16 @@ def _mark_as_unhealthy():
     # Create a health check marker file
 
     # max of (service grace period or container health check startPeriod) + health check (retries * interval)
-    # 1020 + 10 * 75 = ~1800
-    max_timeout = 1800
+    # 300 + 10 * 75 = ~1050
+    max_timeout = 1100
 
     try:
-        open('/mwaa/container_unhealthy', 'w').close()
-        logger.error("Marked container as unhealthy via /mwaa/container_unhealthy")
+        os.makedirs('/tmp/mwaa', exist_ok=True)
+        open('/tmp/mwaa/container_unhealthy', 'w').close()
+
+        logger.error("Marked container as unhealthy via /tmp/mwaa/container_unhealthy")
     except Exception as file_err:
-        logger.error("Failed to write /mwaa/container_unhealthy: %s", str(file_err))
+        logger.error("Failed to write /tmp/mwaa/container_unhealthy: %s", str(file_err))
 
     container_runtime = time.time() - CONTAINER_START_TIME
     if container_runtime < max_timeout:
