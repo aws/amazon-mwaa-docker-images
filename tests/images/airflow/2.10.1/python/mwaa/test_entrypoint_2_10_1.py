@@ -3,8 +3,7 @@ import pytest
 import asyncio
 import os
 import sys
-from unittest.mock import patch, MagicMock, call, AsyncMock
-from datetime import datetime
+from unittest.mock import patch, MagicMock, mock_open, call
 from botocore.exceptions import ClientError
 
 import mwaa.entrypoint as entrypoint
@@ -121,7 +120,6 @@ async def test_airflow_db_migrate(mock_db_utils):
 
 @pytest.fixture
 def mock_run_command():
-    """Mock run_command with AsyncMock"""
 
     async def mock_run(*args, **kwargs):
         if 'stdout_logging_method' in kwargs in args[0]:
@@ -264,3 +262,32 @@ def test_import_guard():
         import importlib
         importlib.reload(entrypoint)
         mock_exit.assert_called_once_with(1)
+
+
+def test_mark_as_unhealthy(mock_environ):
+    """Test basic functionality of _mark_as_unhealthy"""
+    with patch('os.makedirs') as mock_makedirs, \
+         patch('builtins.open', mock_open()) as mock_file, \
+         patch('time.sleep') as mock_sleep:
+        
+        entrypoint._mark_as_unhealthy()
+
+        # Verify directory creation
+        mock_makedirs.assert_called_once_with('/tmp/mwaa', exist_ok=True)
+        
+        # Verify file creation
+        mock_file.assert_called_once_with('/tmp/mwaa/container_unhealthy', 'w')
+        
+        # Verify sleep was called (assuming new container)
+        mock_sleep.assert_called_once_with(1100)
+
+
+def test_mark_as_unhealthy_error(mock_environ):
+    """Test error handling in _mark_as_unhealthy"""
+    with patch('os.makedirs', side_effect=Exception("Directory creation failed")), \
+         patch('time.sleep') as mock_sleep:
+        
+        entrypoint._mark_as_unhealthy()
+        
+        # Verify sleep was still called
+        mock_sleep.assert_called_once_with(1100)
