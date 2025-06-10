@@ -179,12 +179,14 @@ class BaseLogHandler(logging.Handler):
             # More context: https://github.com/aws/amazon-mwaa-docker-images/issues/98
             if "The basic metric validator will be deprecated" in record.getMessage():
                 return
-            try:
-                self.handler.emit(record)  # type: ignore
-                self.sniff_errors(record)
-            except Exception:
-                self.stats.incr(f"mwaa.logging.{self.logs_source}.emit_error", 1)
-                self._report_logging_error("Failed to emit log record.")
+            if record.levelno >= logging.getLevelName(
+                    os.environ.get(f"MWAA__LOGGING__AIRFLOW_{self.logs_source.upper()}_LOG_LEVEL", "INFO")):
+                try:
+                    self.handler.emit(record)  # type: ignore
+                    self.sniff_errors(record)
+                except Exception:
+                    self.stats.incr(f"mwaa.logging.{self.logs_source}.emit_error", 1)
+                    self._report_logging_error("Failed to emit log record.")
 
     def sniff_errors(self, record: logging.LogRecord):
         """
