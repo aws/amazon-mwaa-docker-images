@@ -2,8 +2,8 @@ This Docker image includes the following third-party software/licensing:
 tzdata-2025b: Public Domain
 publicsuffix-list-dafsa-20240212: MPLv2.0
 ncurses-base-6.2: MIT
-amazon-linux-repo-cdn-2023.7.20250512: MIT
-system-release-2023.7.20250512: MIT
+amazon-linux-repo-cdn-2023.7.20250527: MIT
+system-release-2023.7.20250527: MIT
 filesystem-3.14: Public Domain
 glibc-minimal-langpack-2.34: LGPLv2+ and LGPLv2+ with exceptions and GPLv2+ and GPLv2+ with exceptions and BSD and Inner-Net and ISC and Public Domain and GFDL
 glibc-2.34: LGPLv2+ and LGPLv2+ with exceptions and GPLv2+ and GPLv2+ with exceptions and BSD and Inner-Net and ISC and Public Domain and GFDL
@@ -32,7 +32,7 @@ coreutils-single-8.32: GPLv3+
 libblkid-2.37.4: LGPLv2+
 libsigsegv-2.13: GPLv2+
 libtasn1-4.19.0: GPLv3+ and LGPLv2+
-ca-certificates-2023.2.68: Public Domain
+ca-certificates-2025.2.76: Public Domain
 openssl-libs-3.2.2: ASL 2.0
 python3-pip-wheel-21.3.1: MIT and Python and ASL 2.0 and BSD and ISC and LGPLv2 and MPLv2.0 and (ASL 2.0 or BSD)
 krb5-libs-1.21.3: MIT
@@ -43,7 +43,7 @@ lz4-libs-1.9.4: GPLv2+ and BSD
 rpm-4.16.1.3: GPLv2+
 libmodulemd-2.13.0: MIT
 npth-1.6: LGPLv2+
-gpgme-1.15.1: LGPLv2+
+gpgme-1.23.2: LGPL-2.1-or-later AND MIT
 libdnf-0.69.0: LGPLv2+
 python3-hawkey-0.69.0: LGPLv2+
 rpm-sign-libs-4.16.1.3: GPLv2+ and LGPLv2+ with exceptions
@@ -98,7 +98,7 @@ libsolv-0.7.22: BSD
 gnupg2-minimal-2.3.7: GPLv3+
 librepo-1.14.5: LGPLv2+
 python3-libdnf-0.69.0: LGPLv2+
-python3-gpg-1.15.1: LGPLv2+
+python3-gpg-1.23.2: LGPL-2.1-or-later AND MIT
 elfutils-default-yama-scope-0.188: GPLv2+ or LGPLv3+
 rpm-build-libs-4.16.1.3: GPLv2+ and LGPLv2+ with exceptions
 libreport-filesystem-2.15.2: GPLv2+
@@ -135,7 +135,7 @@ libfdisk-2.37.4: LGPLv2+
 libedit-3.1: BSD
 libXau-1.0.11: MIT-open-group
 libxcb-1.17.0: X11
-kernel-headers-6.12.25: GPLv2 and Redistributable, no modification permitted
+kernel-headers-6.12.29: GPLv2 and Redistributable, no modification permitted
 jansson-2.14: MIT
 binutils-2.41: GPL-3.0-or-later AND (GPL-3.0-or-later WITH Bison-exception-2.2) AND (LGPL-2.0-or-later WITH GCC-exception-2.0) AND BSD-3-Clause AND GFDL-1.3-or-later AND GPL-2.0-or-later AND LGPL-2.1-or-later AND LGPL-2.0-or-later
 graphite2-1.3.14: (LGPLv2+ or GPLv2+ or MPLv1.1) and (Netscape or GPLv2+ or LGPLv2+)

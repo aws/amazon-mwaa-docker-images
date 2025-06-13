@@ -6162,10 +6162,10 @@ Copyright 2013-2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 /usr/local/airflow/.local/lib/python3.11/site-packages/boto3-1.35.36.dist-info/NOTICE
 
 boto3-stubs
-1.38.27
+1.38.32
 MIT License
 https://github.com/youtype/mypy_boto3_builder
-/usr/local/airflow/.local/lib/python3.11/site-packages/boto3_stubs-1.38.27.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.11/site-packages/boto3_stubs-1.38.32.dist-info/licenses/LICENSE
 MIT License
 
 Copyright (c) 2025 Vlad Emelianov
@@ -6437,10 +6437,10 @@ one at http://mozilla.org/MPL/2.0/.
 /usr/local/airflow/.local/lib/python3.11/site-packages/botocore-1.35.36.dist-info/NOTICE
 
 botocore-stubs
-1.38.27
+1.38.30
 MIT License
 https://github.com/youtype/botocore-stubs
-/usr/local/airflow/.local/lib/python3.11/site-packages/botocore_stubs-1.38.27.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.11/site-packages/botocore_stubs-1.38.30.dist-info/licenses/LICENSE
 MIT License
 
 Copyright (c) 2022 Vlad Emelianov
