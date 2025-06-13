@@ -93,7 +93,11 @@ def test_emit_with_no_handler():
         exc_info=None
     )
 
-    logger.emit(record)
+    try:
+        logger.emit(record)
+        assert True  # Test passes if no exception is raised
+    except Exception as e:
+        assert False, f"emit() raised an exception {e} when handler is not set"
 
 
 def test_emit_handles_exception(base_logger):
