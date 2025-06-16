@@ -304,15 +304,18 @@ class Subprocess:
         # Do nothing if process has already terminated
         if self.process is None or self.process.poll() is not None:
             return
+
         module_logger.info(f"Shutting down {self}")
+
         try:
-            module_logger.info(f"Sending SIGTERM to {self}")
-            self.process.terminate()
+            module_logger.info(f"Sending SIGTERM to process group {self}")
+            os.killpg(os.getpgid(process.pid), signal.SIGTERM)
             action_taken = "terminated"
         except OSError:
-            module_logger.error(f"Failed to send SIGTERM to {self}. Sending SIGKILL...")
-            self.process.kill()
+            module_logger.error(f"Failed to send SIGTERM to process group {self}. Sending SIGKILL...")
+            os.killpg(os.getpgid(process.pid), signal.SIGKILL)
             action_taken = "killed"
+
         sigterm_patience_interval_secs = self.sigterm_patience_interval.total_seconds()
         try:
             outs, _ = self.process.communicate(timeout=sigterm_patience_interval_secs)
@@ -320,14 +323,15 @@ class Subprocess:
                 self.process_logger.info(outs.decode("utf-8"))
         except subprocess.TimeoutExpired:
             module_logger.error(
-                f"Failed to kill {self} with a SIGTERM signal. Process didn't "
+                f"Failed to kill {self} with a SIGTERM signal. Process group didn't "
                 f"respond to SIGTERM after {sigterm_patience_interval_secs} "
                 "seconds. Sending SIGKILL..."
             )
-            self.process.kill()
+            os.killpg(os.getpgid(process.pid), signal.SIGKILL)
             action_taken = "killed"
+
         module_logger.info(
-            f"Process {action_taken}. Return code is {self.process.returncode}."
+            f"Process group {action_taken}. Return code is {self.process.returncode}."
         )
 
     def start_log_capture(self):
