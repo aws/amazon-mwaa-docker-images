@@ -66,10 +66,10 @@ UNKNOWN
 UNKNOWN
 
 Flask-AppBuilder
-4.5.3
+4.6.3
 BSD License
 https://github.com/dpgaspar/flask-appbuilder/
-/usr/local/airflow/.local/lib/python3.12/site-packages/Flask_AppBuilder-4.5.3.dist-info/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/Flask_AppBuilder-4.6.3.dist-info/LICENSE
 Copyright (c) 2013, Daniel Vaz Gaspar
 All rights reserved.
 
@@ -445,10 +445,10 @@ UNKNOWN
 UNKNOWN
 
 PyAthena
-3.13.0
+3.14.1
 MIT License
 https://github.com/laughingman7743/PyAthena/
-/usr/local/airflow/.local/lib/python3.12/site-packages/pyathena-3.13.0.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/pyathena-3.14.1.dist-info/licenses/LICENSE
 Copyright 2017 laughingman7743
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -1621,10 +1621,10 @@ UNKNOWN
 UNKNOWN
 
 aiohttp
-3.11.18
-Apache Software License
+3.12.7
+Apache-2.0
 https://github.com/aio-libs/aiohttp
-/usr/local/airflow/.local/lib/python3.12/site-packages/aiohttp-3.11.18.dist-info/licenses/LICENSE.txt
+/usr/local/airflow/.local/lib/python3.12/site-packages/aiohttp-3.12.7.dist-info/licenses/LICENSE.txt
    Copyright aio-libs contributors.
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -1922,10 +1922,10 @@ UNKNOWN
 UNKNOWN
 
 alembic
-1.15.2
-MIT License
+1.16.1
+UNKNOWN
 https://alembic.sqlalchemy.org
-/usr/local/airflow/.local/lib/python3.12/site-packages/alembic-1.15.2.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/alembic-1.16.1.dist-info/licenses/LICENSE
 Copyright 2009-2025 Michael Bayer.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -2065,10 +2065,10 @@ UNKNOWN
 UNKNOWN
 
 apache-airflow
-3.0.1
+3.0.2
 Apache Software License
 https://airflow.apache.org/
-/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow-3.0.1.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow-3.0.2.dist-info/licenses/LICENSE
                               Apache License
                         Version 2.0, January 2004
                      http://www.apache.org/licenses/
@@ -2275,10 +2275,10 @@ UNKNOWN
 UNKNOWN
 
 apache-airflow-core
-3.0.1
+3.0.2
 Apache Software License
 https://airflow.apache.org/
-/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_core-3.0.1.dist-info/licenses/3rd-party-licenses/LICENSE-bootstrap.txt
+/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_core-3.0.2.dist-info/licenses/3rd-party-licenses/LICENSE-bootstrap.txt
 The MIT License (MIT)
 
 Copyright (c) 2011-2017 Twitter, Inc.
@@ -2325,12 +2325,12 @@ This product contains a modified portion of 'Chakra UI' developed by Segun Adeba
 
 * Copyright 2019, Segun Adebayo
 
-/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_core-3.0.1.dist-info/licenses/NOTICE
+/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_core-3.0.2.dist-info/licenses/NOTICE
 
 apache-airflow-providers-amazon
-9.7.0
+9.8.0
 Apache Software License
-https://airflow.apache.org/docs/apache-airflow-providers-amazon/9.7.0/changelog.html
+https://airflow.apache.org/docs/apache-airflow-providers-amazon/9.8.0/changelog.html
 /usr/local/airflow/.local/lib/python3.12/site-packages/airflow/providers/amazon/LICENSE
                               Apache License
                         Version 2.0, January 2004
@@ -2538,9 +2538,9 @@ UNKNOWN
 UNKNOWN
 
 apache-airflow-providers-celery
-3.10.6
+3.11.0
 Apache Software License
-https://airflow.apache.org/docs/apache-airflow-providers-celery/3.10.6/changelog.html
+https://airflow.apache.org/docs/apache-airflow-providers-celery/3.11.0/changelog.html
 /usr/local/airflow/.local/lib/python3.12/site-packages/airflow/providers/celery/LICENSE
                               Apache License
                         Version 2.0, January 2004
@@ -2748,9 +2748,9 @@ UNKNOWN
 UNKNOWN
 
 apache-airflow-providers-common-compat
-1.6.1
+1.7.0
 Apache Software License
-https://airflow.apache.org/docs/apache-airflow-providers-common-compat/1.6.1/changelog.html
+https://airflow.apache.org/docs/apache-airflow-providers-common-compat/1.7.0/changelog.html
 /usr/local/airflow/.local/lib/python3.12/site-packages/airflow/providers/common/compat/LICENSE
                               Apache License
                         Version 2.0, January 2004
@@ -2958,9 +2958,9 @@ UNKNOWN
 UNKNOWN
 
 apache-airflow-providers-common-io
-1.5.4
+1.6.0
 Apache Software License
-https://airflow.apache.org/docs/apache-airflow-providers-common-io/1.5.4/changelog.html
+https://airflow.apache.org/docs/apache-airflow-providers-common-io/1.6.0/changelog.html
 /usr/local/airflow/.local/lib/python3.12/site-packages/airflow/providers/common/io/LICENSE
                               Apache License
                         Version 2.0, January 2004
@@ -3168,9 +3168,9 @@ UNKNOWN
 UNKNOWN
 
 apache-airflow-providers-common-sql
-1.27.0
+1.27.1
 Apache Software License
-https://airflow.apache.org/docs/apache-airflow-providers-common-sql/1.27.0/changelog.html
+https://airflow.apache.org/docs/apache-airflow-providers-common-sql/1.27.1/changelog.html
 /usr/local/airflow/.local/lib/python3.12/site-packages/airflow/providers/common/sql/LICENSE
                               Apache License
                         Version 2.0, January 2004
@@ -3378,9 +3378,9 @@ UNKNOWN
 UNKNOWN
 
 apache-airflow-providers-fab
-2.0.2
+2.2.0
 Apache Software License
-https://airflow.apache.org/docs/apache-airflow-providers-fab/2.0.2/changelog.html
+https://airflow.apache.org/docs/apache-airflow-providers-fab/2.2.0/changelog.html
 /usr/local/airflow/.local/lib/python3.12/site-packages/airflow/providers/fab/LICENSE
                               Apache License
                         Version 2.0, January 2004
@@ -3599,12 +3599,12 @@ This product contains a modified portion of 'Flask App Builder' developed by Dan
 
 * Copyright 2013, Daniel Vaz Gaspar
 
-/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_providers_fab-2.0.2.dist-info/licenses/NOTICE
+/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_providers_fab-2.2.0.dist-info/licenses/NOTICE
 
 apache-airflow-providers-http
-5.2.2
+5.3.0
 Apache Software License
-https://airflow.apache.org/docs/apache-airflow-providers-http/5.2.2/changelog.html
+https://airflow.apache.org/docs/apache-airflow-providers-http/5.3.0/changelog.html
 /usr/local/airflow/.local/lib/python3.12/site-packages/airflow/providers/http/LICENSE
                               Apache License
                         Version 2.0, January 2004
@@ -3812,9 +3812,9 @@ UNKNOWN
 UNKNOWN
 
 apache-airflow-providers-postgres
-6.1.3
+6.2.0
 Apache Software License
-https://airflow.apache.org/docs/apache-airflow-providers-postgres/6.1.3/changelog.html
+https://airflow.apache.org/docs/apache-airflow-providers-postgres/6.2.0/changelog.html
 /usr/local/airflow/.local/lib/python3.12/site-packages/airflow/providers/postgres/LICENSE
                               Apache License
                         Version 2.0, January 2004
@@ -4022,9 +4022,9 @@ UNKNOWN
 UNKNOWN
 
 apache-airflow-providers-smtp
-2.0.3
+2.1.0
 Apache Software License
-https://airflow.apache.org/docs/apache-airflow-providers-smtp/2.0.3/changelog.html
+https://airflow.apache.org/docs/apache-airflow-providers-smtp/2.1.0/changelog.html
 /usr/local/airflow/.local/lib/python3.12/site-packages/airflow/providers/smtp/LICENSE
                               Apache License
                         Version 2.0, January 2004
@@ -4232,9 +4232,9 @@ UNKNOWN
 UNKNOWN
 
 apache-airflow-providers-standard
-1.1.0
+1.2.0
 Apache Software License
-https://airflow.apache.org/docs/apache-airflow-providers-standard/1.1.0/changelog.html
+https://airflow.apache.org/docs/apache-airflow-providers-standard/1.2.0/changelog.html
 /usr/local/airflow/.local/lib/python3.12/site-packages/airflow/providers/standard/LICENSE
                               Apache License
                         Version 2.0, January 2004
@@ -4442,10 +4442,10 @@ UNKNOWN
 UNKNOWN
 
 apache-airflow-task-sdk
-1.0.1
+1.0.2
 Apache Software License
 https://airflow.apache.org/
-/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_task_sdk-1.0.1.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_task_sdk-1.0.2.dist-info/licenses/LICENSE
                               Apache License
                         Version 2.0, January 2004
                      http://www.apache.org/licenses/
@@ -4652,10 +4652,10 @@ UNKNOWN
 UNKNOWN
 
 apispec
-6.8.1
+6.8.2
 MIT License
 https://github.com/marshmallow-code/apispec
-/usr/local/airflow/.local/lib/python3.12/site-packages/apispec-6.8.1.dist-info/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/apispec-6.8.2.dist-info/licenses/LICENSE
 Copyright Steven Loria, Jérôme Lafréchoux, and contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -5508,10 +5508,10 @@ Copyright 2013-2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 /usr/local/airflow/.local/lib/python3.12/site-packages/boto3-1.37.3.dist-info/NOTICE
 
 boto3-stubs
-1.38.36
+1.38.37
 MIT License
 https://github.com/youtype/mypy_boto3_builder
-/usr/local/airflow/.local/lib/python3.12/site-packages/boto3_stubs-1.38.36.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/boto3_stubs-1.38.37.dist-info/licenses/LICENSE
 MIT License
 
 Copyright (c) 2025 Vlad Emelianov
@@ -5880,10 +5880,10 @@ UNKNOWN
 UNKNOWN
 
 celery
-5.5.2
+5.5.3
 BSD License
 https://docs.celeryq.dev/
-/usr/local/airflow/.local/lib/python3.12/site-packages/celery-5.5.2.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/celery-5.5.3.dist-info/licenses/LICENSE
 Copyright (c) 2017-2026 Asif Saif Uddin, core team & contributors. All rights reserved.
 Copyright (c) 2015-2016 Ask Solem & contributors. All rights reserved.
 Copyright (c) 2012-2014 GoPivotal, Inc.  All rights reserved.
@@ -6038,10 +6038,10 @@ UNKNOWN
 UNKNOWN
 
 click
-8.1.8
-BSD License
+8.2.1
+UNKNOWN
 https://github.com/pallets/click/
-/usr/local/airflow/.local/lib/python3.12/site-packages/click-8.1.8.dist-info/LICENSE.txt
+/usr/local/airflow/.local/lib/python3.12/site-packages/click-8.2.1.dist-info/licenses/LICENSE.txt
 Copyright 2014 Pallets
 
 Redistribution and use in source and binary forms, with or without
@@ -7089,10 +7089,10 @@ UNKNOWN
 UNKNOWN
 
 fsspec
-2025.3.2
+2025.5.1
 BSD License
 https://github.com/fsspec/filesystem_spec
-/usr/local/airflow/.local/lib/python3.12/site-packages/fsspec-2025.3.2.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/fsspec-2025.5.1.dist-info/licenses/LICENSE
 BSD 3-Clause License
 
 Copyright (c) 2018, Martin Durant
@@ -7377,10 +7377,10 @@ UNKNOWN
 UNKNOWN
 
 grpcio
-1.71.0
+1.72.1
 Apache Software License
 https://grpc.io
-/usr/local/airflow/.local/lib/python3.12/site-packages/grpcio-1.71.0.dist-info/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/grpcio-1.72.1.dist-info/LICENSE
 
                                  Apache License
                            Version 2.0, January 2004
@@ -8766,10 +8766,10 @@ UNKNOWN
 UNKNOWN
 
 jsonschema
-4.23.0
-MIT License
+4.24.0
+UNKNOWN
 https://github.com/python-jsonschema/jsonschema
-/usr/local/airflow/.local/lib/python3.12/site-packages/jsonschema-4.23.0.dist-info/licenses/COPYING
+/usr/local/airflow/.local/lib/python3.12/site-packages/jsonschema-4.24.0.dist-info/licenses/COPYING
 Copyright (c) 2013 Julian Berman
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -8822,10 +8822,10 @@ UNKNOWN
 UNKNOWN
 
 kombu
-5.5.3
+5.5.4
 BSD License
 https://kombu.readthedocs.io
-/usr/local/airflow/.local/lib/python3.12/site-packages/kombu-5.5.3.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/kombu-5.5.4.dist-info/licenses/LICENSE
 Copyright (c) 2015-2016 Ask Solem & contributors.  All rights reserved.
 Copyright (c) 2012-2014 GoPivotal Inc & contributors.  All rights reserved.
 Copyright (c) 2009-2012, Ask Solem & contributors.  All rights reserved.
@@ -8886,10 +8886,10 @@ UNKNOWN
 UNKNOWN
 
 libcst
-1.7.0
+1.8.0
 MIT License
 https://github.com/Instagram/LibCST/blob/main/CHANGELOG.md
-/usr/local/airflow/.local/lib/python3.12/site-packages/libcst-1.7.0.dist-info/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/libcst-1.8.0.dist-info/licenses/LICENSE
 All contributions towards LibCST are MIT licensed.
 
 Some Python files have been derived from the standard library and are therefore
@@ -8997,10 +8997,10 @@ UNKNOWN
 UNKNOWN
 
 limits
-5.1.0
+5.2.0
 MIT License
 https://limits.readthedocs.org
-/usr/local/airflow/.local/lib/python3.12/site-packages/limits-5.1.0.dist-info/licenses/LICENSE.txt
+/usr/local/airflow/.local/lib/python3.12/site-packages/limits-5.2.0.dist-info/licenses/LICENSE.txt
 Copyright (c) 2023 Ali-Akber Saifee
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -9370,10 +9370,10 @@ UNKNOWN
 UNKNOWN
 
 multidict
-6.4.3
+6.4.4
 Apache Software License
 https://github.com/aio-libs/multidict
-/usr/local/airflow/.local/lib/python3.12/site-packages/multidict-6.4.3.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/multidict-6.4.4.dist-info/licenses/LICENSE
    Copyright 2016 Andrew Svetlov and aio-libs contributors
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -11592,10 +11592,10 @@ UNKNOWN
 UNKNOWN
 
 pluggy
-1.5.0
+1.6.0
 MIT License
-https://github.com/pytest-dev/pluggy
-/usr/local/airflow/.local/lib/python3.12/site-packages/pluggy-1.5.0.dist-info/LICENSE
+UNKNOWN
+/usr/local/airflow/.local/lib/python3.12/site-packages/pluggy-1.6.0.dist-info/licenses/LICENSE
 The MIT License (MIT)
 
 Copyright (c) 2015 holger krekel (rather uses bitbucket/hpk42)
@@ -11659,10 +11659,10 @@ UNKNOWN
 UNKNOWN
 
 prometheus_client
-0.21.1
-Apache Software License
+0.22.1
+UNKNOWN
 https://github.com/prometheus/client_python
-/usr/local/airflow/.local/lib/python3.12/site-packages/prometheus_client-0.21.1.dist-info/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/prometheus_client-0.22.1.dist-info/licenses/LICENSE
                                  Apache License
                            Version 2.0, January 2004
                         http://www.apache.org/licenses/
@@ -11871,7 +11871,7 @@ Copyright 2015 The Prometheus Authors
 This product bundles decorator 4.0.10 which is available under a "2-clause BSD"
 license. For details, see prometheus_client/decorator.py.
 
-/usr/local/airflow/.local/lib/python3.12/site-packages/prometheus_client-0.21.1.dist-info/NOTICE
+/usr/local/airflow/.local/lib/python3.12/site-packages/prometheus_client-0.22.1.dist-info/licenses/NOTICE
 
 prompt_toolkit
 3.0.51
@@ -12134,10 +12134,10 @@ https://github.com/aio-libs/propcache
 /usr/local/airflow/.local/lib/python3.12/site-packages/propcache-0.3.1.dist-info/licenses/NOTICE
 
 protobuf
-4.25.7
+4.25.8
 3-Clause BSD License
 https://developers.google.com/protocol-buffers/
-/usr/local/airflow/.local/lib/python3.12/site-packages/protobuf-4.25.7.dist-info/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/protobuf-4.25.8.dist-info/LICENSE
 Copyright 2008 Google Inc.  All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -12876,10 +12876,10 @@ UNKNOWN
 UNKNOWN
 
 pydantic
-2.11.4
+2.11.5
 MIT License
 https://github.com/pydantic/pydantic
-/usr/local/airflow/.local/lib/python3.12/site-packages/pydantic-2.11.4.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/pydantic-2.11.5.dist-info/licenses/LICENSE
 The MIT License (MIT)
 
 Copyright (c) 2017 to present Pydantic Services Inc. and individual contributors.
@@ -13389,10 +13389,10 @@ UNKNOWN
 UNKNOWN
 
 redshift-connector
-2.1.6
+2.1.7
 BSD License
 https://github.com/aws/amazon-redshift-python-driver
-/usr/local/airflow/.local/lib/python3.12/site-packages/redshift_connector-2.1.6.dist-info/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/redshift_connector-2.1.7.dist-info/LICENSE
 
                                  Apache License
                            Version 2.0, January 2004
@@ -13571,7 +13571,7 @@ https://github.com/aws/amazon-redshift-python-driver
 
 Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 
-/usr/local/airflow/.local/lib/python3.12/site-packages/redshift_connector-2.1.6.dist-info/NOTICE
+/usr/local/airflow/.local/lib/python3.12/site-packages/redshift_connector-2.1.7.dist-info/NOTICE
 
 referencing
 0.36.2
@@ -14046,10 +14046,10 @@ UNKNOWN
 UNKNOWN
 
 rich-argparse
-1.7.0
+1.7.1
 MIT License
 https://github.com/hamdanal/rich-argparse
-/usr/local/airflow/.local/lib/python3.12/site-packages/rich_argparse-1.7.0.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/rich_argparse-1.7.1.dist-info/licenses/LICENSE
 MIT License
 
 Copyright (c) 2022 Ali Hamdan
@@ -14076,10 +14076,10 @@ UNKNOWN
 UNKNOWN
 
 rich-toolkit
-0.14.5
+0.14.7
 MIT License
 UNKNOWN
-/usr/local/airflow/.local/lib/python3.12/site-packages/rich_toolkit-0.14.5.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/rich_toolkit-0.14.7.dist-info/licenses/LICENSE
 MIT License
 
 Copyright (c) 2024 Patrick Arminio
@@ -14106,10 +14106,10 @@ UNKNOWN
 UNKNOWN
 
 rpds-py
-0.24.0
+0.25.1
 MIT
 https://github.com/crate-py/rpds
-/usr/local/airflow/.local/lib/python3.12/site-packages/rpds_py-0.24.0.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/rpds_py-0.25.1.dist-info/licenses/LICENSE
 Copyright (c) 2023 Julian Berman
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -14774,10 +14774,10 @@ UNKNOWN
 UNKNOWN
 
 structlog
-25.3.0
+25.4.0
 Apache Software License; MIT License
 https://github.com/hynek/structlog/blob/main/CHANGELOG.md
-/usr/local/airflow/.local/lib/python3.12/site-packages/structlog-25.3.0.dist-info/licenses/LICENSE-APACHE
+/usr/local/airflow/.local/lib/python3.12/site-packages/structlog-25.4.0.dist-info/licenses/LICENSE-APACHE
 
                                  Apache License
                            Version 2.0, January 2004
@@ -14959,7 +14959,7 @@ https://github.com/hynek/structlog/blob/main/CHANGELOG.md
 structlog
 Copyright 2013 Hynek Schlawack and the structlog contributors
 
-/usr/local/airflow/.local/lib/python3.12/site-packages/structlog-25.3.0.dist-info/licenses/NOTICE
+/usr/local/airflow/.local/lib/python3.12/site-packages/structlog-25.4.0.dist-info/licenses/NOTICE
 
 svcs
 25.1.0
@@ -15402,10 +15402,10 @@ UNKNOWN
 UNKNOWN
 
 tornado
-6.4.2
+6.5.1
 Apache Software License
 http://www.tornadoweb.org/
-/usr/local/airflow/.local/lib/python3.12/site-packages/tornado-6.4.2.dist-info/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/tornado-6.5.1.dist-info/licenses/LICENSE
 
                                  Apache License
                            Version 2.0, January 2004
@@ -15613,10 +15613,10 @@ UNKNOWN
 UNKNOWN
 
 typer
-0.15.3
+0.16.0
 MIT License
 https://github.com/fastapi/typer
-/usr/local/airflow/.local/lib/python3.12/site-packages/typer-0.15.3.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/typer-0.16.0.dist-info/licenses/LICENSE
 The MIT License (MIT)
 
 Copyright (c) 2019 Sebastián Ramírez
@@ -15673,10 +15673,10 @@ UNKNOWN
 UNKNOWN
 
 types-requests
-2.32.0.20250328
-Apache Software License
+2.32.0.20250602
+UNKNOWN
 https://github.com/python/typeshed
-/usr/local/airflow/.local/lib/python3.12/site-packages/types_requests-2.32.0.20250328.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/types_requests-2.32.0.20250602.dist-info/licenses/LICENSE
 The "typeshed" project is licensed under the terms of the Apache license, as
 reproduced below.
 
@@ -15949,13 +15949,13 @@ UNKNOWN
 UNKNOWN
 
 typing-inspection
-0.4.0
-MIT License
+0.4.1
+UNKNOWN
 https://github.com/pydantic/typing-inspection
-/usr/local/airflow/.local/lib/python3.12/site-packages/typing_inspection-0.4.0.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/typing_inspection-0.4.1.dist-info/licenses/LICENSE
 MIT License
 
-Copyright (c) 2025 Victorien
+Copyright (c) Pydantic Services Inc. 2025 to present
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -16436,10 +16436,10 @@ UNKNOWN
 UNKNOWN
 
 uvicorn
-0.34.2
+0.34.3
 BSD License
 https://www.uvicorn.org/
-/usr/local/airflow/.local/lib/python3.12/site-packages/uvicorn-0.34.2.dist-info/licenses/LICENSE.md
+/usr/local/airflow/.local/lib/python3.12/site-packages/uvicorn-0.34.3.dist-info/licenses/LICENSE.md
 Copyright © 2017-present, [Encode OSS Ltd](https://www.encode.io/).
 All rights reserved.
 
@@ -17370,27 +17370,28 @@ https://github.com/aio-libs/yarl
 /usr/local/airflow/.local/lib/python3.12/site-packages/yarl-1.20.0.dist-info/licenses/NOTICE
 
 zipp
-3.21.0
-MIT License
+3.22.0
+UNKNOWN
 https://github.com/jaraco/zipp
-/usr/local/airflow/.local/lib/python3.12/site-packages/zipp-3.21.0.dist-info/LICENSE
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to
-deal in the Software without restriction, including without limitation the
-rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
-sell copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+/usr/local/airflow/.local/lib/python3.12/site-packages/zipp-3.22.0.dist-info/licenses/LICENSE
+MIT License
 
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
+Copyright (c) 2025 <copyright holders>
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-IN THE SOFTWARE.
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
+following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial
+portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
+LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO
+EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
+USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 UNKNOWN
 UNKNOWN
