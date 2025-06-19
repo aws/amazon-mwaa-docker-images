@@ -5,6 +5,7 @@ Module for running healthcheck on airflow processes.
 import subprocess
 import sys
 from enum import Enum
+from typing import List
 
 class ExitStatus(Enum):
     """
@@ -22,51 +23,54 @@ def exit_with_status(exit_status: ExitStatus):
     print(f"Exiting with status: {exit_status.name}")
     sys.exit(exit_status.value)
 
-def is_process_running(cmd_substring: str) -> bool:
+def is_process_running(cmd_substrings: List[str]) -> bool:
     """
-    Check if a process containing the given command substring is running.
+    Check if a process containing any of the given command substrings is running.
 
-    :param cmd_substring: Substring of the command used to launch the process.
+    :param cmd_substrings: A list of strings to search for in process commands.
     :return: True if a matching process is found, False otherwise.
     """
     try:
         procs = subprocess.check_output(['ps', 'uaxw']).decode().splitlines()
         for proc in procs:
-            if cmd_substring in proc:
-                print(f"Process found: {proc}")
-                return True
+            for substring in cmd_substrings:
+                if substring in proc:
+                    print(f"Process found: {proc}")
+                    return True
     except subprocess.SubprocessError as e:
         print(f"Error checking processes: {e}")
     return False
 
-def get_airflow_process_command(airflow_component: str):
+def get_airflow_process_command(airflow_component: str) -> List[str]:
     """
-    Get airflow command substring for a given airflow component.
+    Get airflow command substring(s) for a given airflow component.
 
-    :param airflow_component: Airflow component running on host. 
-    :return: Airflow command substring.
+    :param airflow_component: Airflow component running on host.
+    :return: List of airflow command substrings.
     """
     if airflow_component == "SCHEDULER":
-        return "/usr/local/airflow/.local/bin/airflow scheduler"
+        return ["/usr/local/airflow/.local/bin/airflow scheduler"]
 
     if airflow_component == "WORKER":
-        return "MainProcess] -active- (celery worker)"
+        return ["MainProcess] -active- (celery worker)", "/bin/airflow celery worker"]
 
     if airflow_component == "STATIC_ADDITIONAL_WORKER":
-        return "MainProcess] -active- (celery worker)"
+        return ["MainProcess] -active- (celery worker)", "/bin/airflow celery worker"]
 
     if airflow_component == "DYNAMIC_ADDITIONAL_WORKER":
-        return "MainProcess] -active- (celery worker)"
+        return ["MainProcess] -active- (celery worker)", "/bin/airflow celery worker"]
 
     # Use 'airflow api_server' instead of '/usr/local/airflow/.local/bin/airflow api-server' because setproctitle()
     # renames the process. See: airflow/cli/commands/api_server_command.py#L105 in Airflow source
     if airflow_component == "ADDITIONAL_WEBSERVER":
-        return "airflow api_server"
+        return ["airflow api_server"]
 
     if airflow_component == "WEB_SERVER":
-        return "airflow api_server"
+        return ["airflow api_server"]
 
     exit_with_status(ExitStatus.INVALID_AIRFLOW_COMPONENT)
+    # This return will never be reached due to sys.exit() in exit_with_status
+    return []  # Return empty list to satisfy type checker
 
 if __name__ == '__main__':
     if len(sys.argv) != 2:
@@ -81,5 +85,3 @@ if __name__ == '__main__':
     else:
         print(f"Airflow process {airflow_component} not found.")
         exit_with_status(ExitStatus.AIRFLOW_COMPONENT_UNHEALTHY)
-
-
