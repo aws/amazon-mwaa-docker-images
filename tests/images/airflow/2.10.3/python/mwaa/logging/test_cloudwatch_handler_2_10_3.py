@@ -1,7 +1,9 @@
 import logging
 import pytest
 import os
-from unittest.mock import patch, Mock
+import importlib
+from unittest.mock import patch, Mock, MagicMock, ANY
+from airflow.models.taskinstance import TaskInstance
 from mwaa.config.setup_environment import (
     setup_environment_variables,
     _execute_startup_script,
@@ -9,7 +11,13 @@ from mwaa.config.setup_environment import (
     _is_protected_os_environ,
 )
 from mwaa.subprocess.subprocess import Subprocess
-from mwaa.logging.cloudwatch_handlers import BaseLogHandler
+from mwaa.logging.cloudwatch_handlers import (
+    BaseLogHandler,
+    TaskLogHandler,
+    SubprocessLogHandler,
+    DagProcessorManagerLogHandler,
+    DagProcessingLogHandler
+)
 
 print(BaseLogHandler.__init__.__code__.co_varnames)
 
@@ -17,6 +25,26 @@ print(BaseLogHandler.__init__.__code__.co_varnames)
 def mock_handler():
     return Mock()
 
+@pytest.fixture
+def mock_boto3_client():
+    with patch('boto3.client') as mock:
+        yield mock
+
+@pytest.fixture
+def mock_watchtower():
+    with patch('mwaa.logging.cloudwatch_handlers.watchtower.CloudWatchLogHandler') as mock:
+        yield mock
+
+@pytest.fixture
+def mock_fluent():
+    with patch('mwaa.logging.cloudwatch_handlers.fluent_handler.FluentHandler') as mock:
+        yield mock
+
+@pytest.fixture(autouse=True)
+def reload_module():
+    import importlib
+    import mwaa.logging.cloudwatch_handlers
+    importlib.reload(mwaa.logging.cloudwatch_handlers)
 
 @pytest.fixture
 def base_logger(mock_handler):
@@ -28,6 +56,7 @@ def base_logger(mock_handler):
     logger.handler = mock_handler
     logger.stats = Mock()
     return logger
+
 
 
 def test_emit_skips_deprecated_metric_message(base_logger):  # updated parameter name
@@ -122,3 +151,139 @@ def test_emit_handles_exception(base_logger):
 
         # Verify that _report_logging_error was called with the correct message
         mock_report_error.assert_called_once_with("Failed to emit log record.")
+
+@pytest.fixture(autouse=True)
+def reload_module():
+    import importlib
+    import mwaa.logging.cloudwatch_handlers
+    importlib.reload(mwaa.logging.cloudwatch_handlers)
+
+@pytest.mark.parametrize("use_non_critical_logging, expected_handler, unexpected_handler", [
+    ('false', 'watchtower', 'fluent'),
+    ('true', 'fluent', 'watchtower')
+])
+def test_log_handler_creation(mock_boto3_client, mock_watchtower, mock_fluent, use_non_critical_logging, expected_handler, unexpected_handler):
+    with patch.dict(os.environ, {'USE_NON_CRITICAL_LOGGING': use_non_critical_logging}, clear=True):
+        # Force reload of the module
+        import importlib
+        import mwaa.logging.cloudwatch_handlers
+        importlib.reload(mwaa.logging.cloudwatch_handlers)
+
+        handler = BaseLogHandler('arn:aws:logs:us-west-2:123456789012:log-group:test', None, True)
+        handler.create_cloudwatch_handler('test_stream', 'test_source')
+
+        assert handler.handler is not None, "No handler was created"
+
+        if expected_handler == 'watchtower':
+            assert isinstance(handler.handler, mock_watchtower.return_value.__class__), "Created handler should be a Watchtower handler"
+            assert mock_watchtower.called, f"{expected_handler} handler should be created"
+            assert not mock_fluent.called, f"{unexpected_handler} handler should not be created"
+            mock_watchtower.assert_called_once_with(
+                log_group_name=handler.log_group_name,
+                log_stream_name='test_stream',
+                boto3_client=mock_boto3_client.return_value,
+                use_queues=True,
+                send_interval=10,
+                create_log_group=False
+            )
+        else:
+            assert isinstance(handler.handler, mock_fluent.return_value.__class__), "Created handler should be a Fluent handler"
+            assert mock_fluent.called, f"{expected_handler} handler should be created"
+            assert not mock_watchtower.called, f"{unexpected_handler} handler should not be created"
+            mock_fluent.assert_called_once_with(
+                'customer.logs',
+                host=ANY,
+                port=24224
+            )
+
+def test_task_log_handler_with_fluent(mock_boto3_client, mock_fluent):
+    with patch.dict(os.environ, {'USE_NON_CRITICAL_LOGGING': 'true'}, clear=True):
+        # Force reload of the module
+        import importlib
+        import mwaa.logging.cloudwatch_handlers
+        importlib.reload(mwaa.logging.cloudwatch_handlers)
+
+        handler = TaskLogHandler('', 'arn:aws:logs:us-west-2:123456789012:log-group:test', None, True)
+
+        ti = MagicMock(spec=TaskInstance)
+        ti.try_number = 1
+        ti.dag_id = 'test_dag'
+        ti.task_id = 'test_task'
+        ti.execution_date = '2023-01-01'
+
+        handler.set_context(ti)
+
+        assert mock_fluent.called
+        assert mock_fluent.call_args.args[0] == 'customer.task.logs'
+        assert mock_fluent.call_args.kwargs == {
+            'host': ANY,
+            'port': 24224,
+            'queue_maxsize': 50000
+        }
+
+def test_subprocess_log_handler_with_fluent(mock_boto3_client, mock_fluent):
+    with patch.dict(os.environ, {'USE_NON_CRITICAL_LOGGING': 'true'}, clear=True):
+        # Force reload of the module
+        import importlib
+        import mwaa.logging.cloudwatch_handlers
+        importlib.reload(mwaa.logging.cloudwatch_handlers)
+
+        handler = SubprocessLogHandler(
+            'arn:aws:logs:us-west-2:123456789012:log-group:test',
+            None,
+            'test_prefix',
+            'test_source',
+            True,
+            log_formatter=logging.Formatter('%(message)s')
+        )
+
+        assert mock_fluent.called
+        assert mock_fluent.call_args.args[0] == 'customer.logs'
+        assert mock_fluent.call_args.kwargs == {
+            'host': ANY,
+            'port': 24224
+        }
+
+def test_dag_processor_manager_log_handler(mock_boto3_client, mock_fluent, mock_watchtower):
+    with patch.dict(os.environ, {'USE_NON_CRITICAL_LOGGING': 'true'}, clear=True):
+        # Force reload of the module
+        import importlib
+        import mwaa.logging.cloudwatch_handlers
+        importlib.reload(mwaa.logging.cloudwatch_handlers)
+
+        handler = DagProcessorManagerLogHandler(
+            'arn:aws:logs:us-west-2:123456789012:log-group:test',
+            None,
+            'test_stream',
+            True
+        )
+
+        assert mock_fluent.called
+        assert mock_fluent.call_args.args[0] == 'customer.logs'
+        assert mock_fluent.call_args.kwargs == {
+            'host': ANY,
+            'port': 24224
+        }
+
+def test_dag_processing_log_handler(mock_boto3_client, mock_fluent, mock_watchtower):
+    with patch.dict(os.environ, {'USE_NON_CRITICAL_LOGGING': 'true'}, clear=True):
+        # Force reload of the module
+        import importlib
+        import mwaa.logging.cloudwatch_handlers
+        importlib.reload(mwaa.logging.cloudwatch_handlers)
+
+        handler = DagProcessingLogHandler(
+            'arn:aws:logs:us-west-2:123456789012:log-group:test',
+            None,
+            'test_stream_template',
+            True
+        )
+
+        handler.set_context('test_dag.py')
+        
+        assert mock_fluent.called
+        assert mock_fluent.call_args.args[0] == 'customer.logs'
+        assert mock_fluent.call_args.kwargs == {
+            'host': ANY,
+            'port': 24224
+        }
