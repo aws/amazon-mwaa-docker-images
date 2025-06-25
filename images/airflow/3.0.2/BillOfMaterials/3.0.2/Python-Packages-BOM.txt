@@ -5508,10 +5508,10 @@ Copyright 2013-2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 /usr/local/airflow/.local/lib/python3.12/site-packages/boto3-1.37.3.dist-info/NOTICE
 
 boto3-stubs
-1.38.37
+1.38.41
 MIT License
 https://github.com/youtype/mypy_boto3_builder
-/usr/local/airflow/.local/lib/python3.12/site-packages/boto3_stubs-1.38.37.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/boto3_stubs-1.38.41.dist-info/licenses/LICENSE
 MIT License
 
 Copyright (c) 2025 Vlad Emelianov
@@ -9392,10 +9392,10 @@ UNKNOWN
 UNKNOWN
 
 mypy-boto3-logs
-1.38.16
+1.38.39
 MIT License
 https://github.com/youtype/mypy_boto3_builder
-/usr/local/airflow/.local/lib/python3.12/site-packages/mypy_boto3_logs-1.38.16.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/mypy_boto3_logs-1.38.39.dist-info/licenses/LICENSE
 MIT License
 
 Copyright (c) 2025 Vlad Emelianov
