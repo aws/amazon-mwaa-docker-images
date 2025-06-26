@@ -129,17 +129,6 @@ class BaseLogHandler(logging.Handler):
         """
         logs_client: CloudWatchLogsClient = boto3.client("logs")  # type: ignore
 
-        if self.enabled and not self.NON_CRITICAL_LOGGING_ENABLED:
-            self.handler = watchtower.CloudWatchLogHandler(
-                log_group_name=self.log_group_name,
-                log_stream_name=stream_name,
-                boto3_client=logs_client,
-                use_queues=use_queues,
-                send_interval=send_interval_seconds,
-                create_log_group=False,
-            )
-            if self.formatter:
-                self.handler.setFormatter(self.formatter)
         self.logs_source = logs_source
         self.log_stream = stream_name
 
@@ -179,6 +168,19 @@ class BaseLogHandler(logging.Handler):
                             'message': record.getMessage()
                         }
                 self.handler.setFormatter(DefaultRoutingFormatter())
+
+        elif self.enabled:
+            print(f"Inside with stream name {stream_name}")
+            self.handler = watchtower.CloudWatchLogHandler(
+                log_group_name=self.log_group_name,
+                log_stream_name=stream_name,
+                boto3_client=logs_client,
+                use_queues=use_queues,
+                send_interval=send_interval_seconds,
+                create_log_group=False,
+            )
+            if self.formatter:
+                self.handler.setFormatter(self.formatter)
 
     def close(self):
         """Close the log handler (by closing the underlying log handler)."""
@@ -307,18 +309,6 @@ class TaskLogHandler(BaseLogHandler, CloudwatchTaskHandler):
         # https://github.com/aws/amazon-mwaa-docker-images/issues/57
         logs_client: CloudWatchLogsClient = boto3.client("logs")  # type: ignore
 
-        if self.enabled and not self.NON_CRITICAL_LOGGING_ENABLED:
-            # identical to open-source implementation, except create_log_group set to False
-            self.handler = watchtower.CloudWatchLogHandler(
-                log_group_name=self.log_group_name,
-                log_stream_name=self._render_filename(ti, ti.try_number),  # type: ignore
-                boto3_client=logs_client,
-                use_queues=True,
-                create_log_group=False,
-            )
-
-            if self.formatter:
-                self.handler.setFormatter(self.formatter)
         if self.enabled and self.NON_CRITICAL_LOGGING_ENABLED:
             self.handler = fluent_handler.FluentHandler(
                 'customer.task.logs',
@@ -344,6 +334,18 @@ class TaskLogHandler(BaseLogHandler, CloudwatchTaskHandler):
                     }
 
             self.handler.setFormatter(TaskFormatter())
+
+        elif self.enabled:
+            # identical to open-source implementation, except create_log_group set to False
+            self.handler = watchtower.CloudWatchLogHandler(
+                log_group_name=self.log_group_name,
+                log_stream_name=self._render_filename(ti, ti.try_number),  # type: ignore
+                boto3_client=logs_client,
+                use_queues=True,
+                create_log_group=False,
+            )
+            if self.formatter:
+                self.handler.setFormatter(self.formatter)
         else:
             self.handler = None
 
