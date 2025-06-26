@@ -170,7 +170,6 @@ class BaseLogHandler(logging.Handler):
                 self.handler.setFormatter(DefaultRoutingFormatter())
 
         elif self.enabled:
-            print(f"Inside with stream name {stream_name}")
             self.handler = watchtower.CloudWatchLogHandler(
                 log_group_name=self.log_group_name,
                 log_stream_name=stream_name,
