@@ -195,6 +195,9 @@ def _is_protected_os_environ(key: str) -> bool:
         # This is used to validate the version of Watchtower installed
         # which we don't allow the customer to override.
         "WATCHTOWER_VERSION",
+        # This is used to control whether we use NON-CRITICAL LOGGING flow with Fluentbit
+        # which we don't allow the customer to override.
+        "USE_NON_CRITICAL_LOGGING",
     ]
 
     # Check whether this is an MWAA configuration or a protected variable

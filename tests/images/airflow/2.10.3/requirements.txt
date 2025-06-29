@@ -14,6 +14,7 @@ apache-airflow-providers-amazon[aiobotocore]
 celery[sqs]
 pycurl
 watchtower
+fluent-logger
 # Additional packages for development
 # NOTE: Like above, we don't specify the version here.
 boto3-stubs[logs]
