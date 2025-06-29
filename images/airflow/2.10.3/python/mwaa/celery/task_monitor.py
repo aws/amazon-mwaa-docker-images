@@ -529,7 +529,7 @@ class WorkerTaskMonitor:
         return _get_celery_tasks(self.cleanup_celery_state)
 
 
-    def _get_next_unprocessed_signal(self) -> (str, SignalData):
+    def _get_next_unprocessed_signal(self) -> tuple[str | None, SignalData | None]:
         signal_search_start_timestamp = math.ceil((datetime.now(tz=tz.tzutc()) - SIGNAL_SEARCH_TIME_RANGE).timestamp())
         signal_filenames = os.listdir(MWAA_SIGNALS_DIRECTORY) if os.path.exists(MWAA_SIGNALS_DIRECTORY) else []
         sorted_filenames = sorted(signal_filenames)
