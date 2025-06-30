@@ -3378,9 +3378,9 @@ UNKNOWN
 UNKNOWN
 
 apache-airflow-providers-fab
-2.2.0
+2.2.1
 Apache Software License
-https://airflow.apache.org/docs/apache-airflow-providers-fab/2.2.0/changelog.html
+https://airflow.apache.org/docs/apache-airflow-providers-fab/2.2.1/changelog.html
 /usr/local/airflow/.local/lib/python3.12/site-packages/airflow/providers/fab/LICENSE
                               Apache License
                         Version 2.0, January 2004
@@ -3599,7 +3599,7 @@ This product contains a modified portion of 'Flask App Builder' developed by Dan
 
 * Copyright 2013, Daniel Vaz Gaspar
 
-/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_providers_fab-2.2.0.dist-info/licenses/NOTICE
+/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_providers_fab-2.2.1.dist-info/licenses/NOTICE
 
 apache-airflow-providers-http
 5.3.0
@@ -5508,10 +5508,10 @@ Copyright 2013-2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 /usr/local/airflow/.local/lib/python3.12/site-packages/boto3-1.37.3.dist-info/NOTICE
 
 boto3-stubs
-1.38.41
+1.38.46
 MIT License
 https://github.com/youtype/mypy_boto3_builder
-/usr/local/airflow/.local/lib/python3.12/site-packages/boto3_stubs-1.38.41.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/boto3_stubs-1.38.46.dist-info/licenses/LICENSE
 MIT License
 
 Copyright (c) 2025 Vlad Emelianov
@@ -5783,10 +5783,10 @@ one at http://mozilla.org/MPL/2.0/.
 /usr/local/airflow/.local/lib/python3.12/site-packages/botocore-1.37.3.dist-info/NOTICE
 
 botocore-stubs
-1.38.30
+1.38.46
 MIT License
 https://github.com/youtype/botocore-stubs
-/usr/local/airflow/.local/lib/python3.12/site-packages/botocore_stubs-1.38.30.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/botocore_stubs-1.38.46.dist-info/licenses/LICENSE
 MIT License
 
 Copyright (c) 2022 Vlad Emelianov
@@ -15643,10 +15643,10 @@ UNKNOWN
 UNKNOWN
 
 types-awscrt
-0.27.2
+0.27.4
 MIT License
 https://github.com/youtype/types-awscrt
-/usr/local/airflow/.local/lib/python3.12/site-packages/types_awscrt-0.27.2.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/types_awscrt-0.27.4.dist-info/licenses/LICENSE
 MIT License
 
 Copyright (c) 2022 Vlad Emelianov
