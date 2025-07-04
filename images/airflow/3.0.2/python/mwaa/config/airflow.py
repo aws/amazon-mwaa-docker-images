@@ -149,11 +149,8 @@ def _get_essential_airflow_api_auth_config() -> Dict[str, str]:
     :returns A dictionary containing the environment variables.
     """
     api_config: Dict[str, str] = {}
-    # TODO remove the condition after testing is complete.
-    if os.environ.get("MWAA__CORE__AUTH_TYPE", "").lower() == "testing":
-        api_config["AIRFLOW__API_AUTH__JWT_SECRET"] = os.environ.get("MWAA__CORE__FERNET_KEY")
-        api_config["AIRFLOW__API_AUTH__JWT_ALGORITHM"] = "HS256"
-
+    api_config["AIRFLOW__API_AUTH__JWT_SECRET"] = os.environ.get("MWAA__CORE__FERNET_KEY")
+    api_config["AIRFLOW__API_AUTH__JWT_ALGORITHM"] = "HS256"
 
     return api_config
 

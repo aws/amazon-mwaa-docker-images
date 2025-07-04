@@ -29,7 +29,7 @@ from airflow.config_templates.airflow_local_settings import (
 
 # Our imports
 from mwaa.logging import cloudwatch_handlers
-from mwaa.logging.cloudwatch_handlers import CloudWatchRemoteLogger
+from mwaa.logging.cloudwatch_handlers import CloudWatchRemoteTaskLogger
 from mwaa.utils import qualified_name
 
 # We adopt the default logging configuration from Airflow and do the necessary changes
@@ -91,7 +91,7 @@ def _configure_remote_task_logging():
     global REMOTE_TASK_LOG
     # This is a weird thing from Airflow. Instead of providing the module path, Airflow expects the REMOTE_TASK_LOG
     # attribute from the custom logging module to be an instantiated class.
-    REMOTE_TASK_LOG = CloudWatchRemoteLogger(
+    REMOTE_TASK_LOG = CloudWatchRemoteTaskLogger(
         log_group_arn=log_group_arn,
         kms_key_arn=_get_kms_key_arn(),
         enabled=logging_enabled,
@@ -103,7 +103,7 @@ def _configure_task_logging():
     if log_group_arn:
         # Setup CloudWatch logging.
         LOGGING_CONFIG["handlers"]["task"] = {
-            "class": qualified_name(cloudwatch_handlers.CloudWatchRemoteLogger),
+            "class": qualified_name(cloudwatch_handlers.CloudWatchRemoteTaskLogger),
             "formatter": "airflow",
             "filters": ["mask_secrets"],
             "log_group_arn": log_group_arn,

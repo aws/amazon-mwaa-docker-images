@@ -3,8 +3,12 @@ This module contain multiple log handlers to support integration with CloudWatch
 
 It contains the BaseLogHandler class, which has some common functionality needed by
 all of the handlers. It also contains a couple other handlers for different log
-categories, e.g. TaskLogHandler for handling task logs, SubprocessLogHandler for
-handling scheduler/worker/etc logs, and so on.
+categories, e.g. SubprocessLogHandler for handling scheduler/worker/etc logs, and so on.
+
+For Airflow 3 we added CloudWatchRemoteTaskLogger for task logging only due to the switch to
+Structlog. It still inherits BaseLogHandler for metrics reporting purposes but the core logic
+are different. e.g. Emit and set_context are no-ops as they are not called anymore, and
+the log publishing part is in the processor property.
 """
 
 # Python imports
@@ -224,7 +228,7 @@ class BaseLogHandler(logging.Handler):
             self.stats.incr(f"mwaa.logging.{self.logs_source}.flush_error", 1)
             self._report_logging_error("Failed to flush log records.")
 
-class CloudWatchRemoteLogger(BaseLogHandler, LoggingMixin):
+class CloudWatchRemoteTaskLogger(BaseLogHandler, LoggingMixin):
     """
         In Airflow 3, we need to enable remote logging in order to load our custom logging logic into the task logger
         which uses Structlog. The main logic resides in 'processors' property which is loaded by Structlog logger in
@@ -287,7 +291,7 @@ class CloudWatchRemoteLogger(BaseLogHandler, LoggingMixin):
             # Dag processor log (from loading DagBag) shows up in task log during execution with a different
             # stream name. Here we strictly limit that only task logs are printed in task log group.
             if self.log_group_name.endswith("-Task") \
-                    and not re.match(CloudWatchRemoteLogger.TASK_LOG_STREAM_PATTERN, _handler.log_stream_name):
+                    and not re.match(CloudWatchRemoteTaskLogger.TASK_LOG_STREAM_PATTERN, _handler.log_stream_name):
                 return event
 
             name = event.get("logger_name") or event.get("logger", "")
@@ -310,7 +314,7 @@ class CloudWatchRemoteLogger(BaseLogHandler, LoggingMixin):
             try:
                 _handler.handle(record)
             except Exception as e:
-                self.stats.incr(f"mwaa.logging.{CloudWatchRemoteLogger.LOG_SOURCE}.emit_error", 1)
+                self.stats.incr(f"mwaa.logging.{CloudWatchRemoteTaskLogger.LOG_SOURCE}.emit_error", 1)
                 # TODO maybe consider removing this if we plan to make logging non-critical
                 raise e
             return event
