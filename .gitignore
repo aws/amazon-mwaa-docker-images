@@ -23,3 +23,9 @@ images/airflow/3.*/requirements-dev.txt
 .coverage
 coverage.xml
 .coverage.*
+
+# MacOS
+*.DS_Store
+
+# Intellij
+*.idea*

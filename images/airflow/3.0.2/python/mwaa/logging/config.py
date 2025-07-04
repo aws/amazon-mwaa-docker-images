@@ -29,6 +29,7 @@ from airflow.config_templates.airflow_local_settings import (
 
 # Our imports
 from mwaa.logging import cloudwatch_handlers
+from mwaa.logging.cloudwatch_handlers import CloudWatchRemoteLogger
 from mwaa.utils import qualified_name
 
 # We adopt the default logging configuration from Airflow and do the necessary changes
@@ -40,6 +41,7 @@ LOGGING_CONFIG = {
 DAG_PROCESSOR_MANAGER_LOG_LOCATION = "/usr/local/airflow/logs/processor_manager/dag-processor-manager.log"
 PROCESSOR_FILENAME_TEMPLATE = "dag_processor_{{ filename }}.log"
 
+REMOTE_TASK_LOG = None
 
 def _get_kms_key_arn():
     return os.environ.get("MWAA__CORE__KMS_KEY_ARN", None)
@@ -84,19 +86,30 @@ def get_mwaa_logging_env_vars(source: str):
         logging_enabled.lower() == "true",
     )
 
+def _configure_remote_task_logging():
+    log_group_arn, log_level, logging_enabled = get_mwaa_logging_env_vars("task")
+    global REMOTE_TASK_LOG
+    # This is a weird thing from Airflow. Instead of providing the module path, Airflow expects the REMOTE_TASK_LOG
+    # attribute from the custom logging module to be an instantiated class.
+    REMOTE_TASK_LOG = CloudWatchRemoteLogger(
+        log_group_arn=log_group_arn,
+        kms_key_arn=_get_kms_key_arn(),
+        enabled=logging_enabled,
+        log_level=log_level
+    )
 
 def _configure_task_logging():
     log_group_arn, log_level, logging_enabled = get_mwaa_logging_env_vars("task")
     if log_group_arn:
         # Setup CloudWatch logging.
         LOGGING_CONFIG["handlers"]["task"] = {
-            "class": qualified_name(cloudwatch_handlers.TaskLogHandler),
+            "class": qualified_name(cloudwatch_handlers.CloudWatchRemoteLogger),
             "formatter": "airflow",
             "filters": ["mask_secrets"],
-            "base_log_folder": str(os.path.expanduser(BASE_LOG_FOLDER)),
             "log_group_arn": log_group_arn,
             "kms_key_arn": _get_kms_key_arn(),
             "enabled": logging_enabled,
+            "log_level": log_level,
         }
         LOGGING_CONFIG["loggers"]["airflow.task"].update(
             {
@@ -172,6 +185,7 @@ def _configure_subprocesses_logging(
 
 def _configure():
     _configure_task_logging()
+    _configure_remote_task_logging()
     _configure_dag_processing_logging()
     # We run a standalone DAG Processor but we don't create a special logger for it
     # because Airflow already has a dedicated logger for it, so we just use that when
