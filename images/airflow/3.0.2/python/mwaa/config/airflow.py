@@ -61,6 +61,7 @@ def _get_essential_airflow_core_config() -> Dict[str, str]:
 
     fernet_secret_json = os.environ.get("MWAA__CORE__FERNET_KEY")
     api_server_url = os.environ.get("MWAA__CORE__API_SERVER_URL")
+    prefix = "" if "://" in api_server_url else "https://"
     if fernet_secret_json:
         try:
             fernet_key = {
@@ -73,7 +74,7 @@ def _get_essential_airflow_core_config() -> Dict[str, str]:
 
     return {
         "AIRFLOW__CORE__LOAD_EXAMPLES": "False",
-        "AIRFLOW__CORE__EXECUTION_API_SERVER_URL": api_server_url + "/execution",
+        "AIRFLOW__CORE__EXECUTION_API_SERVER_URL": prefix + api_server_url + "/execution",
         **fernet_key,
     }
 
@@ -148,10 +149,8 @@ def _get_essential_airflow_api_auth_config() -> Dict[str, str]:
     :returns A dictionary containing the environment variables.
     """
     api_config: Dict[str, str] = {}
-    if os.environ.get("MWAA__CORE__AUTH_TYPE", "").lower() == "testing":
-        api_config["AIRFLOW__API_AUTH__JWT_SECRET"] = "dev-jwt-secret"
-        api_config["AIRFLOW__API_AUTH__JWT_ALGORITHM"] = "HS256"
-
+    api_config["AIRFLOW__API_AUTH__JWT_SECRET"] = os.environ.get("MWAA__CORE__FERNET_KEY")
+    api_config["AIRFLOW__API_AUTH__JWT_ALGORITHM"] = "HS256"
 
     return api_config
 
