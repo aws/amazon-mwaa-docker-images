@@ -235,7 +235,13 @@ class CloudWatchRemoteTaskLogger(BaseLogHandler, LoggingMixin):
         task-sdk/src/airflow/sdk/log.py#L143
     """
     LOG_SOURCE = "task"
-    TASK_LOG_STREAM_PATTERN = re.compile(r"dag_id=(.*?)\/run_id=(.*?)\/task_id=(.*?)\/attempt=(.*)")
+    # In Airflow currently there are some logs that "seeps" out of the traditional task log stream. Ideally we should
+    # use log_filename_template config to generate a pattern for filtering only task log streams. But that config
+    # value is not a regex pattern but instead a Jinja template. As a workaround for now we use a deny list instead.
+    IGNORED_PATTERNS = [
+        # Dag processor log (from loading DagBag) with stream name dag_processor/2025-01-01/dags-folder/dag.py.log
+        re.compile(r"^dag_processor/")
+    ]
 
     def __init__(
         self,
@@ -246,10 +252,12 @@ class CloudWatchRemoteTaskLogger(BaseLogHandler, LoggingMixin):
     ):
         BaseLogHandler.__init__(self, log_group_arn, kms_key_arn, enabled)
         self.log_level = logging.getLevelName(log_level)
+        self.handler = None
 
-    @cached_property
-    def handler(self) -> watchtower.CloudWatchLogHandler:
-        return self._init_handler()
+    def get_handler(self):
+        if not self.handler:
+            self.handler = self._init_handler()
+        return self.handler
 
     def _init_handler(self):
         logs_client: CloudWatchLogsClient = boto3.client("logs")  # type: ignore
@@ -280,7 +288,7 @@ class CloudWatchRemoteTaskLogger(BaseLogHandler, LoggingMixin):
         logRecordFactory = getLogRecordFactory()
         # The handler MUST be initted here, before the processor is actually used to log anything.
         # Otherwise, logging that occurs during the creation of the handler can create infinite loops.
-        _handler = self.handler if self.handler else self._init_handler()
+        _handler = self.get_handler()
         from airflow.sdk.log import relative_path_from_logger
 
         def proc(logger: structlog.typing.WrappedLogger, method_name: str, event: structlog.typing.EventDict):
@@ -288,10 +296,8 @@ class CloudWatchRemoteTaskLogger(BaseLogHandler, LoggingMixin):
                 return event
             _handler.log_stream_name = stream_name.as_posix().replace(":", "_")
 
-            # Dag processor log (from loading DagBag) shows up in task log during execution with a different
-            # stream name. Here we strictly limit that only task logs are printed in task log group.
             if self.log_group_name.endswith("-Task") \
-                    and not re.match(CloudWatchRemoteTaskLogger.TASK_LOG_STREAM_PATTERN, _handler.log_stream_name):
+                    and any(re.match(p, _handler.log_stream_name) for p in CloudWatchRemoteTaskLogger.IGNORED_PATTERNS):
                 return event
 
             name = event.get("logger_name") or event.get("logger", "")
