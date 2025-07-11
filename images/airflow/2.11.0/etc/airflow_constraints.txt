@@ -1,6 +1,6 @@
 #
 # NOTE: The content of this file was copied from:
-# https://raw.githubusercontent.com/apache/airflow/constraints-2.10.3/constraints-3.11.txt
+# https://raw.githubusercontent.com/apache/airflow/constraints-2.11.0/constraints-3.11.txt
 #
 
 
