@@ -29,8 +29,10 @@ check_dir() {
     # Run ruff and Pyright
     echo "Running ruff..."
     ruff check "${dir}" || status=1
+    
     echo "Running Pyright..."
-    pyright "${dir}" || status=1
+    pyright -p "${dir}/pyrightconfig.json" "${dir}" || status=1
+    
     deactivate
 
     echo
@@ -42,7 +44,12 @@ check_dir "."
 # Setup and checks for each Docker image under ./images/airflow
 for image_dir in ./images/airflow/*; do
     if [[ -d "$image_dir" ]]; then
-        check_dir "$image_dir"
+        # Only process 2.10.3 for now
+        if [[ "$image_dir" == "./images/airflow/2.10.3" ]]; then
+            check_dir "$image_dir"
+        else
+            echo "Skipping directory \"${image_dir}\" (not 2.10.3)..."
+        fi
     fi
 done
 

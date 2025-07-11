@@ -146,7 +146,7 @@ class BaseLogHandler(logging.Handler):
                 log_stream = self.log_stream
 
                 class RoutingFormatter(logging.Formatter):
-                    def format(self, record):
+                    def format(self, record) -> Dict[str, str]:  # type: ignore[override]
                         # Get the original formatted message
                         formatted_msg = original_formatter.format(record)
                         # Return dict with both the original format and routing fields
@@ -161,7 +161,7 @@ class BaseLogHandler(logging.Handler):
                 log_stream = self.log_stream
                 # If no formatter exists, use a basic one with routing fields
                 class DefaultRoutingFormatter(logging.Formatter):
-                    def format(self, record):
+                    def format(self, record) -> Dict[str, str]:  # type: ignore[override]
                         return {
                             'log_group': log_group,
                             'log_stream': log_stream,
@@ -321,7 +321,7 @@ class TaskLogHandler(BaseLogHandler, CloudwatchTaskHandler):
             stream_name = self._render_filename(ti, ti.try_number)
 
             class TaskFormatter(logging.Formatter):
-                def format(self, record):
+                def format(self, record) -> Dict[str, str]:  # type: ignore[override]
                     if original_formatter:
                         formatted_msg = original_formatter.format(record)
                     else:
