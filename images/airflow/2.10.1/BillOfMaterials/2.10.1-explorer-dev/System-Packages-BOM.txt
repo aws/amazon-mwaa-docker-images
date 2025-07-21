@@ -2,8 +2,8 @@ This Docker image includes the following third-party software/licensing:
 tzdata-2025b: Public Domain
 publicsuffix-list-dafsa-20240212: MPLv2.0
 ncurses-base-6.2: MIT
-amazon-linux-repo-cdn-2023.8.20250707: MIT
-system-release-2023.8.20250707: MIT
+amazon-linux-repo-cdn-2023.8.20250715: MIT
+system-release-2023.8.20250715: MIT
 filesystem-3.14: Public Domain
 glibc-minimal-langpack-2.34: LGPLv2+ and LGPLv2+ with exceptions and GPLv2+ and GPLv2+ with exceptions and BSD and Inner-Net and ISC and Public Domain and GFDL
 glibc-2.34: LGPLv2+ and LGPLv2+ with exceptions and GPLv2+ and GPLv2+ with exceptions and BSD and Inner-Net and ISC and Public Domain and GFDL
