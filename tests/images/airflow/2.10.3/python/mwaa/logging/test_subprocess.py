@@ -3,13 +3,27 @@ from unittest.mock import patch, Mock, call
 import os
 from io import BytesIO
 from subprocess import Popen
-from mwaa.subprocess.subprocess import Subprocess
+from mwaa.subprocess.subprocess import Subprocess, _SUBPROCESS_LOG_POLL_IDLE_SLEEP_INTERVAL
 import time
 
 @pytest.fixture
 def subprocess_instance():
     """Fixture to create a Subprocess instance with mock command"""
     return Subprocess(cmd="test_command")
+
+@pytest.fixture
+def mock_process(mocker):
+    """Fixture to create a mock process"""
+    process = mocker.Mock(spec=Popen)
+    process.poll.side_effect = [None, None, 0]  # Process runs for 2 iterations then ends
+    process.stdout = mocker.Mock()
+    process.stdout.readline.return_value = b'test output\n'
+    return process
+
+@pytest.fixture
+def mock_logger(mocker):
+    """Fixture to create a mock logger"""
+    return mocker.Mock()
 
 
 def test_read_subprocess_log_stream_empty_stream(subprocess_instance):
@@ -27,25 +41,31 @@ def test_read_subprocess_log_stream_empty_stream(subprocess_instance):
     subprocess_instance.process_logger.warning.assert_not_called()
 
 
-def test_read_subprocess_log_stream_process_running(mocker, mock_process, mock_logger):
-    """
-    Test that read_subprocess_log_stream correctly handles a running process
-    """
-    # Arrange
-    mock_sleep = mocker.patch('time.sleep')
-    expected_calls = [call(1)]  # Expect sleep to be called with 1 second delay
+def test_read_subprocess_log_stream_process_running(mocker, subprocess_instance, mock_process, mock_logger):
+    """Test that read_subprocess_log_stream correctly handles a running process"""
+    # Setup
+    subprocess_instance.process_logger = mock_logger
+    mock_process.stdout.closed = False
+
+    # Simulate the following sequence:
+    # 1. Read output line, process running
+    # 2. Read empty line, process running (triggers sleep)
+    # 3. Read empty line, process finished (breaks loop)
+    mock_process.poll.side_effect = [None, None, 0]
+    mock_process.stdout.readline.side_effect = [
+        b'test output\n',
+        b'',
+        b'',
+        b''
+    ]
 
     # Act
-    read_subprocess_log_stream(
-        process=mock_process,
-        logger=mock_logger
-    )
+    with patch.dict(os.environ, {'AIRFLOW_CONSOLE_LOG_LEVEL': 'INFO'}):
+        subprocess_instance._read_subprocess_log_stream(mock_process)
 
     # Assert
-    mock_sleep.assert_called_once()
-    assert mock_sleep.call_args_list == expected_calls
-    assert mock_process.poll.call_count == 3  # Called until process ends
-    mock_logger.info.assert_called_with('test output')
+    assert mock_process.poll.call_count == 3
+    mock_logger.info.assert_called_once_with('test output\n')
 
 
 def test_read_subprocess_log_stream_closed_stream(subprocess_instance):
@@ -75,24 +95,29 @@ def test_read_subprocess_log_stream_process_terminated(subprocess_instance):
 
     subprocess_instance.process_logger.info.assert_called_once_with("final message\n")
 
-def read_subprocess_log_stream(process, logger):
-    """
-    Read and log output from a subprocess stream
 
-    Args:
-        process: subprocess.Popen instance
-        logger: logging.Logger instance
-    """
-    try:
-        while process.poll() is None:
-            output = process.stdout.readline()
-            if output:
-                # Decode bytes to string and strip whitespace
-                log_line = output.decode('utf-8').strip()
-                if log_line:
-                    logger.info(log_line)
-            else:
-                time.sleep(1)
-    except Exception as e:
-        logger.error(f"Error reading subprocess output: {str(e)}")
-        raise
+def test_read_subprocess_log_stream_process_error(mocker, subprocess_instance, mock_process, mock_logger):
+    """Test that read_subprocess_log_stream correctly handles a running process"""
+    # Setup
+    subprocess_instance.process_logger = mock_logger
+    mock_process.stdout.closed = False
+
+    # Simulate the following sequence:
+    # 1. Read output line, process running
+    # 2. Read empty line, process running (triggers sleep)
+    # 3. Read empty line, process finished (breaks loop)
+    mock_process.poll.side_effect = [None, None, 0]
+    mock_process.stdout.readline.side_effect = [
+        b'test output\n',
+        b'',
+        b'',
+        b''
+    ]
+
+    # Act
+    with patch.dict(os.environ, {'AIRFLOW_CONSOLE_LOG_LEVEL': 'ERROR'}):
+        subprocess_instance._read_subprocess_log_stream(mock_process)
+
+    # Assert
+    assert mock_process.poll.call_count == 3
+    mock_logger.error.assert_called_once_with('test output\n')
