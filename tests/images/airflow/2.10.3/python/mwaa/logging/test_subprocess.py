@@ -27,7 +27,7 @@ def test_read_subprocess_log_stream_empty_stream(subprocess_instance):
     subprocess_instance.process_logger.warning.assert_not_called()
 
 
-def test_read_subprocess_log_stream_process_running(self, mocker, mock_process, mock_logger):
+def test_read_subprocess_log_stream_process_running(mocker, mock_process, mock_logger):
     """
     Test that read_subprocess_log_stream correctly handles a running process
     """
