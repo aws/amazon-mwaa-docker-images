@@ -16,7 +16,7 @@ BOM_LOCAL_PATH="./BillOfMaterials"
 rm -rf ${BOM_LOCAL_PATH} && mkdir ${BOM_LOCAL_PATH}
 
 # Build the base image.
-${CONTAINER_RUNTIME} build -f ./Dockerfiles/Dockerfile.base -t amazon-mwaa-docker-images/airflow:3.0.2-base ./
+${CONTAINER_RUNTIME} build -f ./Dockerfiles/Dockerfile.base -t amazon-mwaa-docker-images/airflow:3.0.3-base ./
 
 # Build the derivatives.
 for dev in "True" "False"; do

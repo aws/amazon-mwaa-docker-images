@@ -4,6 +4,7 @@ Module for running healthcheck on airflow processes.
 
 import subprocess
 import sys
+import os
 from enum import Enum
 from typing import List
 
@@ -72,7 +73,15 @@ def get_airflow_process_command(airflow_component: str) -> List[str]:
     # This return will never be reached due to sys.exit() in exit_with_status
     return []  # Return empty list to satisfy type checker
 
-if __name__ == '__main__':
+def main():
+    """
+    Main function to check the health of Airflow components.
+    """
+    # Check if an 'container_unhealthy' marker file is present
+    if os.path.exists("/tmp/mwaa/container_unhealthy"):
+        print("/tmp/mwaa/container_unhealthy file found - marking as unhealthy.")
+        exit_with_status(ExitStatus.AIRFLOW_COMPONENT_UNHEALTHY)
+
     if len(sys.argv) != 2:
         print("Usage: python3 healthcheck.py <airflow_component>")
         exit_with_status(ExitStatus.INSUFFICIENT_ARGUMENTS)
@@ -85,3 +94,6 @@ if __name__ == '__main__':
     else:
         print(f"Airflow process {airflow_component} not found.")
         exit_with_status(ExitStatus.AIRFLOW_COMPONENT_UNHEALTHY)
+
+if __name__ == '__main__':
+    main()
