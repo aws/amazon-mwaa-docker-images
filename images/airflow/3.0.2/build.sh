@@ -22,7 +22,7 @@ ${CONTAINER_RUNTIME} build -f ./Dockerfiles/Dockerfile.base -t amazon-mwaa-docke
 for dev in "True" "False"; do
     for build_type in "standard" "explorer" "explorer-privileged"; do
         dockerfile_name="Dockerfile"
-        tag_name="3.0.2"
+        tag_name="3.0.3"
 
         if [[ "$build_type" != "standard" ]]; then
             dockerfile_name="${dockerfile_name}-${build_type}"
