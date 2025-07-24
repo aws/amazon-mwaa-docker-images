@@ -17,6 +17,8 @@ REQUIRED_PACKAGES=(
     watchtower
     fluent-logger
     virtualenv
+    apache-airflow-providers-openlineage
+    sagemaker-studio
 )
 
 # safe-pip-install always install all required packages, along with whatever
