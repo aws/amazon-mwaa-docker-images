@@ -42,6 +42,10 @@ def _execute_startup_script(cmd: str, environ: Dict[str, str]) -> Dict[str, str]
     purposes so the logs of the execution of the startup script get sent to the correct place.
     :param environ: A dictionary containing the environment variables.
     """
+    # Skip startup script execution for migrate-db command
+    if cmd == "migrate-db":
+        logger.info("Skipping startup script execution for migrate-db command.")
+        return {}
     startup_script_path = os.environ.get("MWAA__CORE__STARTUP_SCRIPT_PATH", "")
     if not startup_script_path:
         logger.info("MWAA__CORE__STARTUP_SCRIPT_PATH is not provided.")
