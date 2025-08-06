@@ -597,6 +597,17 @@ class Channel(virtual.Channel):
             queue_name = url.split("/")[-1]
             self._queue_cache[queue_name] = url
 
+    # 2025-08-04: Amazon addition.
+    # basic_publish is used to publish messages from celery to broker
+    def basic_publish(self, message, exchange, routing_key, **kwargs):
+        if os.environ.get('MWAA__HEALTH_MONITORING_ENABLE_REVAMPED_HEALTHCHECK', 'false') == 'true' and exchange == 'celeryev':
+            # This branch catches all celery task events and generates process heartbeat metrics
+            if routing_key == 'worker.heartbeat':
+                Stats.incr("mwaa.celery.process.heartbeat", 1)
+            return
+        return super().basic_publish(message, exchange, routing_key, **kwargs)
+    # End of Amazon addition.
+
     def basic_consume(self, queue, no_ack, *args, **kwargs):
         if no_ack:
             self._noack_queues.add(queue)
