@@ -137,7 +137,7 @@ def _get_essential_airflow_auth_config() -> Dict[str, str]:
     # SIMPLE_AUTH_MANAGER_USERS is in username:role format. Set SIMPLE_AUTH_MANAGER_ALL_ADMINS=false to have dedicated
     # roles. In that case, the password for each username will be printed in webserver logs.
     return {
-        "AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS": "admin:admin,admin:viewer",
+        "AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS": "admin:admin,viewer:viewer",
         "AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS": "True",
     }
 
