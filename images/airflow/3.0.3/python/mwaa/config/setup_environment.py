@@ -174,6 +174,9 @@ def _is_protected_os_environ(key: str) -> bool:
         # This is set to match the endpoint created
         # by MWAA and shouldn't be overridden.
         "AIRFLOW__WEBSERVER__BASE_URL",
+        # Airflow 3 replaces WEBSERVER with APISERVER, so this is Airflow 3's
+        # equivalent of AIRFLOW__WEBSERVER__BASE_URL
+        "AIRFLOW__API__BASE_URL",
         # Default AWS region set by MWAA and used for AWS services.
         "AWS_DEFAULT_REGION",
         # AWS_REGION has a broader scope that is used by not just MWAA but
@@ -202,6 +205,9 @@ def _is_protected_os_environ(key: str) -> bool:
         # This is used to control whether we use NON-CRITICAL LOGGING flow with Fluentbit
         # which we don't allow the customer to override.
         "USE_NON_CRITICAL_LOGGING",
+        # This decides whether components should use Airflow Internal API for DB connectivity,
+        # which is an experimental feature we do not support for now.
+        "AIRFLOW__CORE__DATABASE_ACCESS_ISOLATION",
     ]
 
     # Check whether this is an MWAA configuration or a protected variable
