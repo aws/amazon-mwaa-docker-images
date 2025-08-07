@@ -291,8 +291,24 @@ def _get_essential_airflow_webserver_config() -> Dict[str, str]:
     :returns A dictionary containing the environment variables.
     """
 
+    flask_secret_key = {}
+    flask_secret_secret = os.environ.get("MWAA__WEBSERVER__SECRET")
+    if flask_secret_secret:
+        try:
+            flask_secret_key = {
+                "AIRFLOW__API__SECRET_KEY": json.loads(flask_secret_secret)[
+                    "secret_key"
+                ]
+            }
+        except:
+            logger.warning(
+                "Invalid value for the webserver secret key. Value not printed "
+                "for security reasons.",
+            )
+
     return {
         "AIRFLOW__FAB__CONFIG_FILE": "/python/mwaa/webserver/webserver_config.py",
+        **flask_secret_key,
     }
 
 
