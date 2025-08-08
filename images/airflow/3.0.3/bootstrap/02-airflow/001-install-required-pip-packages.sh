@@ -18,8 +18,6 @@ REQUIRED_PACKAGES=(
     watchtower
     virtualenv
     apache-airflow-providers-standard
-    apache-airflow-providers-openlineage
-    sagemaker-studio
 )
 
 # safe-pip-install always install all required packages, along with whatever
