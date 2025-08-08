@@ -142,6 +142,16 @@ async def airflow_db_migrate(environ: dict[str, str]):
     await run_command("python3 -m mwaa.database.migrate_with_downgrade", env=environ)
 
 
+async def airflow_dag_reserialize():
+    """
+    Reserialize the dags.
+
+    Have the process run the dag_reserialize command to make sure the dags are compatible
+    with the current airflow database version.
+    """
+    await run_command("python3 -m mwaa.database.reserialize")
+
+
 @with_db_lock(5678)
 async def create_airflow_user(environ: dict[str, str]):
     """
@@ -238,6 +248,9 @@ async def main() -> None:
 
     # Remove this when we only want the migrate container to update db
     await airflow_db_init(environ)
+
+    if command == "scheduler":
+        await airflow_dag_reserialize()
 
     if os.environ.get("MWAA__CORE__AUTH_TYPE", "").lower() == "testing":
         # In "simple" auth mode, we create an admin user "airflow" with password
