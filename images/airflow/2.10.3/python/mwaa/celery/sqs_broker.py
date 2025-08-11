@@ -1150,7 +1150,10 @@ class Channel(virtual.Channel):
         resp = c.get_queue_attributes(
             QueueUrl=url, AttributeNames=["ApproximateNumberOfMessages"]
         )
-        return int(resp["Attributes"]["ApproximateNumberOfMessages"])
+        if "Attributes" in resp:
+            return int(resp["Attributes"]["ApproximateNumberOfMessages"])
+        else:
+            logger.error("Unexpected response from SQS get_queue_attributes: %s", resp)
 
     def _purge(self, queue):
         """Delete all current messages in a queue."""
