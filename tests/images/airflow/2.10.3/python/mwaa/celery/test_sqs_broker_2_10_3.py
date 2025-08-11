@@ -92,3 +92,38 @@ class TestChannelBasicPublish:
             mock_channel._super_basic_publish.assert_called_once_with(
                 message, exchange, routing_key, **kwargs
             )
+
+    def test_size_with_attributes(self, mock_channel):
+        """Test _size returns message count when Attributes exist."""
+        queue = 'test-queue'
+        mock_sqs = MagicMock()
+        mock_sqs.get_queue_attributes.return_value = {
+            'Attributes': {'ApproximateNumberOfMessages': '5'}
+        }
+        
+        with patch.object(mock_channel, '_new_queue', return_value='queue-url'), \
+             patch.object(mock_channel, 'canonical_queue_name', return_value=queue), \
+             patch.object(mock_channel, 'sqs', return_value=mock_sqs):
+            
+            result = mock_channel._size(queue)
+            
+            assert result == 5
+            mock_sqs.get_queue_attributes.assert_called_once_with(
+                QueueUrl='queue-url', AttributeNames=['ApproximateNumberOfMessages']
+            )
+
+    def test_size_without_attributes(self, mock_channel):
+        """Test _size returns None when Attributes missing."""
+        queue = 'test-queue'
+        mock_sqs = MagicMock()
+        mock_sqs.get_queue_attributes.return_value = {}
+        
+        with patch.object(mock_channel, '_new_queue', return_value='queue-url'), \
+             patch.object(mock_channel, 'canonical_queue_name', return_value=queue), \
+             patch.object(mock_channel, 'sqs', return_value=mock_sqs), \
+             patch('mwaa.celery.sqs_broker.logger') as mock_logger:
+            
+            result = mock_channel._size(queue)
+            
+            assert result is None
+            mock_logger.error.assert_called_once()
