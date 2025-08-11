@@ -113,7 +113,7 @@ class TestChannelBasicPublish:
             )
 
     def test_size_without_attributes(self, mock_channel):
-        """Test _size returns None when Attributes missing."""
+        """Test _size raises exception when Attributes missing."""
         queue = 'test-queue'
         mock_sqs = MagicMock()
         mock_sqs.get_queue_attributes.return_value = {}
@@ -123,7 +123,7 @@ class TestChannelBasicPublish:
              patch.object(mock_channel, 'sqs', return_value=mock_sqs), \
              patch('mwaa.celery.sqs_broker.logger') as mock_logger:
             
-            result = mock_channel._size(queue)
+            with pytest.raises(KeyError):
+                mock_channel._size(queue)
             
-            assert result is None
             mock_logger.error.assert_called_once()
