@@ -15,6 +15,7 @@ celery[sqs]
 psycopg2
 pycurl
 watchtower
+fluent-logger
 # Additional packages for development
 # NOTE: Like above, we don't specify the version here.
 boto3-stubs[logs]
