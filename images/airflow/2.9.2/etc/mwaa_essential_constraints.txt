@@ -36,3 +36,5 @@ SQLAlchemy==1.4.52
 statsd==4.0.1
 # Watchtower
 watchtower==3.2.0
+# Fluent Logger
+fluent-logger==0.11.1
