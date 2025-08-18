@@ -47,7 +47,7 @@ def _migrate_db():
         args = Namespace(
             from_revision=None,
             from_version=None,
-            reserialize_dags=False,
+            reserialize_dags=True,
             show_sql_only=None,
             to_revision=None,
             to_version=None,
@@ -64,7 +64,7 @@ def _check_downgrade_db():
         args = Namespace(
                 from_revision=None,
                 from_version=None,
-                reserialize_dags=False,
+                reserialize_dags=True,
                 show_sql_only=None,
                 to_revision=None,
                 to_version=target_version,
