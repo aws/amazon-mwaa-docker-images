@@ -168,6 +168,7 @@ def _configure_subprocesses_logging(
     log_stream_name_prefix: str,
     log_level: str,
     logging_enabled: bool,
+    log_formatter: logging.Formatter | None = None
 ):
     logger_name = MWAA_LOGGERS[subprocess_name.lower()]
     handler_name = logger_name.replace(".", "_")
@@ -181,6 +182,7 @@ def _configure_subprocesses_logging(
             "stream_name_prefix": log_stream_name_prefix,
             "logs_source": subprocess_name,
             "enabled": logging_enabled,
+            "log_formatter": log_formatter,
         }
         # Setup CloudWatch logging.
         LOGGING_CONFIG["loggers"][logger_name] = {
@@ -203,7 +205,7 @@ def _configure():
             comp,
             log_group_arn=log_group_arn,
             log_stream_name_prefix=comp.lower(),
-            log_level="DEBUG",  # Customer Log Level handled at root logger,
+            log_level="DEBUG",  # Customer Log Level handled at root logger
             logging_enabled=logging_enabled,
         )
         _configure_subprocesses_logging(
@@ -212,6 +214,7 @@ def _configure():
             log_stream_name_prefix="requirements_install",
             log_level="INFO",  # We always want to publish requirements logs.
             logging_enabled=logging_enabled,
+            log_formatter=logging.Formatter('[%(levelname)s] - %(message)s')
         )
         _configure_subprocesses_logging(
             f"{comp}_startup",
@@ -219,9 +222,9 @@ def _configure():
             log_stream_name_prefix="startup_script_execution",
             log_level="INFO",  # We always want to publish startup script logs.
             logging_enabled=logging_enabled,
+            log_formatter=logging.Formatter('[%(levelname)s] - %(message)s')
         )
 
-REMOTE_TASK_LOG = None
 # Airflow has a dedicated logger for the DAG Processor Manager
 DAG_PROCESSOR_LOGGER_NAME = "airflow.processor_manager"
 SCHEDULER_LOGGER_NAME = "mwaa.scheduler"
