@@ -23,7 +23,7 @@ def _reserialize():
     from airflow.cli.commands import dag_command as airflow_dag_command
 
     args = Namespace(bundle_name=None)
-    logging.info("Reserializing Airflow DAGs")
+    logging.info("Reserializing Airflow dags")
     airflow_dag_command.dag_reserialize(args)
 
 def _main():

@@ -16,6 +16,7 @@ REQUIRED_PACKAGES=(
     psycopg2
     pycurl
     watchtower
+    fluent-logger
     virtualenv
     apache-airflow-providers-standard
 )

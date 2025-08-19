@@ -34,14 +34,18 @@ from airflow.utils.log.file_task_handler import LogMessages, LogSourceInfo
 from airflow.utils.log.log_reader import LogMetadata
 from airflow.utils.log.logging_mixin import LoggingMixin
 from mypy_boto3_logs.client import CloudWatchLogsClient
+from typing import Dict
 import boto3
 import socket
 import time
 import watchtower
+from fluent import asynchandler as fluent_handler
+
 # Our imports
 from mwaa.logging.utils import parse_arn, throttle
 from mwaa.utils.statsd import get_statsd
 
+USE_NON_CRITICAL_LOGGING = os.environ.get('USE_NON_CRITICAL_LOGGING', 'false')
 
 LOG_GROUP_INIT_WAIT_SECONDS = 900
 ERROR_REPORTING_WAIT_SECONDS = 60
@@ -109,13 +113,15 @@ class BaseLogHandler(logging.Handler):
         self.log_group_name, self.region_name = parse_arn(log_group_arn)
         self.handler = None
         self.logs_source = "Unknown"
+        self.NON_CRITICAL_LOGGING_ENABLED = USE_NON_CRITICAL_LOGGING.lower() == 'true'
+        self.log_stream = None
 
         # TODO Find a nice and unambiguous solution to the craziness of super() and MRO.
         logging.Handler.__init__(self)
 
         self.stats = get_statsd()
 
-    def create_watchtower_handler(
+    def create_cloudwatch_handler(
         self,
         stream_name: str,
         logs_source: str,
@@ -136,7 +142,47 @@ class BaseLogHandler(logging.Handler):
         """
         logs_client: CloudWatchLogsClient = boto3.client("logs")  # type: ignore
 
-        if self.enabled:
+        self.logs_source = logs_source
+        self.log_stream = stream_name
+
+        if self.enabled and self.NON_CRITICAL_LOGGING_ENABLED:
+            self.handler = fluent_handler.FluentHandler(
+                'customer.logs',
+                host='localhost',
+                port=24224
+            )
+            if self.formatter:
+                # Wrap the existing formatter to add routing fields
+                original_formatter = self.formatter
+
+                log_group = self.log_group_name
+                log_stream = self.log_stream
+
+                class RoutingFormatter(logging.Formatter):
+                    def format(self, record) -> Dict[str, str]:  # type: ignore[override]
+                        # Get the original formatted message
+                        formatted_msg = original_formatter.format(record)
+                        # Return dict with both the original format and routing fields
+                        return {
+                            'log_group': log_group,
+                            'log_stream': log_stream,
+                            'message': formatted_msg
+                        }
+                self.handler.setFormatter(RoutingFormatter())
+            else:
+                log_group = self.log_group_name
+                log_stream = self.log_stream
+                # If no formatter exists, use a basic one with routing fields
+                class DefaultRoutingFormatter(logging.Formatter):
+                    def format(self, record) -> Dict[str, str]:  # type: ignore[override]
+                        return {
+                            'log_group': log_group,
+                            'log_stream': log_stream,
+                            'message': record.getMessage()
+                        }
+                self.handler.setFormatter(DefaultRoutingFormatter())
+
+        elif self.enabled:
             self.handler = watchtower.CloudWatchLogHandler(
                 log_group_name=self.log_group_name,
                 log_stream_name=stream_name,
@@ -449,7 +495,7 @@ class DagProcessorManagerLogHandler(BaseLogHandler):
         [1] https://airflow.apache.org/docs/apache-airflow/2.9.2/configurations-ref.html#config-logging-log-processor-filename-template
         """
         super().__init__(log_group_arn, kms_key_arn, enabled)
-        self.create_watchtower_handler(stream_name, "DAGProcessorManager")
+        self.create_cloudwatch_handler(stream_name, "DAGProcessorManager")
 
     def _print(self, msg: str):
         # The DAG processing loggers are not started in the same way that the Web
@@ -508,7 +554,7 @@ class DagProcessingLogHandler(BaseLogHandler):
         :param filename: The name of the DAG file being processed.
         """
         stream_name = self._render_filename(filename)
-        self.create_watchtower_handler(
+        self.create_cloudwatch_handler(
             stream_name,
             logs_source="DAGProcessing",
             # cannot use queues/batching with DAG processing, since the DAG processor
@@ -564,7 +610,7 @@ class SubprocessLogHandler(BaseLogHandler):
         stream_name_prefix: str,
         logs_source: str,
         enabled: bool,
-        log_formatter: logging.Formatter | None = None
+        log_formatter: logging.Formatter | None = None,
     ):
         """
         Initialize the instance.
@@ -592,4 +638,4 @@ class SubprocessLogHandler(BaseLogHandler):
         # not guaranteed unique and may be reused so include an epoch for uniqueness and
         # easy sorting chronologically.
         _stream_name = "%s_%s_%s.log" % (stream_name_prefix, hostname, epoch)
-        self.create_watchtower_handler(_stream_name, logs_source)
+        self.create_cloudwatch_handler(_stream_name, logs_source)
