@@ -248,9 +248,6 @@ async def main() -> None:
     # Remove this when we only want the migrate container to update db
     await airflow_db_init(environ)
 
-    if command == "scheduler":
-        await airflow_dag_reserialize()
-
     if executor_type.lower() == "celeryexecutor":
         create_queue()
 

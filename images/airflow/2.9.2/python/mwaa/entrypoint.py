@@ -288,8 +288,6 @@ async def main() -> None:
 
     # Remove this when we only want the migrate container to update db
     await airflow_db_init(environ)
-    if command == "scheduler":
-        await airflow_dag_reserialize()
 
     await increase_pool_size_if_default_size(environ)
     if os.environ.get("MWAA__CORE__AUTH_TYPE", "").lower() == "testing":
