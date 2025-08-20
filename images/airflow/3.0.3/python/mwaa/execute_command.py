@@ -59,13 +59,13 @@ async def airflow_db_reset(environ: dict[str, str]):
     await run_command("airflow db reset --yes", env=environ)
 
 def _create_airflow_subprocess(
-        args: List[str],
-        environ: Dict[str, str],
-        logger_name: str,
-        friendly_name: str,
-        conditions: List[ProcessCondition] = [],
-        on_sigterm: Optional[Callable[[], None]] = None,
-        sigterm_patience_interval: timedelta | None = None
+    args: List[str],
+    environ: Dict[str, str],
+    logger_name: str,
+    friendly_name: str,
+    conditions: List[ProcessCondition] = [],
+    on_sigterm: Optional[Callable[[], None]] = None,
+    sigterm_patience_interval: timedelta | None = None
 ):
     """
     Create a subprocess for an Airflow command.
@@ -99,10 +99,10 @@ def _create_airflow_subprocess(
 @cache
 def _is_sidecar_health_monitoring_enabled():
     enabled = (
-            os.environ.get(
-                "MWAA__HEALTH_MONITORING__ENABLE_SIDECAR_HEALTH_MONITORING", "false"
-            ).lower()
-            == "true"
+        os.environ.get(
+            "MWAA__HEALTH_MONITORING__ENABLE_SIDECAR_HEALTH_MONITORING", "false"
+        ).lower()
+        == "true"
     )
     if enabled:
         logger.info("Sidecar health monitoring is enabled.")
@@ -142,22 +142,22 @@ def _create_airflow_worker_subprocesses(environ: Dict[str, str], sigterm_patienc
     # MWAA__CORE__TASK_MONITORING_ENABLED is set to 'true' for workers where we want to monitor count of tasks currently getting
     # executed on the worker. This will be used to determine if idle worker checks are to be enabled.
     task_monitoring_enabled = (
-            os.environ.get("MWAA__CORE__TASK_MONITORING_ENABLED", "false").lower() == "true"
+        os.environ.get("MWAA__CORE__TASK_MONITORING_ENABLED", "false").lower() == "true"
     )
     # If MWAA__CORE__TERMINATE_IF_IDLE is set to 'true', then as part of the task monitoring if the task count reaches zero, then the
     # worker will be terminated.
     terminate_if_idle = (
-            os.environ.get("MWAA__CORE__TERMINATE_IF_IDLE", "false").lower() == "true" and task_monitoring_enabled
+        os.environ.get("MWAA__CORE__TERMINATE_IF_IDLE", "false").lower() == "true" and task_monitoring_enabled
     )
     # If MWAA__CORE__MWAA_SIGNAL_HANDLING_ENABLED is set to 'true', then as part of the task monitoring, the monitor will expect certain
     # signals to be sent from MWAA. These signals will represent MWAA service side events such as start of an environment update.
     mwaa_signal_handling_enabled = (
-            os.environ.get("MWAA__CORE__MWAA_SIGNAL_HANDLING_ENABLED", "false").lower() == "true" and task_monitoring_enabled
+        os.environ.get("MWAA__CORE__MWAA_SIGNAL_HANDLING_ENABLED", "false").lower() == "true" and task_monitoring_enabled
     )
 
 
     mwaa_worker_idleness_verification_interval = int(environ.get("MWAA__CORE__WORKER_IDLENESS_VERIFICATION_INTERVAL",
-                                                                 "20"))
+                                                                    "20"))
 
     if task_monitoring_enabled:
         logger.info(f"Worker task monitoring is enabled with idleness verification interval: "
@@ -282,7 +282,7 @@ def _run_airflow_command(cmd: str, environ: Dict[str, str]):
                 worker_patience_interval = HYBRID_WORKER_SIGTERM_PATIENCE_INTERVAL_DEFAULT
 
             worker_subprocesses = _create_airflow_worker_subprocesses(environ,
-                                                                      sigterm_patience_interval=worker_patience_interval)
+                                                                   sigterm_patience_interval=worker_patience_interval)
             run_subprocesses(scheduler_subprocesses + worker_subprocesses)
 
         case _:

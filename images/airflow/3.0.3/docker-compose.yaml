@@ -3,6 +3,7 @@ version: "3.8"
 x-airflow-common: &airflow-common
   image: amazon-mwaa-docker-images/airflow:3.0.3-dev
   restart: always
+  init: true
   environment:
     # AWS credentials
     AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
@@ -17,9 +18,11 @@ x-airflow-common: &airflow-common
     # container is up.
     MWAA__CORE__REQUIREMENTS_PATH: ${MWAA__CORE__REQUIREMENTS_PATH}
     MWAA__CORE__AUTH_TYPE: "testing"
+    # Use this environment variable if you have a custom start-up script.
+    MWAA__CORE__STARTUP_SCRIPT_PATH: ${MWAA__CORE__STARTUP_SCRIPT_PATH}
     # Additional Airflow configuration can be passed here in JSON form.
     MWAA__CORE__CUSTOM_AIRFLOW_CONFIGS: "{}"
-    MWAA__CORE__FERNET_KEY: '{"FernetKey": "fake-key-nNge+lks3RBeGVrnZ1Dq5GjKerbZKmb7dXNnsNsGy3E="}'
+    MWAA__CORE__FERNET_KEY: ${FERNET_KEY}
     MWAA__WEBSERVER__SECRET: '{"secret_key": "fake-key-aYDdF6d+Fjznai5yBW63CUAi0IipJqDHlNSWIun6y8o="}'
     # Use this enviornment variable to enable encryption with KMS.
     MWAA__CORE__KMS_KEY_ARN: ${MWAA__CORE__KMS_KEY_ARN}

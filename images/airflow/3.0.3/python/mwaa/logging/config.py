@@ -168,7 +168,7 @@ def _configure_subprocesses_logging(
     log_stream_name_prefix: str,
     log_level: str,
     logging_enabled: bool,
-    log_formatter: logging.Formatter | None = None
+    log_formatter: logging.Formatter | None = None,
 ):
     logger_name = MWAA_LOGGERS[subprocess_name.lower()]
     handler_name = logger_name.replace(".", "_")

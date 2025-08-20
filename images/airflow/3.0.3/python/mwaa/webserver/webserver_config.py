@@ -16,7 +16,7 @@ WTF_CSRF_ENABLED = False if os.environ.get("MWAA__WEBSERVER__WTF_CSRF_ENABLED", 
 if os.environ.get("MWAA__CORE__AUTH_TYPE", "").lower() == "mwaa-iam":
     # The auth type is IAM. This is a MWAA-specific type, which relies on a plugin
     # defined in MWAA's sidecar.
-    from aws_mwaa.iam import IamSecurityManager
+    from aws_mwaa.iam import IamSecurityManager  # type: ignore
     from flask_appbuilder.security.manager import AUTH_REMOTE_USER
 
     AUTH_TYPE = AUTH_REMOTE_USER

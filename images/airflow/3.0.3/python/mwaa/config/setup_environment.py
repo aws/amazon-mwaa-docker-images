@@ -31,7 +31,7 @@ logger = logging.getLogger("mwaa.entrypoint")
 
 STARTUP_SCRIPT_SIGTERM_PATIENCE_INTERVAL = timedelta(seconds=5)
 STARTUP_SCRIPT_MAX_EXECUTION_TIME = (
-        timedelta(minutes=5) - STARTUP_SCRIPT_SIGTERM_PATIENCE_INTERVAL
+    timedelta(minutes=5) - STARTUP_SCRIPT_SIGTERM_PATIENCE_INTERVAL
 )
 
 def _execute_startup_script(cmd: str, environ: Dict[str, str]) -> Dict[str, str]:
