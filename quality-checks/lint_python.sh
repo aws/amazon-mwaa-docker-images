@@ -45,7 +45,7 @@ check_dir "."
 for image_dir in ./images/airflow/*; do
     if [[ -d "$image_dir" ]]; then
         # Only process 2.10.1 and 2.10.3 for now
-        if [[ "$image_dir" == "./images/airflow/2.10.1" || "$image_dir" == "./images/airflow/2.10.3" ]]; then
+        if [[ "$image_dir" == "./images/airflow/2.10.1" || "$image_dir" == "./images/airflow/2.10.3" || "$image_dir" == "./images/airflow/2.11.0" ]]; then
             check_dir "$image_dir"
         else
             echo "Skipping directory \"${image_dir}\" (not 2.10.1 or 2.10.3)..."
