@@ -183,6 +183,8 @@ from threading import Lock
 import os
 
 from mwaa.logging.utils import throttle
+
+CELERY_WORKER_TASK_LIMIT = int(os.environ.get("AIRFLOW__CELERY__WORKER_AUTOSCALE", "1,1").split(",")[0])
 # End of Amazon addition
 
 logger = get_logger(__name__)
@@ -603,7 +605,13 @@ class Channel(virtual.Channel):
         if os.environ.get('MWAA__HEALTH_MONITORING_ENABLE_REVAMPED_HEALTHCHECK', 'false') == 'true' and exchange == 'celeryev':
             # This branch catches all celery task events and generates process heartbeat metrics
             if routing_key == 'worker.heartbeat':
-                Stats.incr("mwaa.celery.process.heartbeat", 1)
+                Stats.gauge("mwaa.celery.process.heartbeat", 1)
+                num_active_tasks = len(self._get_tasks_from_state(self.celery_state)) if self.idle_worker_monitoring_enabled else CELERY_WORKER_TASK_LIMIT
+                if num_active_tasks >= CELERY_WORKER_TASK_LIMIT:
+                    Stats.gauge("mwaa.celery.at_max_concurrency", num_active_tasks)
+                if self._is_task_consumption_paused():
+                    Stats.gauge("mwaa.celery.sqs.consumption_paused", 1)
+
             return
         return super().basic_publish(message, exchange, routing_key, **kwargs)
     # End of Amazon addition.
