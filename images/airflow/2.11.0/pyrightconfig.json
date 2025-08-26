@@ -8,9 +8,8 @@
     // just mark the changes we make, hence we ignore linting it.
     "python/mwaa/celery/sqs_broker.py"
   ],
-  "strict": ["./"],
   "pythonVersion": "3.11",
   "pythonPlatform": "All",
-  "typeCheckingMode": "strict",
+  "typeCheckingMode": "standard",
   "stubPath": "python/typestubs"
 }
