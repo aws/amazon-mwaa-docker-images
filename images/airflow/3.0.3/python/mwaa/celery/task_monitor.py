@@ -50,8 +50,9 @@ CELERY_WORKER_TASK_LIMIT = int(
 )
 CELERY_TASKS_BUFFER_SIZE = CELERY_WORKER_TASK_LIMIT * BUFFER_SIZE_PER_TASK
 
-# The command for the process executing an Airflow task has this prefix.
-AIRFLOW_TASK_PROCESS_COMMAND_PREFIX = "airflow tasks run"
+# The command for the process executing an Airflow task has this prefix in Airflow 3.x.
+AIRFLOW_TASK_PROCESS_COMMAND_PREFIX = "airflow worker --"
+
 TRANSPORT_OPTIONS_ENV_KEY = (
     "AIRFLOW__CELERY_BROKER_TRANSPORT_OPTIONS__PREDEFINED_QUEUES"
 )
@@ -84,6 +85,8 @@ ACTIVATION_WAIT_TIME_LIMIT = timedelta(minutes=10)
 # Worker will be allowed a specific time range for a graceful shutdown starting from the moment of processing a termination signal
 # before they are forcibly killed.
 TERMINATION_TIME_LIMIT = timedelta(hours=12)
+# Position of the task runtime UUID in the command line (0-based index)
+UUID_ARG_POSITION = 3
 
 BOTO_RETRY_CONFIGURATION = botocore.config.Config(  # type: ignore
     retries={
@@ -202,23 +205,26 @@ def _update_celery_state(
         json.dumps(current_celery_tasks)
     )
 
-
 def _get_airflow_process_id_mapping():
     """
-    Get the list of all processes using psutil and then create a mapping of process
-    command to parent process ID and process ID.
+    Build a mapping of Airflow task runtime UUIDs to their process IDs.
 
-    :return: Mapping of process command to parent process ID and process ID.
+    This function scans all running processes using `psutil` and looks for commands
+    that start with `AIRFLOW_TASK_PROCESS_COMMAND_PREFIX`. The runtime UUID is
+    extracted from the command line (4th element) and mapped to the process ID.
+
+    Returns:
+        dict: Mapping of runtime UUID (str) to process ID (int).
     """
-    process_id_map: Dict[str, int] = {}
+    process_id_map = {}
     for proc in psutil.process_iter(["pid", "cmdline"]):
         if proc.info["cmdline"]:
             command_line = " ".join(proc.info["cmdline"]).strip()
-            if AIRFLOW_TASK_PROCESS_COMMAND_PREFIX in command_line:
-                command_line = command_line[
-                    command_line.index(AIRFLOW_TASK_PROCESS_COMMAND_PREFIX) :
-                ]
-                process_id_map[command_line] = proc.info["pid"]
+            if command_line.startswith(AIRFLOW_TASK_PROCESS_COMMAND_PREFIX):
+                parts = command_line.split()
+                if len(parts) > UUID_ARG_POSITION:
+                    rti_uuid = parts[UUID_ARG_POSITION]
+                    process_id_map[rti_uuid] = proc.info["pid"]
     return process_id_map
 
 
