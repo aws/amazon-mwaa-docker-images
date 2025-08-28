@@ -558,13 +558,21 @@ class Channel(virtual.Channel):
             and self.celery_work_consumption_flag_block.buf[0] == 1
         )
 
-    def _get_task_command_from_sqs_message(self, encoded_sqs_message_body):
-        decoded_message_body = loads(base64.b64decode(encoded_sqs_message_body))
-        celery_payload = loads(base64.b64decode(decoded_message_body["body"]))[0]
-        celery_command_list = [
-            command for command_list in celery_payload for command in command_list
-        ]
-        return " ".join(celery_command_list).strip()
+    def _get_task_command_from_sqs_message(self, encoded_sqs_message_body: str) -> str:
+        """
+        Decode the SQS message and return the task_instance_id (UUID).
+        """
+        # Decode
+        outer_body = json.loads(base64.b64decode(encoded_sqs_message_body))
+        inner_body = json.loads(base64.b64decode(outer_body["body"]))
+
+        # Extract args → first element → JSON string
+        task_payload_str = inner_body[0][0]
+        task_payload = json.loads(task_payload_str)
+
+        # Extract task_instance_id from ti.id
+        task_instance_id = task_payload["ti"]["id"]
+        return task_instance_id
 
     def _validate_predifined_queues(self):
         """Check that standard and FIFO queues are named properly.
