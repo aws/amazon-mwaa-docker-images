@@ -162,6 +162,7 @@ def _get_essential_airflow_logging_config() -> Dict[str, str]:
     """
     return {
         "AIRFLOW__LOGGING__LOGGING_CONFIG_CLASS": "mwaa.logging.config.LOGGING_CONFIG",
+        "AIRFLOW__LOGGING__COLORED_CONSOLE_LOG": "False",
     }
 
 
