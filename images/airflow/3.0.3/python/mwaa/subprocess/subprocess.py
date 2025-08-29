@@ -215,13 +215,14 @@ class Subprocess:
                     time.sleep(_SUBPROCESS_LOG_POLL_IDLE_SLEEP_INTERVAL.total_seconds())
             else:
                 log_level = os.environ['AIRFLOW_CONSOLE_LOG_LEVEL']
+                decoded_line = line.decode("utf-8", errors="replace").rstrip()
                 match log_level:
                     case "ERROR":
-                        self.process_logger.error(line.decode("utf-8"))
+                        self.process_logger.error(decoded_line)
                     case "WARNING":
-                        self.process_logger.warning(line.decode("utf-8"))
+                        self.process_logger.warning(decoded_line)
                     case _:
-                        self.process_logger.info(line.decode("utf-8"))
+                        self.process_logger.info(decoded_line)
     
     def _get_subprocess_status(self, process: Popen[Any]):
         return ProcessStatus.RUNNING if process.poll() is None else ProcessStatus.FINISHED

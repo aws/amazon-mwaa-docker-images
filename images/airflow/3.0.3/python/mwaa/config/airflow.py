@@ -154,6 +154,17 @@ def _get_essential_airflow_api_auth_config() -> Dict[str, str]:
 
     return api_config
 
+def _get_essential_aiflow_execution_api_config() -> Dict[str, str]:
+
+    """
+    Retrieve the environment variables for Airflow's "execution_api" configuration section.
+
+    :returns A dictionary containing the environment variables.
+    """
+    return {
+        "AIRFLOW__EXECUTION_API__JWT_EXPIRATION_TIME": "86400"
+    }
+
 def _get_essential_airflow_logging_config() -> Dict[str, str]:
     """
     Retrieve the environment variables for Airflow's "logging" configuration section.
@@ -269,6 +280,7 @@ def _get_opinionated_airflow_secrets_config() -> Dict[str, str]:
     connection_lookup_pattern = {"connections_lookup_pattern": "^(?!aws_default$).*$"}
     return {
         "AIRFLOW__SECRETS__BACKEND_KWARGS": json.dumps(connection_lookup_pattern),
+        "AIRFLOW__WORKERS__SECRETS_BACKEND_KWARGS": json.dumps(connection_lookup_pattern),
     }
 
 def _get_opinionated_airflow_usage_data_config() -> Dict[str, str]:
@@ -331,7 +343,8 @@ def get_essential_airflow_config(executor_type: str) -> Dict[str, str]:
         **_get_essential_airflow_scheduler_config(),
         **_get_essential_airflow_webserver_config(),
         **_get_essential_airflow_auth_config(),
-        **_get_essential_airflow_api_auth_config()
+        **_get_essential_airflow_api_auth_config(),
+        **_get_essential_aiflow_execution_api_config(),
     }
 
 
