@@ -23,14 +23,14 @@ if [[ "$GENERATE_BILL_OF_MATERIALS" == "True" ]]; then
 fi
 
 # Build the base image.
-${CONTAINER_RUNTIME} build -f ./Dockerfiles/Dockerfile.base -t amazon-mwaa-docker-images/airflow:3.0.3-base ./
+${CONTAINER_RUNTIME} build -f ./Dockerfiles/Dockerfile.base -t amazon-mwaa-docker-images/airflow:3.0.6-base ./
 
 
 # Build the derivatives.
 for dev in "True" "False"; do
     for build_type in "standard" "explorer" "explorer-privileged"; do
         dockerfile_name="Dockerfile"
-        tag_name="3.0.3"
+        tag_name="3.0.6"
 
         if [[ "$build_type" != "standard" ]]; then
             dockerfile_name="${dockerfile_name}-${build_type}"

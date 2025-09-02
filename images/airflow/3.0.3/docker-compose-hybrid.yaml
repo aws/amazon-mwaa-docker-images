@@ -1,7 +1,7 @@
 version: "3.8"
 
 x-airflow-common: &airflow-common
-  image: amazon-mwaa-docker-images/airflow:3.0.3-dev
+  image: amazon-mwaa-docker-images/airflow:3.0.6-dev
   restart: always
   init: true
   environment:
@@ -71,7 +71,7 @@ x-airflow-common: &airflow-common
 services:
   postgres:
     image: postgres:13
-    container_name: mwaa-303-db
+    container_name: mwaa-306-db
     environment:
       POSTGRES_USER: airflow
       POSTGRES_PASSWORD: airflow
@@ -107,12 +107,12 @@ services:
   spy:
     <<: *airflow-common
     command: spy
-    container_name: mwaa-303-spy
+    container_name: mwaa-306-spy
 
   webserver:
     <<: *airflow-common
     command: webserver
-    container_name: mwaa-303-webserver
+    container_name: mwaa-306-webserver
     ports:
       - 8080:8080
     expose:
@@ -122,8 +122,8 @@ services:
   hybrid:
     <<: *airflow-common
     command: hybrid
-    container_name: mwaa-303-hybrid
+    container_name: mwaa-306-hybrid
 
 volumes:
   postgres-db-volume:
-    name: "mwaa-303-db-volume"
+    name: "mwaa-306-db-volume"

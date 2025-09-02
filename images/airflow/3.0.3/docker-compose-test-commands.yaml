@@ -1,7 +1,7 @@
 version: "3.8"
 
 x-airflow-common: &airflow-common
-  image: amazon-mwaa-docker-images/airflow:3.0.3-dev
+  image: amazon-mwaa-docker-images/airflow:3.0.6-dev
   restart: always
   environment:
     AWS_REGION: "us-west-2"
@@ -43,13 +43,13 @@ services:
   test-requirements:
     <<: *airflow-common
     command: test-requirements
-    container_name: mwaa-303-requirements
+    container_name: mwaa-306-requirements
 
   test-startup-script:
     <<: *airflow-common
     command: test-startup-script
-    container_name: mwaa-303-startup-script
+    container_name: mwaa-306-startup-script
 
 volumes:
   postgres-db-volume:
-    name: "mwaa-303-db-volume"
+    name: "mwaa-306-db-volume"

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 echo "Executing post startup script verification"
 
-EXPECTED_AIRFLOW_VERSION="3.0.3"
+EXPECTED_AIRFLOW_VERSION="3.0.6"
 EXPECTED_WATCHTOWER_VERSION="3.4.0"
 
 validate_version_with_pip() {
