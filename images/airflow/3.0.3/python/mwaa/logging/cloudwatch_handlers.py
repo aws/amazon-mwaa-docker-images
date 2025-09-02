@@ -30,8 +30,7 @@ from airflow.providers.amazon.aws.hooks.logs import AwsLogsHook
 from airflow.providers.amazon.aws.utils import datetime_to_epoch_utc_ms
 from airflow.sdk.types import RuntimeTaskInstanceProtocol as RuntimeTI
 from airflow.utils.helpers import parse_template_string
-from airflow.utils.log.file_task_handler import LogMessages, LogSourceInfo
-from airflow.utils.log.log_reader import LogMetadata
+from airflow.utils.log.file_task_handler import LogMessages, LogSourceInfo, LogMetadata
 from airflow.utils.log.logging_mixin import LoggingMixin
 from mypy_boto3_logs.client import CloudWatchLogsClient
 from typing import Dict
