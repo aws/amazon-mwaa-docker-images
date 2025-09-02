@@ -97,6 +97,7 @@ get_base_branch() {
 }
 
 # shellcheck disable=SC2317
+# shellcheck disable=SC2329
 cleanup() {
     # Remove temporary directory
     rm -rf "$TEMP_DIR"
