@@ -119,9 +119,8 @@ class TestChannelBasicPublish:
         }
 
         with patch.object(mock_channel, '_new_queue', return_value='queue-url'), \
-             patch.object(mock_channel, 'canonical_queue_name', return_value=queue), \
-             patch.object(mock_channel, 'sqs', return_value=mock_sqs):
-
+                patch.object(mock_channel, 'canonical_queue_name', return_value=queue), \
+                patch.object(mock_channel, 'sqs', return_value=mock_sqs):
             result = mock_channel._size(queue)
 
             assert result == 5
@@ -136,10 +135,9 @@ class TestChannelBasicPublish:
         mock_sqs.get_queue_attributes.return_value = {}
 
         with patch.object(mock_channel, '_new_queue', return_value='queue-url'), \
-             patch.object(mock_channel, 'canonical_queue_name', return_value=queue), \
-             patch.object(mock_channel, 'sqs', return_value=mock_sqs), \
-             patch('mwaa.celery.sqs_broker.logger') as mock_logger:
-
+                patch.object(mock_channel, 'canonical_queue_name', return_value=queue), \
+                patch.object(mock_channel, 'sqs', return_value=mock_sqs), \
+                patch('mwaa.celery.sqs_broker.logger') as mock_logger:
             with pytest.raises(KeyError):
                 mock_channel._size(queue)
 
