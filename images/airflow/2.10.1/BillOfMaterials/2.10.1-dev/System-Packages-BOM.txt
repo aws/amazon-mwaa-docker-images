@@ -2,8 +2,8 @@ This Docker image includes the following third-party software/licensing:
 tzdata-2025b: Public Domain
 publicsuffix-list-dafsa-20240212: MPLv2.0
 ncurses-base-6.2: MIT
-amazon-linux-repo-cdn-2023.8.20250818: MIT
-system-release-2023.8.20250818: MIT
+amazon-linux-repo-cdn-2023.8.20250915: MIT
+system-release-2023.8.20250915: MIT
 filesystem-3.14: Public Domain
 glibc-minimal-langpack-2.34: LGPLv2+ and LGPLv2+ with exceptions and GPLv2+ and GPLv2+ with exceptions and BSD and Inner-Net and ISC and Public Domain and GFDL
 glibc-2.34: LGPLv2+ and LGPLv2+ with exceptions and GPLv2+ and GPLv2+ with exceptions and BSD and Inner-Net and ISC and Public Domain and GFDL
@@ -29,28 +29,28 @@ audit-libs-3.0.6: LGPLv2+
 libgomp-14.2.1: GPL-3.0-or-later AND LGPL-3.0-or-later AND (GPL-3.0-or-later WITH GCC-exception-3.1) AND (GPL-3.0-or-later WITH Texinfo-exception) AND (LGPL-2.1-or-later WITH GCC-exception-2.0) AND (GPL-2.0-or-later WITH GCC-exception-2.0) AND (GPL-2.0-or-later WITH GNU-compiler-exception) AND BSL-1.0 AND GFDL-1.3-or-later AND Linux-man-pages-copyleft-2-para AND SunPro AND BSD-1-Clause AND BSD-2-Clause AND BSD-2-Clause-Views AND BSD-3-Clause AND BSD-4-Clause AND BSD-Source-Code AND Zlib AND MIT AND Apache-2.0 AND (Apache-2.0 WITH LLVM-Exception) AND ZPL-2.1 AND ISC AND LicenseRef-Fedora-Public-Domain AND HP-1986 AND curl AND Martin-Birgmeier AND HPND-Markus-Kuhn AND dtoa AND SMLNJ AND AMD-newlib AND OAR AND HPND-merchantability-variant AND HPND-Intel
 libsepol-3.4: LGPLv2+
 coreutils-single-8.32: GPLv3+
-libblkid-2.37.4: LGPLv2+
+libmount-2.37.4: LGPLv2+
 libsigsegv-2.13: GPLv2+
-libtasn1-4.19.0: GPLv3+ and LGPLv2+
-ca-certificates-2025.2.76: Public Domain
-openssl-libs-3.2.2: ASL 2.0
-python3-pip-wheel-21.3.1: MIT and Python and ASL 2.0 and BSD and ISC and LGPLv2 and MPLv2.0 and (ASL 2.0 or BSD)
-krb5-libs-1.21.3: MIT
-curl-minimal-8.11.1: curl
-python3-3.9.23: Python
-python3-libcomps-0.1.20: GPL-2.0-or-later
-lz4-libs-1.9.4: GPLv2+ and BSD
-rpm-4.16.1.3: GPLv2+
-libmodulemd-2.13.0: MIT
-npth-1.6: LGPLv2+
-gpgme-1.23.2: LGPL-2.1-or-later AND MIT
-libdnf-0.69.0: LGPLv2+
-python3-hawkey-0.69.0: LGPLv2+
-rpm-sign-libs-4.16.1.3: GPLv2+ and LGPLv2+ with exceptions
-elfutils-libs-0.188: GPLv2+ or LGPLv3+
-python3-rpm-4.16.1.3: GPLv2+
-dnf-data-4.14.0: GPLv2+
-dnf-4.14.0: GPLv2+
+p11-kit-trust-0.24.1: BSD
+openssl-fips-provider-latest-3.2.2: ASL 2.0
+glib2-2.82.2: LGPL-2.1-or-later
+libverto-0.3.2: MIT
+libcurl-minimal-8.11.1: curl
+libxcrypt-4.4.33: LGPL-2.1-or-later AND BSD-3-Clause AND BSD-2-Clause AND BSD-2-Clause-FreeBSD AND 0BSD AND CC0-1.0 AND LicenseRef-Fedora-Public-Domain
+python3-libs-3.9.23: Python
+libyaml-0.2.5: MIT
+libarchive-3.7.4: BSD-2-Clause AND FSFULLR AND GPL-2.0-or-later WITH Libtool-exception AND BSD-3-Clause AND FSFUL
+rpm-libs-4.16.1.3: GPLv2+ and LGPLv2+ with exceptions
+libsolv-0.7.22: BSD
+gnupg2-minimal-2.3.7: GPLv3+
+librepo-1.14.5: LGPLv2+
+python3-libdnf-0.69.0: LGPLv2+
+python3-gpg-1.23.2: LGPL-2.1-or-later AND MIT
+elfutils-default-yama-scope-0.188: GPLv2+ or LGPLv3+
+rpm-build-libs-4.16.1.3: GPLv2+ and LGPLv2+ with exceptions
+libreport-filesystem-2.15.2: GPLv2+
+python3-dnf-4.14.0: GPLv2+
+yum-4.14.0: GPLv2+
 libgcc-14.2.1: GPL-3.0-or-later AND LGPL-3.0-or-later AND (GPL-3.0-or-later WITH GCC-exception-3.1) AND (GPL-3.0-or-later WITH Texinfo-exception) AND (LGPL-2.1-or-later WITH GCC-exception-2.0) AND (GPL-2.0-or-later WITH GCC-exception-2.0) AND (GPL-2.0-or-later WITH GNU-compiler-exception) AND BSL-1.0 AND GFDL-1.3-or-later AND Linux-man-pages-copyleft-2-para AND SunPro AND BSD-1-Clause AND BSD-2-Clause AND BSD-2-Clause-Views AND BSD-3-Clause AND BSD-4-Clause AND BSD-Source-Code AND Zlib AND MIT AND Apache-2.0 AND (Apache-2.0 WITH LLVM-Exception) AND ZPL-2.1 AND ISC AND LicenseRef-Fedora-Public-Domain AND HP-1986 AND curl AND Martin-Birgmeier AND HPND-Markus-Kuhn AND dtoa AND SMLNJ AND AMD-newlib AND OAR AND HPND-merchantability-variant AND HPND-Intel
 python3-setuptools-wheel-59.6.0: MIT and (BSD or ASL 2.0)
 pcre2-syntax-10.40: BSD
@@ -81,29 +81,29 @@ libcap-ng-0.8.2: LGPLv2+
 libcom_err-1.46.5: MIT
 libnghttp2-1.59.0: MIT
 libselinux-3.4: Public Domain
+libblkid-2.37.4: LGPLv2+
 sed-4.8: GPLv3+
-libmount-2.37.4: LGPLv2+
+libtasn1-4.19.0: GPLv3+ and LGPLv2+
+ca-certificates-2025.2.76: Public Domain
+openssl-libs-3.2.2: ASL 2.0
+python3-pip-wheel-21.3.1: MIT and Python and ASL 2.0 and BSD and ISC and LGPLv2 and MPLv2.0 and (ASL 2.0 or BSD)
+krb5-libs-1.21.3: MIT
+curl-minimal-8.11.1: curl
+python3-3.9.23: Python
+python3-libcomps-0.1.20: GPL-2.0-or-later
+lz4-libs-1.9.4: GPLv2+ and BSD
+rpm-4.16.1.3: GPLv2+
+libmodulemd-2.13.0: MIT
+npth-1.6: LGPLv2+
+gpgme-1.23.2: LGPL-2.1-or-later AND MIT
+libdnf-0.69.0: LGPLv2+
+python3-hawkey-0.69.0: LGPLv2+
+rpm-sign-libs-4.16.1.3: GPLv2+ and LGPLv2+ with exceptions
+elfutils-libs-0.188: GPLv2+ or LGPLv3+
+python3-rpm-4.16.1.3: GPLv2+
+dnf-data-4.14.0: GPLv2+
+dnf-4.14.0: GPLv2+
 gawk-5.1.0: GPLv3+ and GPLv2+ and LGPLv2+ and BSD
-p11-kit-trust-0.24.1: BSD
-openssl-fips-provider-latest-3.2.2: ASL 2.0
-glib2-2.82.2: LGPL-2.1-or-later
-libverto-0.3.2: MIT
-libcurl-minimal-8.11.1: curl
-libxcrypt-4.4.33: LGPL-2.1-or-later AND BSD-3-Clause AND BSD-2-Clause AND BSD-2-Clause-FreeBSD AND 0BSD AND CC0-1.0 AND LicenseRef-Fedora-Public-Domain
-python3-libs-3.9.23: Python
-libyaml-0.2.5: MIT
-libarchive-3.7.4: BSD-2-Clause AND FSFULLR AND GPL-2.0-or-later WITH Libtool-exception AND BSD-3-Clause AND FSFUL
-rpm-libs-4.16.1.3: GPLv2+ and LGPLv2+ with exceptions
-libsolv-0.7.22: BSD
-gnupg2-minimal-2.3.7: GPLv3+
-librepo-1.14.5: LGPLv2+
-python3-libdnf-0.69.0: LGPLv2+
-python3-gpg-1.23.2: LGPL-2.1-or-later AND MIT
-elfutils-default-yama-scope-0.188: GPLv2+ or LGPLv3+
-rpm-build-libs-4.16.1.3: GPLv2+ and LGPLv2+ with exceptions
-libreport-filesystem-2.15.2: GPLv2+
-python3-dnf-4.14.0: GPLv2+
-yum-4.14.0: GPLv2+
 gpg-pubkey-d832c631: pubkey
 systemd-libs-252.23: LGPLv2+ and MIT
 dbus-libs-1.12.28: (GPLv2+ or AFL) and GPLv2+
@@ -437,8 +437,8 @@ krb5-devel-1.21.3: MIT
 libcurl-devel-8.11.1: curl
 cyrus-sasl-lib-2.1.27: BSD with advertising
 openldap-2.4.57: OpenLDAP
-libpq-17.4: PostgreSQL
-libpq-devel-17.4: PostgreSQL
+libpq-17.6: PostgreSQL
+libpq-devel-17.6: PostgreSQL
 procps-ng-3.3.17: GPL+ and GPLv2 and GPLv2+ and GPLv3+ and LGPLv2+
 oniguruma-6.9.7.1: BSD
 jq-1.7.1: MIT AND ICU AND CC-BY-3.0
