@@ -7,7 +7,7 @@ diff-cover==9.2.4
 Jinja2==3.1.6
 MarkupSafe==2.1.5
 nodeenv==1.8.0
-pip==24.0
+pip==25.2
 pydocstyle==6.3.0
 pyright==1.1.360
 psycopg2-binary==2.9.10
