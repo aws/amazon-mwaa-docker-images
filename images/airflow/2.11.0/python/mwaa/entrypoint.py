@@ -114,19 +114,6 @@ AVAILABLE_COMMANDS = [
 CONTAINER_START_TIME = time.time()
 
 
-async def airflow_db_init(environ: dict[str, str]):
-    """
-    Initialize Airflow database.
-
-    Before Airflow can be used, a call to `airflow db migrate` must be done. This
-    function does this. This function is called in the entrypoint to make sure that,
-    for any Airflow component, the database is initialized before it starts.
-
-    :param environ: A dictionary containing the environment variables.
-    """
-    await run_command("python3 -m mwaa.database.migrate", env=environ)
-
-
 async def airflow_db_migrate(environ: dict[str, str]):
     """
     Migrate/Initialize Airflow database.
@@ -245,9 +232,6 @@ async def main() -> None:
     if command == "test-requirements":
         print("Finished testing requirements")
         return
-
-    # Remove this when we only want the migrate container to update db
-    await airflow_db_init(environ)
 
     if os.environ.get("MWAA__CORE__AUTH_TYPE", "").lower() == "testing":
         # In "simple" auth mode, we create an admin user "airflow" with password
