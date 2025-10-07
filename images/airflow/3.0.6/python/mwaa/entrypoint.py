@@ -244,6 +244,7 @@ if __name__ == "__main__":
     except Exception as ex:
         logger.error("Fatal error in entrypoint: %s", str(ex), exc_info=True)
         _mark_as_unhealthy()
+        sys.exit(1)
 elif os.environ.get("MWAA__CORE__TESTING_MODE", "false") != "true":
     logger.error("This module cannot be imported.")
     sys.exit(1)
