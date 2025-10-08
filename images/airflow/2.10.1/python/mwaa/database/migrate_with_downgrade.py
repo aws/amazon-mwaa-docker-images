@@ -9,13 +9,17 @@ connect to the meta database, thus all configurations need to be set.
 
 from argparse import Namespace
 from packaging.version import Version
+from sqlalchemy import create_engine, text
 import logging.config
 import os
 import sys
 
+from mwaa.config.database import get_db_connection_string
 from mwaa.utils.dblock import with_db_lock
 from airflow.cli.commands import db_command as airflow_db_command
 
+DB_IAM_USERNAME = "airflow_user"
+DB_NAME = "AirflowMetadata"
 
 # Usually, we pass the `__name__` variable instead as that defaults to the module path,
 # i.e. `mwaa.entrypoint` in this case. However, since this is a script, `__name__` will
@@ -33,6 +37,32 @@ def _verify_environ():
     if not os.environ.get("AWS_EXECUTION_ENV", "").startswith("Amazon_MWAA_"):
         logger.error("The necessary environment variables are not set.")
         sys.exit(1)
+
+def _ensure_rds_iam_user():
+    db_engine = create_engine(
+        get_db_connection_string(),
+        connect_args={"connect_timeout": 3}
+    )
+    with db_engine.connect() as conn:
+        with conn.begin():
+            result = conn.execute(text("SELECT 1 FROM pg_roles WHERE rolname = :rolename"), {"rolename": DB_IAM_USERNAME})
+            if not result.fetchone():
+                print(f"Creating user '{DB_IAM_USERNAME}'")
+                conn.execute(text(f"CREATE USER {DB_IAM_USERNAME}"))
+                print(f"Created db rds iam user")
+            else:
+                print(f"db rds iam user already exists")
+            
+            # Always ensure permissions are up to date
+            conn.execute(text(f"GRANT rds_iam TO {DB_IAM_USERNAME}"))
+            conn.execute(text(f'GRANT ALL PRIVILEGES ON DATABASE "{DB_NAME}" TO {DB_IAM_USERNAME}'))
+            conn.execute(text(f"GRANT ALL ON SCHEMA public TO {DB_IAM_USERNAME}"))
+            conn.execute(text(f"GRANT ALL ON ALL TABLES IN SCHEMA public TO {DB_IAM_USERNAME}"))
+            conn.execute(text(f"GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO {DB_IAM_USERNAME}"))
+            conn.execute(text(f"GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO {DB_IAM_USERNAME}"))
+            conn.execute(text(f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO {DB_IAM_USERNAME}"))
+            conn.execute(text(f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO {DB_IAM_USERNAME}"))
+            conn.execute(text(f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO {DB_IAM_USERNAME}"))
 
 
 @with_db_lock(1234)
@@ -76,6 +106,7 @@ def _check_downgrade_db():
 
 def _main():
     _verify_environ()
+    _ensure_rds_iam_user()
     _migrate_db()
 
 
