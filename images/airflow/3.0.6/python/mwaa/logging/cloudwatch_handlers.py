@@ -29,9 +29,10 @@ from airflow.models.taskinstance import TaskInstance
 from airflow.providers.amazon.aws.hooks.logs import AwsLogsHook
 from airflow.providers.amazon.aws.utils import datetime_to_epoch_utc_ms
 from airflow.sdk.types import RuntimeTaskInstanceProtocol as RuntimeTI
-from airflow.utils.helpers import parse_template_string
+from airflow.utils.helpers import parse_template_string, render_template
 from airflow.utils.log.file_task_handler import LogMessages, LogSourceInfo, LogMetadata
 from airflow.utils.log.logging_mixin import LoggingMixin
+from airflow.utils.session import provide_session, NEW_SESSION
 from mypy_boto3_logs.client import CloudWatchLogsClient
 from typing import Dict
 import boto3
@@ -314,9 +315,6 @@ class CloudWatchRemoteTaskLogger(BaseLogHandler, LoggingMixin):
             create_log_group=False,
         )
 
-    def _render_filename(self, ti: TaskInstance, try_number: int) -> str:
-        return f"dag_id={ti.dag_id}/run_id={ti.run_id}/task_id={ti.task_id}/attempt={try_number}.log"
-
     @cached_property
     def processors(self) -> tuple[structlog.typing.Processor, ...]:
         """
@@ -395,7 +393,7 @@ class CloudWatchRemoteTaskLogger(BaseLogHandler, LoggingMixin):
             the reason why we set Task logging handler to this class even though the actual log writing is done through
             remote logging processor.
         """
-        stream_name = self._render_filename(task_instance, try_number)
+        stream_name = self._render_filename(task_instance, try_number).replace(":", "_")
         messages, logs = self._read_remote_logs(stream_name, task_instance)
         return messages + logs, metadata
 
@@ -415,6 +413,39 @@ class CloudWatchRemoteTaskLogger(BaseLogHandler, LoggingMixin):
             messages.append(str(e))
 
         return messages, logs or []
+
+    @provide_session
+    def _render_filename(self, ti: TaskInstance, try_number: int, session=NEW_SESSION) -> str:
+        dag_run = ti.get_dagrun(session=session)
+
+        date = dag_run.logical_date or dag_run.run_after
+        date = date.isoformat()
+
+        template = dag_run.get_log_template(session=session).filename
+        str_tpl, jinja_tpl = parse_template_string(template)
+        if jinja_tpl:
+            return render_template(jinja_tpl, {"ti": ti, "ts": date, "try_number": try_number}, native=False)
+
+        if str_tpl:
+            data_interval = (dag_run.data_interval_start, dag_run.data_interval_end)
+            if data_interval[0]:
+                data_interval_start = data_interval[0].isoformat()
+            else:
+                data_interval_start = ""
+            if data_interval[1]:
+                data_interval_end = data_interval[1].isoformat()
+            else:
+                data_interval_end = ""
+            return str_tpl.format(
+                dag_id=ti.dag_id,
+                task_id=ti.task_id,
+                run_id=ti.run_id,
+                data_interval_start=data_interval_start,
+                data_interval_end=data_interval_end,
+                logical_date=date,
+                try_number=try_number,
+            )
+        raise RuntimeError(f"Unable to render log filename for {ti}. This should never happen")
 
     @cached_property
     def hook(self):
