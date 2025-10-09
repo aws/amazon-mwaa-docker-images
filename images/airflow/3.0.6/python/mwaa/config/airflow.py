@@ -58,10 +58,16 @@ def _get_essential_airflow_core_config() -> Dict[str, str]:
     """
 
     fernet_key = {}
-
+    api_server_url = {}
     fernet_secret_json = os.environ.get("MWAA__CORE__FERNET_KEY")
-    api_server_url = os.environ.get("MWAA__CORE__API_SERVER_URL")
-    prefix = "" if "://" in api_server_url else "https://"
+    api_server_config = os.environ.get("MWAA__CORE__API_SERVER_URL")
+    if api_server_config:
+        prefix = "" if "://" in api_server_config else "https://"
+        api_server_url = {
+            "AIRFLOW__CORE__EXECUTION_API_SERVER_URL": prefix
+            + api_server_config
+            + "/execution",
+        }
     if fernet_secret_json:
         try:
             fernet_key = {
@@ -74,7 +80,7 @@ def _get_essential_airflow_core_config() -> Dict[str, str]:
 
     return {
         "AIRFLOW__CORE__LOAD_EXAMPLES": "False",
-        "AIRFLOW__CORE__EXECUTION_API_SERVER_URL": prefix + api_server_url + "/execution",
+        **api_server_url,
         **fernet_key,
     }
 
