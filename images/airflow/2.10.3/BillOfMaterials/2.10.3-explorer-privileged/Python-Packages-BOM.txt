@@ -6162,10 +6162,10 @@ Copyright 2013-2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 /usr/local/airflow/.local/lib/python3.11/site-packages/boto3-1.35.36.dist-info/NOTICE
 
 boto3-stubs
-1.40.25
+1.40.50
 MIT License
 https://github.com/youtype/mypy_boto3_builder
-/usr/local/airflow/.local/lib/python3.11/site-packages/boto3_stubs-1.40.25.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.11/site-packages/boto3_stubs-1.40.50.dist-info/licenses/LICENSE
 MIT License
 
 Copyright (c) 2025 Vlad Emelianov
@@ -6437,10 +6437,10 @@ one at http://mozilla.org/MPL/2.0/.
 /usr/local/airflow/.local/lib/python3.11/site-packages/botocore-1.35.36.dist-info/NOTICE
 
 botocore-stubs
-1.40.25
-MIT License
+1.40.50
+UNKNOWN
 https://github.com/youtype/botocore-stubs
-/usr/local/airflow/.local/lib/python3.11/site-packages/botocore_stubs-1.40.25.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.11/site-packages/botocore_stubs-1.40.50.dist-info/licenses/LICENSE
 MIT License
 
 Copyright (c) 2022 Vlad Emelianov
@@ -10099,10 +10099,10 @@ UNKNOWN
 UNKNOWN
 
 msgpack
-1.1.1
-Apache 2.0
+1.1.2
+UNKNOWN
 https://msgpack.org/
-/usr/local/airflow/.local/lib/python3.11/site-packages/msgpack-1.1.1.dist-info/licenses/COPYING
+/usr/local/airflow/.local/lib/python3.11/site-packages/msgpack-1.1.2.dist-info/licenses/COPYING
 Copyright (C) 2008-2011 INADA Naoki <songofacandy@gmail.com>
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -10144,10 +10144,10 @@ UNKNOWN
 UNKNOWN
 
 mypy-boto3-logs
-1.40.0
+1.40.32
 MIT License
 https://github.com/youtype/mypy_boto3_builder
-/usr/local/airflow/.local/lib/python3.11/site-packages/mypy_boto3_logs-1.40.0.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.11/site-packages/mypy_boto3_logs-1.40.32.dist-info/licenses/LICENSE
 MIT License
 
 Copyright (c) 2025 Vlad Emelianov
@@ -10173,10 +10173,10 @@ UNKNOWN
 UNKNOWN
 
 mypy-boto3-sqs
-1.40.17
+1.40.35
 MIT License
 https://github.com/youtype/mypy_boto3_builder
-/usr/local/airflow/.local/lib/python3.11/site-packages/mypy_boto3_sqs-1.40.17.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.11/site-packages/mypy_boto3_sqs-1.40.35.dist-info/licenses/LICENSE
 MIT License
 
 Copyright (c) 2025 Vlad Emelianov
@@ -12965,10 +12965,10 @@ UNKNOWN
 UNKNOWN
 
 psycopg2
-2.9.10
+2.9.11
 GNU Library or Lesser General Public License (LGPL)
 https://psycopg.org/
-/usr/local/airflow/.local/lib/python3.11/site-packages/psycopg2-2.9.10.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.11/site-packages/psycopg2-2.9.11.dist-info/licenses/LICENSE
 psycopg2 and the LGPL
 ---------------------
 
@@ -13117,7 +13117,7 @@ UNKNOWN
 UNKNOWN
 
 pycurl
-7.45.6
+7.45.7
 GNU Library or Lesser General Public License (LGPL); MIT License
 http://pycurl.io/
 /usr/local/airflow/.local/lib/python3.11/site-packages/../../../share/doc/pycurl/COPYING-LGPL
@@ -15639,10 +15639,10 @@ UNKNOWN
 UNKNOWN
 
 types-awscrt
-0.27.6
+0.28.1
 MIT License
 https://github.com/youtype/types-awscrt
-/usr/local/airflow/.local/lib/python3.11/site-packages/types_awscrt-0.27.6.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.11/site-packages/types_awscrt-0.28.1.dist-info/licenses/LICENSE
 MIT License
 
 Copyright (c) 2022 Vlad Emelianov
@@ -15669,10 +15669,10 @@ UNKNOWN
 UNKNOWN
 
 types-s3transfer
-0.13.1
+0.14.0
 MIT License
 https://github.com/youtype/types-s3transfer
-/usr/local/airflow/.local/lib/python3.11/site-packages/types_s3transfer-0.13.1.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.11/site-packages/types_s3transfer-0.14.0.dist-info/licenses/LICENSE
 MIT License
 
 Copyright (c) 2022 Vlad Emelianov
