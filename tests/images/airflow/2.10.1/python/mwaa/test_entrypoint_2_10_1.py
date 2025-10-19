@@ -1,9 +1,8 @@
 # test_entrypoint.py
 import pytest
-import asyncio
 import os
 import sys
-from unittest.mock import patch, MagicMock, mock_open, call
+from unittest.mock import patch, MagicMock, mock_open
 from botocore.exceptions import ClientError
 
 import mwaa.entrypoint as entrypoint
