@@ -117,19 +117,11 @@ services:
     command: migrate-db
     container_name: mwaa-2101-migratedb
     restart: "no"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      sqs:
-        condition: service_healthy
 
   spy:
     <<: *airflow-common
     command: spy
     container_name: mwaa-2101-spy
-    depends_on:
-      migratedb:
-        condition: service_completed_successfully
 
   webserver:
     <<: *airflow-common
