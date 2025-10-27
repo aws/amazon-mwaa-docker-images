@@ -5,4 +5,10 @@
 # airflow, celery, kombu, and so on.
 
 # Install all required packages in one command
-pip3 install --constraint "${MWAA_ESSENTIAL_CONSTRAINTS_FILE}" "$@"
+# Add trusted-host flags to work around SSL certificate issues during build
+pip3 install \
+    --trusted-host pypi.org \
+    --trusted-host files.pythonhosted.org \
+    --trusted-host pypi.python.org \
+    --constraint "${MWAA_ESSENTIAL_CONSTRAINTS_FILE}" \
+    "$@"

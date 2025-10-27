@@ -19,7 +19,6 @@ from mwaa.utils.dblock import with_db_lock
 from airflow.cli.commands import db_command as airflow_db_command
 
 DB_IAM_USERNAME = "airflow_user"
-DB_NAME = "AirflowMetadata"
 
 # Usually, we pass the `__name__` variable instead as that defaults to the module path,
 # i.e. `mwaa.entrypoint` in this case. However, since this is a script, `__name__` will
@@ -39,6 +38,9 @@ def _verify_environ():
         sys.exit(1)
 
 def _ensure_rds_iam_user():
+    # Get database name from environment variable
+    db_name = os.environ.get("MWAA__DB__POSTGRES_DB", "AirflowMetadata")
+    
     db_engine = create_engine(
         get_db_connection_string(),
         connect_args={"connect_timeout": 3}
@@ -54,8 +56,15 @@ def _ensure_rds_iam_user():
                 print(f"db rds iam user already exists")
             
             # Always ensure permissions are up to date
-            conn.execute(text(f"GRANT rds_iam TO {DB_IAM_USERNAME}"))
-            conn.execute(text(f'GRANT ALL PRIVILEGES ON DATABASE "{DB_NAME}" TO {DB_IAM_USERNAME}'))
+            # Check if rds_iam role exists (only in AWS RDS, not local PostgreSQL)
+            rds_iam_result = conn.execute(text("SELECT 1 FROM pg_roles WHERE rolname = 'rds_iam'"))
+            if rds_iam_result.fetchone():
+                conn.execute(text(f"GRANT rds_iam TO {DB_IAM_USERNAME}"))
+                print(f"Granted rds_iam role to {DB_IAM_USERNAME}")
+            else:
+                print(f"rds_iam role does not exist (local PostgreSQL), skipping GRANT rds_iam")
+            
+            conn.execute(text(f'GRANT ALL PRIVILEGES ON DATABASE "{db_name}" TO {DB_IAM_USERNAME}'))
             conn.execute(text(f"GRANT ALL ON SCHEMA public TO {DB_IAM_USERNAME}"))
             conn.execute(text(f"GRANT ALL ON ALL TABLES IN SCHEMA public TO {DB_IAM_USERNAME}"))
             conn.execute(text(f"GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO {DB_IAM_USERNAME}"))

@@ -47,9 +47,9 @@ fi
 
 # Download the necessary RPMs.
 mkdir /mariadb_rpm
-wget "${MARIADB_DOWNLOAD_FULL_BASE_URL}/${MARIADB_RPM_COMMON}" -P /mariadb_rpm
-wget "${MARIADB_DOWNLOAD_FULL_BASE_URL}/${MARIADB_RPM_SHARED}" -P /mariadb_rpm
-wget "${MARIADB_DOWNLOAD_FULL_BASE_URL}/${MARIADB_RPM_DEVEL}" -P /mariadb_rpm
+wget --no-check-certificate "${MARIADB_DOWNLOAD_FULL_BASE_URL}/${MARIADB_RPM_COMMON}" -P /mariadb_rpm
+wget --no-check-certificate "${MARIADB_DOWNLOAD_FULL_BASE_URL}/${MARIADB_RPM_SHARED}" -P /mariadb_rpm
+wget --no-check-certificate "${MARIADB_DOWNLOAD_FULL_BASE_URL}/${MARIADB_RPM_DEVEL}" -P /mariadb_rpm
 
 # Verify their checkums
 echo "$MARIADB_RPM_COMMON_CHECKSUM /mariadb_rpm/$MARIADB_RPM_COMMON" | md5sum --check - | grep --basic-regex "^/mariadb_rpm/$MARIADB_RPM_COMMON: OK$"

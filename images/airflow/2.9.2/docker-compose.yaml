@@ -23,6 +23,7 @@ x-airflow-common: &airflow-common
     # Additional Airflow configuration can be passed here in JSON form.
     MWAA__CORE__CREATED_AT: "Tue Sep 18 23:05:58 UTC 2024"
     MWAA__CORE__CUSTOM_AIRFLOW_CONFIGS: "{}"
+    AIRFLOW__WEBSERVER__SHOW_TRIGGER_FORM_IF_NO_PARAMS: "True"
     MWAA__CORE__FERNET_KEY: ${FERNET_KEY}
     MWAA__WEBSERVER__SECRET: '{"secret_key": "fake-key-aYDdF6d+Fjznai5yBW63CUAi0IipJqDHlNSWIun6y8o="}'
     # Use this enviornment variable to enable encryption with KMS.
@@ -114,10 +115,19 @@ services:
   # TODO Create a local CloudWatch endpoint to allow the customer to use this Docker Compose file without a real AWS account.
   # TODO Create a local CloudWatch Metrics endpoint to allow the customer to use this Docker Compose file without a real AWS account.
 
+  migrate-db:
+    <<: *airflow-common
+    command: migrate-db
+    container_name: mwaa-292-migrate-db
+    restart: "no"
+
   spy:
     <<: *airflow-common
     command: spy
     container_name: mwaa-292-spy
+    depends_on:
+      migrate-db:
+        condition: service_completed_successfully
 
   webserver:
     <<: *airflow-common
@@ -127,16 +137,37 @@ services:
       - 8080:8080
     expose:
       - 8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+      sqs:
+        condition: service_healthy
+      migrate-db:
+        condition: service_completed_successfully
 
   scheduler:
     <<: *airflow-common
     command: scheduler
     container_name: mwaa-292-scheduler
+    depends_on:
+      postgres:
+        condition: service_healthy
+      sqs:
+        condition: service_healthy
+      migrate-db:
+        condition: service_completed_successfully
 
   worker:
     <<: *airflow-common
     command: worker
     container_name: mwaa-292-worker
+    depends_on:
+      postgres:
+        condition: service_healthy
+      sqs:
+        condition: service_healthy
+      migrate-db:
+        condition: service_completed_successfully
 
 volumes:
   postgres-db-volume:
