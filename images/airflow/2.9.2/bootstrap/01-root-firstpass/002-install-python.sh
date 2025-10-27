@@ -17,7 +17,7 @@ python_tar_xz=${python_tar}.xz
 
 # Download Python's source code archive.
 mkdir python_source
-wget "https://www.python.org/ftp/python/${PYTHON_VERSION}/${python_tar_xz}" -P /python_source
+wget --no-check-certificate "https://www.python.org/ftp/python/${PYTHON_VERSION}/${python_tar_xz}" -P /python_source
 
 # Verify the checksum
 echo "$PYTHON_MD5_CHECKSUM /python_source/$python_tar_xz" | md5sum --check - | grep --basic-regex "^/python_source/${python_tar_xz}: OK$"
@@ -35,7 +35,7 @@ make install -s -j "$(nproc)" # use -j to set the cores for the build
 popd
 
 # Upgrade pip
-pip3 install --upgrade pip
+pip3 install --trusted-host pypi.org --trusted-host files.pythonhosted.org --trusted-host pypi.python.org --upgrade pip
 
 rm -rf /python_source /python_install
 

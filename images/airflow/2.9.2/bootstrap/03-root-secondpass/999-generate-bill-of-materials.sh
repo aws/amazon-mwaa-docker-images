@@ -8,7 +8,7 @@ echo "This Docker image includes the following third-party software/licensing:" 
 rpm -qa --queryformat "%{NAME}-%{VERSION}: %{LICENSE}\n" >> /tmp/System-Packages-BOM.txt
 
 # Generate Bill of Materials for the Python packages we are using.
-pip3 install pip-licenses 
+pip3 install --trusted-host pypi.org --trusted-host files.pythonhosted.org --trusted-host pypi.python.org pip-licenses 
 echo "This Docker image includes the following third-party software/licensing:" > /tmp/Python-Packages-BOM.txt
 sudo -u airflow pip-licenses --from=mixed --format=plain-vertical --with-url --with-license-file --with-notice-file | sudo tee -a /tmp/Python-Packages-BOM.txt
 pip3 uninstall -y pip-licenses 
