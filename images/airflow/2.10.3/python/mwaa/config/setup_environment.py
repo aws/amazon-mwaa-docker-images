@@ -226,7 +226,7 @@ def setup_environment_variables(command: str, executor_type: str) -> Dict:
     mwaa_opinionated_airflow_config = get_opinionated_airflow_config()
     mwaa_essential_airflow_environ = get_essential_environ(command)
     mwaa_opinionated_airflow_environ = get_opinionated_environ()
-    user_airflow_config = get_user_airflow_config()
+    user_airflow_config = {} if command == "migrate-db" else get_user_airflow_config()
 
 
     startup_script_environ = _execute_startup_script(
