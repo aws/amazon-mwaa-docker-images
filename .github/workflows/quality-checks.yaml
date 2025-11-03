@@ -32,12 +32,15 @@ jobs:
             tar \
             wget \
             xz
+          # bc: used in `./quality-checks/diff-coverage_test.sh`
           # libatomic: to prevent `No such file or directory` error when running `lint_python.sh`
-          yum install -y libatomic
+          yum install -y bc libatomic
           # Download and install shellcheck for linting shell scripts
           wget https://github.com/koalaman/shellcheck/releases/download/stable/shellcheck-stable.linux.x86_64.tar.xz
           tar -xvf shellcheck-stable.linux.x86_64.tar.xz
           cp shellcheck-stable/shellcheck /usr/bin/
+          # Download and install TruffleHog
+          curl -sSfL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/scripts/install.sh | sh -s -- -b /usr/bin
 
       - name: Check out code...
         uses: actions/checkout@v2

@@ -31,7 +31,7 @@ check_dir() {
 
     # Run TruffleHog to scan for secrets
     echo "Running TruffleHog to scan for secrets..."
-    if ! (trufflehog filesystem --repo_path "${dir}" --entropy=False); then
+    if ! (trufflehog filesystem "${dir}"); then
         echo "TruffleHog detected potential secrets."
         status=1
     else
