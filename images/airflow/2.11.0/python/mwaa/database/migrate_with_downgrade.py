@@ -39,30 +39,33 @@ def _verify_environ():
         sys.exit(1)
 
 def _ensure_rds_iam_user():
-    db_engine = create_engine(
-        get_db_connection_string(),
-        connect_args={"connect_timeout": 3}
-    )
-    with db_engine.connect() as conn:
-        with conn.begin():
-            result = conn.execute(text("SELECT 1 FROM pg_roles WHERE rolname = :rolename"), {"rolename": DB_IAM_USERNAME})
-            if not result.fetchone():
-                print(f"Creating user '{DB_IAM_USERNAME}'")
-                conn.execute(text(f"CREATE USER {DB_IAM_USERNAME}"))
-                print(f"Created db rds iam user")
-            else:
-                print(f"db rds iam user already exists")
-            
-            # Always ensure permissions are up to date
-            conn.execute(text(f"GRANT rds_iam TO {DB_IAM_USERNAME}"))
-            conn.execute(text(f'GRANT ALL PRIVILEGES ON DATABASE "{DB_NAME}" TO {DB_IAM_USERNAME}'))
-            conn.execute(text(f"GRANT ALL ON SCHEMA public TO {DB_IAM_USERNAME}"))
-            conn.execute(text(f"GRANT ALL ON ALL TABLES IN SCHEMA public TO {DB_IAM_USERNAME}"))
-            conn.execute(text(f"GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO {DB_IAM_USERNAME}"))
-            conn.execute(text(f"GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO {DB_IAM_USERNAME}"))
-            conn.execute(text(f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO {DB_IAM_USERNAME}"))
-            conn.execute(text(f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO {DB_IAM_USERNAME}"))
-            conn.execute(text(f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO {DB_IAM_USERNAME}"))
+    try:
+        db_engine = create_engine(
+            get_db_connection_string(),
+            connect_args={"connect_timeout": 3}
+        )
+        with db_engine.connect() as conn:
+            with conn.begin():
+                result = conn.execute(text("SELECT 1 FROM pg_roles WHERE rolname = :rolename"), {"rolename": DB_IAM_USERNAME})
+                if not result.fetchone():
+                    print(f"Creating user '{DB_IAM_USERNAME}'")
+                    conn.execute(text(f"CREATE USER {DB_IAM_USERNAME}"))
+                    print(f"Created db rds iam user")
+                else:
+                    print(f"db rds iam user already exists")
+
+                # Always ensure permissions are up to date
+                conn.execute(text(f"GRANT rds_iam TO {DB_IAM_USERNAME}"))
+                conn.execute(text(f'GRANT ALL PRIVILEGES ON DATABASE "{DB_NAME}" TO {DB_IAM_USERNAME}'))
+                conn.execute(text(f"GRANT ALL ON SCHEMA public TO {DB_IAM_USERNAME}"))
+                conn.execute(text(f"GRANT ALL ON ALL TABLES IN SCHEMA public TO {DB_IAM_USERNAME}"))
+                conn.execute(text(f"GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO {DB_IAM_USERNAME}"))
+                conn.execute(text(f"GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO {DB_IAM_USERNAME}"))
+                conn.execute(text(f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO {DB_IAM_USERNAME}"))
+                conn.execute(text(f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO {DB_IAM_USERNAME}"))
+                conn.execute(text(f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO {DB_IAM_USERNAME}"))
+    except Exception as e:
+        logger.error(f"Error while ensuring rds iam user: {e}")
 
 
 @with_db_lock(1234)

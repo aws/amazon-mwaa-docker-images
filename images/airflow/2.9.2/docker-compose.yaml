@@ -113,6 +113,11 @@ services:
 
   # TODO Create a local CloudWatch endpoint to allow the customer to use this Docker Compose file without a real AWS account.
   # TODO Create a local CloudWatch Metrics endpoint to allow the customer to use this Docker Compose file without a real AWS account.
+  migratedb:
+    <<: *airflow-common
+    command: migrate-db
+    container_name: mwaa-292-migratedb
+    restart: "no"
 
   spy:
     <<: *airflow-common
@@ -127,16 +132,25 @@ services:
       - 8080:8080
     expose:
       - 8080
+    depends_on:
+      migratedb:
+        condition: service_completed_successfully
 
   scheduler:
     <<: *airflow-common
     command: scheduler
     container_name: mwaa-292-scheduler
+    depends_on:
+      migratedb:
+        condition: service_completed_successfully
 
   worker:
     <<: *airflow-common
     command: worker
     container_name: mwaa-292-worker
+    depends_on:
+      migratedb:
+        condition: service_completed_successfully
 
 volumes:
   postgres-db-volume:
