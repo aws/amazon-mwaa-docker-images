@@ -32,6 +32,8 @@ jobs:
             tar \
             wget \
             xz
+          # libatomic: to prevent `No such file or directory` error when running `lint_python.sh`
+          yum install -y libatomic
           # Download and install shellcheck for linting shell scripts
           wget https://github.com/koalaman/shellcheck/releases/download/stable/shellcheck-stable.linux.x86_64.tar.xz
           tar -xvf shellcheck-stable.linux.x86_64.tar.xz
