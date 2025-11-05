@@ -65,7 +65,7 @@ def _ensure_rds_iam_user():
                 conn.execute(text(f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO {DB_IAM_USERNAME}"))
                 conn.execute(text(f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO {DB_IAM_USERNAME}"))
     except Exception as e:
-        logger.error(f"Error while ensuring rds iam user: {e}")
+        logger.warning(f"Error while ensuring rds iam db credentials, skipping. {e}")
 
 
 @with_db_lock(1234)
