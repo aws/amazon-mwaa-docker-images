@@ -2,7 +2,7 @@
 import pytest
 import os
 import sys
-from unittest.mock import patch, MagicMock, mock_open, call, AsyncMock
+from unittest.mock import patch, MagicMock, mock_open, AsyncMock
 from botocore.exceptions import ClientError
 
 import mwaa.entrypoint as entrypoint
