@@ -15,7 +15,6 @@ understanding of the working mechanism of this.
 
 import os
 import sys
-from datetime import datetime
 from typing import Any, List
 from pathlib import Path
 
