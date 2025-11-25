@@ -58,8 +58,9 @@ def create_venv(path: Path, development_build: bool, recreate: bool = False):
     print("")
 
     requirements_path = generate_requirements(path, development_build)
+    constraints_path = path / "etc/airflow_constraints.txt"
     print(f"> Install dependencies from {requirements_path}...")
-    pip_install(venv_path, "-r", str(requirements_path))
+    pip_install(venv_path, "-r", str(requirements_path), "-c", str(constraints_path))
     print("")
 
     dev_tools = ["pydocstyle", "pyright", "ruff"]
