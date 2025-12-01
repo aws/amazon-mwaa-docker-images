@@ -3,6 +3,9 @@
 # running repository scripts and maintenance tasks, such as generating
 # Dockerfiles, linting, testing, and other scripts that help ensure code
 # quality.
+
+--constraint https://raw.githubusercontent.com/apache/airflow/constraints-3.0.6/constraints-3.12.txt
+
 diff-cover==9.2.4
 Jinja2==3.1.6
 MarkupSafe==3.0.2
