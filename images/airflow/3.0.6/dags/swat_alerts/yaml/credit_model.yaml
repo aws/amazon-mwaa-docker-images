@@ -1,0 +1,55 @@
+credit_models:
+  - name: CREDIT_MODEL_VARIABLES_MATRIX_ALL
+    cron_schedule: "0 0,8,16 * * *"
+    enabled: true
+    job:
+      - view_name: CREDIT_MODEL_VARIABLES_MATRIX_ALL
+        channel: logs-credit-model-variables
+        title: Getting Variable Matrix All
+        send_on_zero_results: false
+
+  - name: CREDIT_MODEL_VARIABLES_MATRIX_APPROVED
+    cron_schedule: "1 0,8,16 * * *"
+    enabled: true
+    job:
+      - view_name: CREDIT_MODEL_VARIABLES_MATRIX_APPROVED
+        channel: logs-credit-model-variables
+        title: Getting Variable Matrix Approved
+        send_on_zero_results: false
+
+  - name: CREDIT_MODEL_VARIABLES_MATRIX_DECLINED
+    cron_schedule: "2 0,8,16 * * *"
+    enabled: true
+    job:
+      - view_name: CREDIT_MODEL_VARIABLES_MATRIX_DECLINED
+        channel: logs-credit-model-variables
+        title: Getting Variable Matrix Declined
+        send_on_zero_results: false
+
+  - name: CREDIT_MODEL_VARIABLES_GDS_VS_ABOVE
+    cron_schedule: "0 8 * * *"
+    enabled: true
+    job:
+      - view_name: CREDIT_MODEL_VARIABLES_GDS_VS_ABOVE
+        channel: alerts-credit-model-variables
+        title: Getting Variable GDS VS ABOVE
+        send_on_zero_results: false
+
+  - name: CREDIT_MODEL_SCORE_MONITOR
+    cron_schedule: "4 * * * *"
+    enabled: true
+    job:
+      - view_name: CREDIT_MODEL_SCORE_MONITOR
+        channel: alerts-credit-model-variables
+        title: Checking GDS Credit SCORE CaLculations
+        send_on_zero_results: false
+
+  - name: CREDIT_MODEL_KO_RULES
+    cron_schedule: "1 8 * * *"
+    enabled: true
+    job:
+      - view_name: CREDIT_MODEL_KO_RULES
+        channel: alerts-credit-model-variables
+        title: Checking Model KO rules
+        send_on_zero_results: false
+

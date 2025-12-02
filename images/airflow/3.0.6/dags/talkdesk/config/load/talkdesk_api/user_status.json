@@ -1,0 +1,4 @@
+{
+  "table_name": "USER_STATUS",
+  "s3_key_filter": ".*/user_status.*"
+}

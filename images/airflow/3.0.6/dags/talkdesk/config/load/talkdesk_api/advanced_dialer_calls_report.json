@@ -1,0 +1,5 @@
+{
+  "table_name": "AD_CALLS",
+  "s3_key_filter": ".*/advanced_dialer_calls_report.*"
+}
+  

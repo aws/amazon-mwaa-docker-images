@@ -1,1 +1,17 @@
-# Add your requirements here
+--constraint "https://raw.githubusercontent.com/apache/airflow/constraints-3.0.6/constraints-3.12.txt"
+
+apache-airflow-providers-slack
+apache-airflow-providers-snowflake==5.8.0
+apache-airflow-providers-ssh
+boto3-stubs
+bs4
+filesplit==3.0.2
+mypy-boto3-s3
+pyyaml
+requests
+sbt
+sendgrid
+snowflake-connector-python[pandas]
+tableauserverclient
+trustpilot
+twilio

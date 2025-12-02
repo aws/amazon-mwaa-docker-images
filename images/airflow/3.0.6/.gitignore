@@ -1,0 +1,16 @@
+*.workspace
+.DS_Store
+/.idea
+/.vscode
+/dags/**/*.pyc
+/db-data
+/docker/config/.env.localrunner
+/git
+/logs
+/plugins/**/*.whl
+/plugins/*.tar.gz
+*.zip
+variables*.json
+.venv
+venv
+.mypy_cache

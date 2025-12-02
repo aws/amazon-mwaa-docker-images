@@ -1,0 +1,75 @@
+task_monitoring:
+  - name: SUCCESSFUL_TASKS
+    cron_schedule: "2 7 * * *"
+    enabled: true
+    job:
+      - view_name: SUCCESSFUL_TASKS
+        channel: logs-data-bi
+        title: "Daily Tasks"
+        send_on_zero_results: true
+
+  - name: FAILED_TASKS
+    cron_schedule: "3 8,12,16,20 * * *"
+    enabled: true
+    job:
+      - view_name: FAILED_TASKS
+        channel: alerts-data-bi
+        title: ":bangbang: Failed Tasks"
+        send_on_zero_results: false
+
+  - name: CRB_TAPE_TASKS
+    cron_schedule: "4 7 * * *"
+    enabled: true
+    job:
+      - view_name: CRB_TAPE_TASKS
+        channel: logs-data-bi
+        title: "CRB Tape Tasks:"
+        send_on_zero_results: true
+
+  - name: FAILED_CRB_TASK
+    cron_schedule: "4 7 * * *"
+    enabled: true
+    job:
+      - view_name: FAILED_CRB_TASK
+        channel: alerts-data-bi
+        title: "Failed CRB Tasks:"
+        send_on_zero_results: false
+
+  - name: DAILY_TASKS
+    cron_schedule: "2 7 * * *"
+    enabled: true
+    job:
+      - view_name: DAILY_TASKS
+        channel: logs-data-bi
+        title: "Daily Tasks"
+        send_on_zero_results: true
+
+  - name: TREY_TEST_HIST
+    cron_schedule: "2,7,12,17,22,27,32,37,42,47,52,57 * * * *"
+    enabled: true
+    job:
+      - view_name: TREY_TEST_HIST
+        channel: mute
+        title: "Test"
+        send_on_zero_results: true
+
+  - name: NO_PAGEVIEWS_IN_4_HOURS
+    cron_schedule: "*/15 * * * *"
+    enabled: true
+    job:
+      - view_name: NO_PAGEVIEWS_IN_4_HOURS
+        channel: logs-data-bi
+        title: >
+          Heap Warning: Pageview Data more than 4 hours old! Heap connect likely delayed. If this persists, contact support@heap.io with information.
+        send_on_zero_results: false
+
+  - name: NO_PAGEVIEWS_IN_8_HOURS
+    cron_schedule: "*/15 * * * *"
+    enabled: true
+    job:
+      - view_name: NO_PAGEVIEWS_IN_8_HOURS
+        channel: alerts-data-bi
+        title: >
+          Heap Alert: Pageview Data more than 8 hours old! Heap connect likely delayed. Contact support@heap.io to inform them that Heap Snowflake Connect is having issues.
+        send_on_zero_results: false
+

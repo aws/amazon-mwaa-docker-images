@@ -1,0 +1,46 @@
+dash:
+  - name: PAYMENT_TOTALS
+    cron_schedule: "30 16 * * *"
+    enabled: true
+    job:
+      - view_name: PAYMENT_TOTALS
+        channel: logs-payments
+        title: "Dash ACH Totals"
+        send_on_zero_results: true
+
+  - name: PAYMENT_RETURN_FAILURES
+    cron_schedule: "27 15 * * 1-5"
+    enabled: true
+    job:
+      - view_name: PAYMENT_RETURN_FAILURES
+        channel: logs-apps-prod
+        title: "DASH Payment Return Failures"
+        send_on_zero_results: false
+
+  - name: PAYMENTS_NOT_PROCESSED
+    cron_schedule: "28 15 * * 1-5"
+    enabled: true
+    job:
+      - view_name: PAYMENTS_NOT_PROCESSED
+        channel: alerts-special-handling
+        title: "DASH Payment Not Processed"
+        send_on_zero_results: false
+
+  - name: PAYMENTS_R04_RETURN_CODE
+    cron_schedule: "0 10 * * 1-5"
+    enabled: true
+    job:
+      - view_name: PAYMENTS_R04_RETURN_CODE
+        channel: alerts-servicing
+        title: Loans with R04 Return Code in the last Day
+        send_on_zero_results: false
+
+  - name: ALLOCATIONS_NOT_APPROVED
+    cron_schedule: "40 13 * * 1-5"
+    enabled: true
+    job:
+      - view_name: ALLOCATIONS_NOT_APPROVED
+        channel: alerts-allocation
+        title: "Allocations have not yet been approved before cutoff at 2PM CT - loans will not be funded without allocation!"
+        send_on_zero_results: false
+

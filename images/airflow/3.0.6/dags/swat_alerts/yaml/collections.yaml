@@ -1,0 +1,46 @@
+collections:
+  - name: call_dates
+    cron_schedule: "00 6 * * *"
+    enabled: true
+    job:
+      - view_name: call_dates
+        channel: logs-collections
+        title: "Upcoming Call Dates"
+        send_on_zero_results: false
+
+  - name: upcoming_call_dates
+    cron_schedule: "00 6 * * *"
+    enabled: true
+    job:
+      - view_name: upcoming_call_dates
+        channel: logs-collections
+        title: "States Upcoming Call Dates"
+        send_on_zero_results: false
+
+  - name: collections_dialer_list_load_alert
+    cron_schedule: "10 6 * * *"
+    enabled: true
+    job:
+      - view_name: collections_dialer_list_load_alert
+        channel: alerts-data-bi
+        title: "Dialer List Load Issues!"
+        send_on_zero_results: false
+
+  - name: collections_dialer_list_load_alert_collections
+    cron_schedule: "10 6 * * *"
+    enabled: true
+    job:
+      - view_name: collections_dialer_list_load_alert_collections
+        channel: alerts-collections
+        title: "Dialer List Load Issues!"
+        send_on_zero_results: false
+
+  - name: collections_dialer_list_load
+    cron_schedule: "10 6 * * *"
+    enabled: true
+    job:
+      - view_name: collections_dialer_list_load
+        channel: logs-data-bi
+        title: "Dialer List Load Confirmation"
+        send_on_zero_results: false
+

@@ -1,0 +1,151 @@
+compliance:
+  - name: onboarded_loan_missing_documents
+    cron_schedule: "0 8 * * 1-5"
+    enabled: true
+    job:
+      - view_name: onboarded_loan_missing_documents
+        channel: alerts-compliance
+        title: Onboarded loans missing required signed documents
+        send_on_zero_results: true
+
+  - name: onboarded_loan_missing_customer_information
+    cron_schedule: "1 8 * * 1-5"
+    enabled: true
+    job:
+      - view_name: onboarded_loan_missing_customer_information
+        channel: alerts-compliance
+        title: Onboarded loans missing key customer data
+        send_on_zero_results: true
+
+  - name: onboarded_loan_missing_ofac_check
+    cron_schedule: "2 8 * * 1-5"
+    enabled: true
+    job:
+      - view_name: onboarded_loan_missing_ofac_check
+        channel: alerts-compliance
+        title: Onboarded loans missing OFAC checks
+        send_on_zero_results: true
+
+  - name: decision_within_28_days_compliance
+    cron_schedule: "3 8 * * 1-5"
+    enabled: true
+    job:
+      - view_name: decision_within_28_days_compliance
+        channel: alerts-compliance
+        title: Applications without terminal decision within 28 days
+        send_on_zero_results: true
+
+  - name: noaa_within_30_days
+    cron_schedule: "4 8 * * 1-5"
+    enabled: true
+    job:
+      - view_name: noaa_within_30_days
+        channel: alerts-compliance
+        title: >
+          Declined or Expired Applications without NOAA send within 30 days of complete application
+        send_on_zero_results: true
+
+  - name: noaa_within_hours_hourly
+    cron_schedule: "6 9 * * *"
+    enabled: true
+    job:
+      - view_name: noaa_within_hours_hourly
+        channel: alerts-compliance
+        title: Declined/Expired Application Missing NOAA Hourly Alert
+        send_on_zero_results: false
+
+  - name: scra_tracker_audit
+    cron_schedule: "5 8 * * 1-5"
+    enabled: true
+    job:
+      - view_name: scra_tracker_audit
+        channel: alerts-compliance
+        title: SCRA Tracker and Modified Loans Not In Sync
+        send_on_zero_results: false
+
+  - name: monthly_open_loan_count
+    cron_schedule: "10 8 1 * *"
+    enabled: true
+    job:
+      - view_name: monthly_open_loan_count
+        channel: alerts-compliance
+        title: Monthly Report on Currently Open Loans
+        send_on_zero_results: false
+
+  - name: mo_past_due_statement_of_rights_to_cure_not_sent
+    cron_schedule: "15 8 * * 1-5"
+    enabled: true
+    job:
+      - view_name: mo_past_due_statement_of_rights_to_cure_not_sent
+        channel: alerts-compliance
+        title: >
+          MO Past Due Loans -- Statement of Rights to Cure Not Sent At 90 Days
+        send_on_zero_results: false
+
+  - name: wi_past_due_statement_of_rights_to_cure_not_sent
+    cron_schedule: "17 8 * * 1-5"
+    enabled: true
+    job:
+      - view_name: wi_past_due_statement_of_rights_to_cure_not_sent
+        channel: alerts-compliance
+        title: >
+          WI Past Due Loans -- Statement of Rights to Cure Not Sent At 90 Days
+        send_on_zero_results: false
+
+  - name: ks_past_due_statement_of_rights_to_cure_not_sent
+    cron_schedule: "21 8 * * 1-5"
+    enabled: true
+    job:
+      - view_name: ks_past_due_statement_of_rights_to_cure_not_sent
+        channel: alerts-compliance
+        title: KS Past Due Loans – Statement of Rights to Cure Not Sent At 90 Days
+        send_on_zero_results: false
+
+  - name: dc_charge_off_statement_of_rights_notice_not_delivered
+    cron_schedule: "19 8 * * 1-5"
+    enabled: true
+    job:
+      - view_name: dc_charge_off_statement_of_rights_notice_not_delivered
+        channel: alerts-compliance
+        title: >
+          DC Charged Off Loans -- Statement of Rights Notice Not Sent Within 120 Days
+        send_on_zero_results: true
+
+  - name: mi_contract_stamp
+    cron_schedule: "23 8 * * 1-5"
+    enabled: true
+    job:
+      - view_name: mi_contract_stamp
+        channel: alerts-compliance
+        title: MI Loans without Michigan Contract Stamping Email
+        send_on_zero_results: false
+
+  - name: socure_missing_monitoring_records
+    cron_schedule: "25 8 * * 1-5"
+    enabled: true
+    job:
+      - view_name: socure_missing_monitoring_records
+        channel: alerts-compliance
+        title: Loans missing Socure Monitoring Records
+        send_on_zero_results: false
+
+  - name: socure_unneeded_monitoring_records
+    cron_schedule: "27 8 * * 1-5"
+    enabled: true
+    job:
+      - view_name: socure_unneeded_monitoring_records
+        channel: alerts-compliance
+        title: Loans with Socure Unneeded Monitoring
+        send_on_zero_results: false
+
+  - name: dc_past_due_statement_of_rights_to_cure_not_sent
+    cron_schedule: "18 8 * * 1-5" # Weekdays @ 08:18am CT
+    enabled: true
+    job:
+      - view_name: dc_past_due_statement_of_rights_to_cure_not_sent
+        channel: alerts-compliance
+        title: DC Past Due Loans -- Statement of Rights Notice Not Sent At 90 Days
+        send_on_zero_results: true
+
+
+

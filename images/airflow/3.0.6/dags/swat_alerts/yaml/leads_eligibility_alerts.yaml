@@ -1,0 +1,39 @@
+leads_eligibility:
+  - name: IPL_DIALER_DATA_LOAD 
+    cron_schedule: "15 7 * * *"
+    enabled: true
+    job:
+      - view_name: CRITERIA_IPL_DIALER_DATA_LOAD
+        channel: mute
+        title: "CRITERIA_IPL_DIALER_DATA_LOAD"
+        send_on_zero_results: false
+
+      - view_name: ALERT_IPL_DIALER_DATA_LOAD
+        channel: alerts-leads-eligibility
+        title: "Alert: Beyond IPL Dialer Data was not loaded with yesterday's calls!"
+        send_on_zero_results: false
+
+      - view_name: LOG_IPL_DIALER_DATA_LOAD
+        channel: logs-leads-eligibility
+        title: "LOG_IPL_DIALER_DATA_LOAD"
+        send_on_zero_results: false
+
+  - name: FINAL_LEADS_AVAILABLE_IN_SYSTEM
+    cron_schedule: "15 7 * * *"
+    enabled: true
+    job:
+      - view_name: FINAL_LEADS_AVAILABLE_IN_SYSTEM
+        channel: logs-leads-eligibility
+        title: Summary of Leads Available in Above Platform
+        send_on_zero_results: true
+
+  - name: ELIGIBILITY_LOAD_ALERT
+    cron_schedule: "17 7 * * *"
+    enabled: true
+    job:
+      - view_name: ELIGIBILITY_LOAD_ALERT
+        channel: alerts-leads-eligibility
+        title: >
+          ERROR: Issues in Eligibility Load Process. Check changes in Eligible Programs from Beyond Snowflake Share to S3, Ingested Leads from S3 to AMS, or Ingestion Failure Rates.
+        send_on_zero_results: false
+

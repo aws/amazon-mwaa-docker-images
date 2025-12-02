@@ -1,0 +1,136 @@
+payments_process:
+  - name: PAYMENT_CURRENT_DATE
+    cron_schedule: "13 8,14 * * 1-5"
+    enabled: true
+    job:
+      - view_name: PAYMENT_CURRENT_DATE
+        channel: alerts-special-handling
+        title: "Apply and/or Process Date Issues Alert"
+        send_on_zero_results: false
+
+  - name: LOAN_BATCH_FAILS_EXPECTED
+    cron_schedule: "12 13-15 * * *"
+    enabled: true
+    job:
+      - view_name: LOAN_BATCH_FAILS_EXPECTED
+        channel: logs-payments
+        title: "Batch Payment Processing Fails"
+        send_on_zero_results: false
+
+  - name: LOAN_BATCH_FAILS_ISSUES
+    cron_schedule: "12 13-15 * * *"
+    enabled: true
+    job:
+      - view_name: LOAN_BATCH_FAILS_ISSUES
+        channel: alerts-special-handling
+        title: "Batch Payment Processing Fails"
+        send_on_zero_results: false
+
+  - name: BO_EXCEPTIONS
+    cron_schedule: "0 8 * * 1-5"
+    enabled: true
+    job:
+      - view_name: BO_EXCEPTIONS
+        channel: alerts-special-handling
+        title: "Transactions returned for BO Exception or Declined Downloaded"
+        send_on_zero_results: false
+
+  - name: PAYMENT_PROCESSING_DAILY_AUTOPAYS
+    cron_schedule: "59 6 * * 1-5"
+    enabled: true
+    job:
+      - view_name: PAYMENT_PROCESSING_DAILY_AUTOPAYS
+        channel: logs-payments
+        title: "Daily Autopays Validation"
+        send_on_zero_results: false
+
+  - name: LOAN_BATCH_VALIDATION
+    cron_schedule: "11 13-15 * * *"
+    enabled: true
+    job:
+      - view_name: LOAN_BATCH_VALIDATION
+        channel: logs-payments
+        title: "Daily Payment Processing Validation: Daily Summary"
+        send_on_zero_results: false
+
+  - name: LOAN_BATCH_TOTALS
+    cron_schedule: "20 15 * * *"
+    enabled: true
+    job:
+      - view_name: LOAN_BATCH_TOTALS
+        channel: logs-payments
+        title: "Loan Batch Totals for the Day"
+        send_on_zero_results: true
+
+  - name: missing_payments
+    cron_schedule: "0 10 * * 1-5"
+    enabled: true
+    job:
+      - view_name: missing_payments
+        channel: alerts-special-handling
+        title: ":bangbang: Action required: There are customer initiated payments missing from check commerce"
+        send_on_zero_results: false
+
+  - name: LOANS_WITHOUT_RECURRING_AUTOPAY
+    cron_schedule: "02 8 * * 1-5"
+    enabled: true
+    job:
+      - view_name: LOANS_WITHOUT_RECURRING_AUTOPAY
+        channel: alerts-special-handling
+        title: "Loans With Authorization Without Recurring Autopay"
+        send_on_zero_results: false
+
+  - name: SPECIAL_HANDLING_DAILY
+    cron_schedule: "6 8 * * 1-5"
+    enabled: true
+    job:
+      - view_name: SPECIAL_HANDLING_DAILY
+        channel: alerts-special-handling
+        title: "Special Handling Daily Alert"
+        send_on_zero_results: false
+
+  - name: PAYMENTS_CREATED_IN_PAST
+    cron_schedule: "30 13 * * 1-5"
+    enabled: true
+    job:
+      - view_name: PAYMENTS_CREATED_IN_PAST
+        channel: alerts-special-handling
+        title: "Payments Set to Process Before they were Created"
+        send_on_zero_results: false
+
+  - name: LOAN_MISSING_INVESTOR
+    cron_schedule: "45 7 * * 1-5"
+    enabled: true
+    job:
+      - view_name: LOAN_MISSING_INVESTOR
+        channel: alerts-special-handling
+        title: "Loan(s) Missing Investor"
+        send_on_zero_results: false
+
+  - name: PAYMENTS_MISSING_AUTOPAY
+    cron_schedule: "8 8 * * 1-5"
+    enabled: true
+    job:
+      - view_name: PAYMENTS_MISSING_AUTOPAY
+        channel: alerts-special-handling
+        title: "Daily Missing Autopays"
+        send_on_zero_results: false
+
+  - name: SPECIAL_HANDLING_DAILY_ALERT
+    cron_schedule: "6 8 * * 1-5"
+    enabled: true
+    job:
+      - view_name: SPECIAL_HANDLING_DAILY_ALERT
+        channel: alerts-special-handling
+        title: "Special Handling Daily Alert"
+        send_on_zero_results: false
+
+  - name: DAILY_PAYMENT_PROCESSING_VALIDATION
+    cron_schedule: "11 13,14,15 * * *"
+    enabled: true
+    job:
+      - view_name: DAILY_PAYMENT_PROCESSING_VALIDATION
+        channel: logs-payments
+        title: "Daily Payment Processing Validation: Batch Summary"
+        send_on_zero_results: false
+
