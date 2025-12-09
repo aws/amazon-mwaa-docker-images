@@ -14,3 +14,4 @@ variables*.json
 .venv
 venv
 .mypy_cache
+.env

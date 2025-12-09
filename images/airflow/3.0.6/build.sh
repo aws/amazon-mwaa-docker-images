@@ -37,7 +37,7 @@ fi
 echo "Building for architecture: $BUILDARCH (platform: $PLATFORM)"
 
 # Build the base image.
-${CONTAINER_RUNTIME} build --platform ${PLATFORM} -f ./Dockerfiles/Dockerfile.base -t amazon-mwaa-docker-images/airflow:3.0.6-base --build-arg BUILDARCH=${BUILDARCH} --progress=plain ./
+${CONTAINER_RUNTIME} build --platform ${PLATFORM} -f ./Dockerfiles/Dockerfile.base -t amazon-mwaa-docker-images/airflow:3.0.6-base --build-arg BUILDARCH=${BUILDARCH} ./
 
 
 # Build the derivatives.
@@ -57,7 +57,7 @@ for dev in "True" "False"; do
         fi
 
         IMAGE_NAME="amazon-mwaa-docker-images/airflow:${tag_name}"
-        ${CONTAINER_RUNTIME} build --platform ${PLATFORM} -f "./Dockerfiles/${dockerfile_name}" -t "${IMAGE_NAME}" --progress=plain ./
+        ${CONTAINER_RUNTIME} build --platform ${PLATFORM} -f "./Dockerfiles/${dockerfile_name}" -t "${IMAGE_NAME}" ./
 
         # Now we copy the Bill of Materials from the Docker image into this
         # repository so it can be checked into source control for easy visibility.

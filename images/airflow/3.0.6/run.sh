@@ -46,20 +46,17 @@ export FERNET_KEY
 # Build the Docker image
 ./build.sh $CONTAINER_RUNTIME
 
-ACCOUNT_ID="" # Put your account ID here.
-ENV_NAME="" # Choose an environment name here.
-REGION="us-west-2" # Keeping the region us-west-2 as default.
+# Load environment variables from .env file if it exists
+if [ -f .env ]; then
+    set -a  # automatically export all variables
+    source .env
+    set +a
+else
+    echo "Warning: .env file not found. Please copy .env.example to .env and configure your credentials."
+    exit 1
+fi
 
-# AWS Credentials
-AWS_ACCESS_KEY_ID="" # Put your credentials here.
-AWS_SECRET_ACCESS_KEY="" # Put your credentials here.
-AWS_SESSION_TOKEN="" # Put your credentials here.
-export AWS_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY
-export AWS_SESSION_TOKEN
-
-# Set to http://host_name:8080
-MWAA__CORE__API_SERVER_URL=""
+MWAA__CORE__API_SERVER_URL="http://host_name:8080"
 
 # BOM Generation
 GENERATE_BILL_OF_MATERIALS="False"
