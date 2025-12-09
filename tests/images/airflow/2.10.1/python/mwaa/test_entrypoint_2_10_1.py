@@ -10,7 +10,6 @@ from mwaa.entrypoint import (
     _setup_console_log_level,
     _configure_root_logger,
     airflow_db_migrate,
-    increase_pool_size_if_insufficient,
     create_airflow_user,
     create_queue,
     main
@@ -104,53 +103,15 @@ async def test_airflow_db_migrate(mock_db_utils):
 
 @pytest.fixture
 def mock_run_command():
-    """Mock run_command with AsyncMock"""
 
     async def mock_run(*args, **kwargs):
-        if 'stdout_logging_method' in kwargs and 'airflow pools get default_pool' in args[0]:
-            kwargs['stdout_logging_method']("4000")
+        if 'stdout_logging_method' in kwargs in args[0]:
+            kwargs['stdout_logging_method']("128")
         return 0
 
     with patch('mwaa.entrypoint.run_command') as mock:
         mock.side_effect = mock_run
         yield mock
-
-
-@pytest.mark.asyncio
-async def test_increase_pool_size_if_insufficient(mock_environ):
-    """Test pool size increase functionality"""
-    from unittest.mock import AsyncMock
-
-    # Track executed commands
-    called_commands = []
-
-    async def mock_run(cmd, env=None, stdout_logging_method=None):
-        called_commands.append(cmd)
-        if stdout_logging_method and "airflow pools get default_pool" in cmd:
-            stdout_logging_method("4000")  # Simulate the default pool size
-        return 0  # Simulate success
-
-    with patch('mwaa.entrypoint.run_command', new_callable=AsyncMock, side_effect=mock_run) as mock_cmd, \
-            patch('mwaa.entrypoint.get_statsd') as mock_statsd:
-        mock_stats = MagicMock()
-        mock_statsd.return_value = mock_stats
-
-        # Run the function
-        await increase_pool_size_if_insufficient(mock_environ)
-
-        # Ensure two commands were executed
-        assert len(called_commands) == 2, f"Expected 2 commands, got {len(called_commands)}: {called_commands}"
-
-        # Verify the first command retrieves the pool size
-        assert "airflow pools get default_pool" in called_commands[0], \
-            f"First command should be get pool, got: {called_commands[0]}"
-
-        # Verify the second command updates the pool size
-        assert "airflow pools set default_pool 10000" in called_commands[1], \
-            f"Second command should be set pool, got: {called_commands[1]}"
-
-        # Ensure the statsd increment function is called
-        mock_stats.incr.assert_called_once_with("mwaa.pool.increased_default_pool_size", 1)
 
 
 @pytest.mark.asyncio
