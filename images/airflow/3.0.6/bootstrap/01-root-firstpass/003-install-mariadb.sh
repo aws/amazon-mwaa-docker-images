@@ -56,8 +56,9 @@ echo "$MARIADB_RPM_COMMON_CHECKSUM /mariadb_rpm/$MARIADB_RPM_COMMON" | md5sum --
 echo "$MARIADB_RPM_SHARED_CHECKSUM /mariadb_rpm/$MARIADB_RPM_SHARED" | md5sum --check - | grep --basic-regex "^/mariadb_rpm/$MARIADB_RPM_SHARED: OK$"
 echo "$MARIADB_RPM_DEVEL_CHECKSUM /mariadb_rpm/$MARIADB_RPM_DEVEL" | md5sum --check - | grep --basic-regex "^/mariadb_rpm/$MARIADB_RPM_DEVEL: OK$"
 
-# Install the RPMs.
-rpm -ivh /mariadb_rpm/*
+# Install the RPMs with --nodeps to bypass glibc dependency checks.
+# Amazon Linux 2023 has compatible libraries but different package names.
+rpm -ivh --nodeps /mariadb_rpm/*
 
 rm -rf /mariadb_rpm
 

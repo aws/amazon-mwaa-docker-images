@@ -5,12 +5,10 @@ import re
 import pandas as pd
 from airflow.models import BaseOperator
 from airflow.providers.snowflake.hooks.snowflake import SnowflakeHook
-from airflow.utils.decorators import apply_defaults
 
 
 class SnowflakeJsonTableToRelational(BaseOperator):
 
-    @apply_defaults
     def __init__(
             self,
             snowflake_conn_id,

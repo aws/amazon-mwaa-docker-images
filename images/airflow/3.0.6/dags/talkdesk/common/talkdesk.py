@@ -52,7 +52,7 @@ def _set_talkdesk_api_auth_token() -> str:
         f"expires {auth_expires_at}."
     )
     Variable.set("talkdesk_api_auth_token", auth_token)
-    Variable.set("talkdesk_api_auth_expires_at", auth_expires_at)
+    Variable.set("talkdesk_api_auth_expires_at", auth_expires_at.isoformat())
     return auth_token
 
 

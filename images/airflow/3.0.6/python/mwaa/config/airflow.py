@@ -155,7 +155,9 @@ def _get_essential_airflow_api_auth_config() -> Dict[str, str]:
     :returns A dictionary containing the environment variables.
     """
     api_config: Dict[str, str] = {}
-    api_config["AIRFLOW__API_AUTH__JWT_SECRET"] = os.environ.get("MWAA__CORE__FERNET_KEY")
+    # KNOWN ISSUE: https://github.com/aws/amazon-mwaa-docker-images/issues/367#issuecomment-3551444664
+    # api_config["AIRFLOW__API_AUTH__JWT_SECRET"] = os.environ.get("MWAA__CORE__FERNET_KEY")
+    api_config["AIRFLOW__API_AUTH__JWT_ALGORITHM"] = "Kn6yf5HBodCQLnEuTugaMg=="
     api_config["AIRFLOW__API_AUTH__JWT_ALGORITHM"] = "HS256"
 
     return api_config
@@ -283,10 +285,20 @@ def _get_opinionated_airflow_secrets_config() -> Dict[str, str]:
 
     :returns A dictionary containing the environment variables.
     """
-    connection_lookup_pattern = {"connections_lookup_pattern": "^(?!aws_default$).*$"}
+    # Allow customizing the secret prefix via environment variable
+    connections_prefix = os.environ.get("MWAA__SECRETS__CONNECTIONS_PREFIX", "airflow/connections")
+    variables_prefix = os.environ.get("MWAA__SECRETS__VARIABLES_PREFIX", "airflow/variables")
+    
+    backend_kwargs = {
+        "connections_prefix": connections_prefix,
+        "variables_prefix": variables_prefix,
+        "connections_lookup_pattern": "^(?!aws_default$).*$",
+        "are_secret_values_urlencoded": False
+    }
     return {
-        "AIRFLOW__SECRETS__BACKEND_KWARGS": json.dumps(connection_lookup_pattern),
-        "AIRFLOW__WORKERS__SECRETS_BACKEND_KWARGS": json.dumps(connection_lookup_pattern),
+        "AIRFLOW__SECRETS__BACKEND": "airflow.providers.amazon.aws.secrets.secrets_manager.SecretsManagerBackend",
+        "AIRFLOW__SECRETS__BACKEND_KWARGS": json.dumps(backend_kwargs),
+        "AIRFLOW__WORKERS__SECRETS_BACKEND_KWARGS": json.dumps(backend_kwargs),
     }
 
 def _get_opinionated_airflow_usage_data_config() -> Dict[str, str]:

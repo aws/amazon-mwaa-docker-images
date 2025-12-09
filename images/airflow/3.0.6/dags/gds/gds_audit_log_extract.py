@@ -141,7 +141,6 @@ def get_application_audit_log(request_id: str) -> None:
         retries=3,
         retry_delay=duration(minutes=5),
         execution_timeout=duration(minutes=420),
-        provide_context=True,
         on_failure_callback=task_failure_slack_alert,
     ),
 )

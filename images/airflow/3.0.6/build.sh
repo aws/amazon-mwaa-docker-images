@@ -22,8 +22,22 @@ if [[ "$GENERATE_BILL_OF_MATERIALS" == "True" ]]; then
     rm -rf ${BOM_LOCAL_PATH} && mkdir ${BOM_LOCAL_PATH}
 fi
 
+# Detect the architecture and set BUILDARCH
+ARCH=$(uname -m)
+if [[ "$ARCH" == "x86_64" ]]; then
+    BUILDARCH="amd64"
+    PLATFORM="linux/amd64"
+elif [[ "$ARCH" == "arm64" ]] || [[ "$ARCH" == "aarch64" ]]; then
+    BUILDARCH="arm64"
+    PLATFORM="linux/arm64"
+else
+    echo "Unsupported architecture: $ARCH"
+    exit 1
+fi
+echo "Building for architecture: $BUILDARCH (platform: $PLATFORM)"
+
 # Build the base image.
-${CONTAINER_RUNTIME} build -f ./Dockerfiles/Dockerfile.base -t amazon-mwaa-docker-images/airflow:3.0.6-base ./
+${CONTAINER_RUNTIME} build --platform ${PLATFORM} -f ./Dockerfiles/Dockerfile.base -t amazon-mwaa-docker-images/airflow:3.0.6-base --build-arg BUILDARCH=${BUILDARCH} --progress=plain ./
 
 
 # Build the derivatives.
@@ -43,7 +57,7 @@ for dev in "True" "False"; do
         fi
 
         IMAGE_NAME="amazon-mwaa-docker-images/airflow:${tag_name}"
-        ${CONTAINER_RUNTIME} build -f "./Dockerfiles/${dockerfile_name}" -t "${IMAGE_NAME}" ./
+        ${CONTAINER_RUNTIME} build --platform ${PLATFORM} -f "./Dockerfiles/${dockerfile_name}" -t "${IMAGE_NAME}" --progress=plain ./
 
         # Now we copy the Bill of Materials from the Docker image into this
         # repository so it can be checked into source control for easy visibility.

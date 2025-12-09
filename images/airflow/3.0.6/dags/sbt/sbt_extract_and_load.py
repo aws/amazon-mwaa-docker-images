@@ -69,7 +69,7 @@ def _set_access_token() -> Tuple[str, DateTime]:
             access_token[:10], expires_at
         )
         Variable.set("sbt_access_token", access_token)
-        Variable.set("sbt_access_expires_at", expires_at)
+        Variable.set("sbt_access_expires_at", expires_at.isoformat())
     else:
         logger.error("HTTP %d %s", response.status_code, response.reason)
         raise ValueError("Unable to get SBT access token")

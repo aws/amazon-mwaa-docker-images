@@ -9,12 +9,10 @@ from airflow.exceptions import AirflowException
 from airflow.models import BaseOperator
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 from airflow.providers.snowflake.hooks.snowflake import SnowflakeHook
-from airflow.utils.decorators import apply_defaults
 
 
 class QueryToS3Operator(BaseOperator):
 
-    @apply_defaults
     def __init__(
             self,
             s3_conn_id,
