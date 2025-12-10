@@ -1,5 +1,9 @@
 #!/bin/bash
 set -e
 
+# Install sudo if needed
 dnf install -y sudo
-echo 'airflow ALL=(ALL)NOPASSWD:ALL' | sudo EDITOR='tee -a' visudo
+
+# Add airflow user to sudoers with no password requirement
+echo 'airflow ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers.d/airflow
+chmod 440 /etc/sudoers.d/airflow

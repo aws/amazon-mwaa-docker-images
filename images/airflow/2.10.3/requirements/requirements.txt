@@ -1,1 +1,12 @@
-# Add your requirements here
+--constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.10.3/constraints-3.11.txt"
+
+snowflake-connector-python==3.12.3
+snowflake-sqlalchemy==1.6.1
+apache-airflow-providers-snowflake==5.8.0
+apache-airflow-providers-datadog==3.7.1
+apache-airflow-providers-airbyte==4.0.0
+apache-airflow-providers-mysql==5.7.3
+apache-airflow-providers-ssh==3.14.0
+sshtunnel==0.4.0
+psycopg2-binary==2.9.10
+boto3==1.35.36
