@@ -10,4 +10,16 @@ if [ "$CONNECT_TO_RDS_PROXY" = "true" ]; then
 else
   echo "Skipping RDS proxy connection (CONNECT_TO_RDS_PROXY=${CONNECT_TO_RDS_PROXY:-false})."
 fi
-airflow dags pause --treat-dag-id-as-regex '.*' -y
+
+# --- ADD THIS SECTION TO IMPORT CONNECTIONS ---
+CONNECTIONS_FILE="/usr/local/airflow/files/connections.json"
+echo "Attempting to import connections from: ${CONNECTIONS_FILE}"
+if [ -f "${CONNECTIONS_FILE}" ]; then
+  # The 'airflow connections import' command reads the JSON and inserts/updates connections in the DB
+  airflow connections import "${CONNECTIONS_FILE}"
+  echo "Successfully imported connections."
+else
+  echo "Warning: Connections file not found at ${CONNECTIONS_FILE}. Skipping import."
+fi
+
+airflow dags pause --treat-dag

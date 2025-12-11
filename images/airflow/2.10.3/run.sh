@@ -1,6 +1,21 @@
 #!/bin/bash
 set -e
 
+# Sync DAGs before running docker compose
+SOURCE_DAGS="../../../../dart/airflow/dags"
+TARGET_DAGS="./dags"
+
+echo "Checking for DAG folder at: $SOURCE_DAGS"
+
+if [ -d "$SOURCE_DAGS" ]; then
+    echo "Syncing DAGs from $SOURCE_DAGS → $TARGET_DAGS ..."
+    mkdir -p "$TARGET_DAGS"
+    cp -r "$SOURCE_DAGS"/* "$TARGET_DAGS"/
+    echo "DAG sync completed."
+else
+    echo "No DAG folder found at $SOURCE_DAGS — skipping DAG sync."
+fi
+
 COMMAND=$1
 
 # Check if 'podman' or 'finch' is available, otherwise use 'docker'
@@ -51,9 +66,9 @@ ENV_NAME="" # Choose an environment name here.
 REGION="us-west-2" # Keeping the region us-west-2 as default.
 
 # AWS Credentials
-AWS_ACCESS_KEY_ID="" # Put your credentials here.
-AWS_SECRET_ACCESS_KEY="" # Put your credentials here.
-AWS_SESSION_TOKEN="" # Put your credentials here.
+AWS_ACCESS_KEY_ID="test" # Put your credentials here.
+AWS_SECRET_ACCESS_KEY="test" # Put your credentials here.
+AWS_SESSION_TOKEN="test" # Put your credentials here.
 export AWS_ACCESS_KEY_ID
 export AWS_SECRET_ACCESS_KEY
 export AWS_SESSION_TOKEN
@@ -109,7 +124,6 @@ export MWAA__LOGGING__AIRFLOW_WORKER_LOG_LEVEL
 export MWAA__CORE__TASK_MONITORING_ENABLED
 export MWAA__CORE__TERMINATE_IF_IDLE
 export MWAA__CORE__MWAA_SIGNAL_HANDLING_ENABLED
-
 # Function to create CloudWatch log group if it doesn't exist
 create_log_group_if_not_exists() {
     local component=$1
@@ -150,5 +164,9 @@ create_log_group_if_not_exists "Worker" "$MWAA__LOGGING__AIRFLOW_WORKER_LOGS_ENA
 if [ "$COMMAND" == "test-requirements" ] || [ "$COMMAND" == "test-startup-script" ]; then
     $CONTAINER_RUNTIME compose -f docker-compose-test-commands.yaml up "$COMMAND" --abort-on-container-exit
 else
+  if [ "$COMMAND" == "--CONNECT_TO_RDS_PROXY" ]; then
+    CONNECT_TO_RDS_PROXY=true $CONTAINER_RUNTIME compose up
+  else
     $CONTAINER_RUNTIME compose up
+  fi
 fi

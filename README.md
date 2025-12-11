@@ -33,7 +33,7 @@ python3 create_venvs.py --target <development | production>
    with the provided credentials will be assigned to the Airflow components that would be started with the next step. 
    So, if you receive any error message indicating lack of permissions, then try providing the permissions to the 
    identity whose credentials were used.
-   - `./run.sh` This will build and run all the necessary containers and automatically create the following CloudWatch log groups:
+   - `./run.sh` This will sync dags with dags in dart repository and build and run all the necessary containers and automatically create the following CloudWatch log groups:
      - `{ENV_NAME}-DAGProcessing`
      - `{ENV_NAME}-Scheduler`
      - `{ENV_NAME}-Worker`
@@ -41,7 +41,7 @@ python3 create_venvs.py --target <development | production>
      - `{ENV_NAME}-WebServer`
 
 Airflow should be up and running now. You can access the web server on your localhost on port 8080.
-
+Dart reporsitory should be in same directory as amazon-mwaa-docker-images
 ### Authentication from version 3.0.1 onward
 For environments created using this repository starting with version 3.0.1, we default to using `SimpleAuthManager`, 
 which is also the default auth manager in Airflow 3.0.0+. By default, `SIMPLE_AUTH_MANAGER_ALL_ADMINS` is set to true, 

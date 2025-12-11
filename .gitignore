@@ -18,7 +18,6 @@ build
 # Ignore dev requirements files.
 images/airflow/2.*/requirements-dev.txt
 images/airflow/3.*/requirements-dev.txt
-
 # Coverage files
 .coverage
 coverage.xml
