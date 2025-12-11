@@ -169,7 +169,7 @@ def test_log_handler_creation(mock_boto3_client, mock_watchtower, mock_fluent, u
         import mwaa.logging.cloudwatch_handlers
         importlib.reload(mwaa.logging.cloudwatch_handlers)
 
-        handler = BaseLogHandler('arn:aws:logs:us-west-2:123456789012:log-group:test', None, True)
+        handler = BaseLogHandler('arn:aws:logs:us-east-1:123456789012:log-group:test', None, True)
         handler.create_cloudwatch_handler('test_stream', 'test_source')
 
         assert handler.handler is not None, "No handler was created"
@@ -203,7 +203,7 @@ def test_task_log_handler_with_fluent(mock_boto3_client, mock_fluent):
         import mwaa.logging.cloudwatch_handlers
         importlib.reload(mwaa.logging.cloudwatch_handlers)
 
-        handler = TaskLogHandler('', 'arn:aws:logs:us-west-2:123456789012:log-group:test', None, True)
+        handler = TaskLogHandler('', 'arn:aws:logs:us-east-1:123456789012:log-group:test', None, True)
 
         ti = MagicMock(spec=TaskInstance)
         ti.try_number = 1
@@ -229,7 +229,7 @@ def test_subprocess_log_handler_with_fluent(mock_boto3_client, mock_fluent):
         importlib.reload(mwaa.logging.cloudwatch_handlers)
 
         handler = SubprocessLogHandler(
-            'arn:aws:logs:us-west-2:123456789012:log-group:test',
+            'arn:aws:logs:us-east-1:123456789012:log-group:test',
             None,
             'test_prefix',
             'test_source',
@@ -252,7 +252,7 @@ def test_dag_processor_manager_log_handler(mock_boto3_client, mock_fluent, mock_
         importlib.reload(mwaa.logging.cloudwatch_handlers)
 
         handler = DagProcessorManagerLogHandler(
-            'arn:aws:logs:us-west-2:123456789012:log-group:test',
+            'arn:aws:logs:us-east-1:123456789012:log-group:test',
             None,
             'test_stream',
             True
@@ -273,7 +273,7 @@ def test_dag_processing_log_handler(mock_boto3_client, mock_fluent, mock_watchto
         importlib.reload(mwaa.logging.cloudwatch_handlers)
 
         handler = DagProcessingLogHandler(
-            'arn:aws:logs:us-west-2:123456789012:log-group:test',
+            'arn:aws:logs:us-east-1:123456789012:log-group:test',
             None,
             'test_stream_template',
             True

@@ -19,7 +19,7 @@ celery[sqs]
 diff-cover
 fluent-logger
 jinja2
-psycopg2
+psycopg2-binary
 pycurl
 pydocstyle
 pyright

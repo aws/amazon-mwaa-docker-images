@@ -9,8 +9,8 @@ x-airflow-common: &airflow-common
     AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
     AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
     AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN}
-    AWS_REGION: "us-west-2"
-    AWS_DEFAULT_REGION: "us-west-2"
+    AWS_REGION: "us-east-1"
+    AWS_DEFAULT_REGION: "us-east-1"
 
     # > MWAA Configurations
     # >> Core Configuration
@@ -62,6 +62,13 @@ x-airflow-common: &airflow-common
     MWAA__CORE__MWAA_SIGNAL_HANDLING_ENABLED: ${MWAA__CORE__MWAA_SIGNAL_HANDLING_ENABLED}
     MWAA__HEALTH_MONITORING_ENABLE_REVAMPED_HEALTHCHECK: ${MWAA__HEALTH_MONITORING_ENABLE_REVAMPED_HEALTHCHECK}
     MWAA__CORE__API_SERVER_URL: ${MWAA__CORE__API_SERVER_URL:-http://webserver:8080}
+    # Airflow Variables
+    AIRFLOW_VAR_ENVIRONMENT_FLAG: ${AIRFLOW_VAR_ENVIRONMENT_FLAG:-staging}
+
+    # >> Secrets configuration
+    MWAA__SECRETS__CONNECTIONS_PREFIX: "nonprod/airflow/connections"
+    MWAA__SECRETS__VARIABLES_PREFIX: "nonprod/airflow/variables"
+
 
   volumes:
     - ./dags:/usr/local/airflow/dags

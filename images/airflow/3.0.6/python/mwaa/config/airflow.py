@@ -156,8 +156,7 @@ def _get_essential_airflow_api_auth_config() -> Dict[str, str]:
     """
     api_config: Dict[str, str] = {}
     # KNOWN ISSUE: https://github.com/aws/amazon-mwaa-docker-images/issues/367#issuecomment-3551444664
-    # api_config["AIRFLOW__API_AUTH__JWT_SECRET"] = os.environ.get("MWAA__CORE__FERNET_KEY")
-    api_config["AIRFLOW__API_AUTH__JWT_ALGORITHM"] = "Kn6yf5HBodCQLnEuTugaMg=="
+    api_config["AIRFLOW__API_AUTH__JWT_SECRET"] = os.environ.get("MWAA__CORE__FERNET_KEY")
     api_config["AIRFLOW__API_AUTH__JWT_ALGORITHM"] = "HS256"
 
     return api_config

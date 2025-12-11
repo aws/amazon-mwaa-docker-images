@@ -218,9 +218,17 @@ def create_queue() -> None:
             e.response.get("Error", {}).get("Message")  # type: ignore
             == "The specified queue does not exist."
         ):
-            response = sqs.create_queue(QueueName=queue_name)  # type: ignore
-            queue_url = response["QueueUrl"]  # type: ignore
-            logger.info(f"Queue created: {queue_url}")
+            try:
+                response = sqs.create_queue(QueueName=queue_name)  # type: ignore
+                queue_url = response["QueueUrl"]  # type: ignore
+                logger.info(f"Queue created: {queue_url}")
+            except ClientError as create_error:
+                # Handle race condition where another container created the queue
+                # between our check and creation attempt (409 Conflict)
+                if create_error.response.get("ResponseMetadata", {}).get("HTTPStatusCode") == 409:  # type: ignore
+                    logger.info(f"Queue {queue_name} was created by another process.")
+                else:
+                    raise create_error
         else:
             # If there is a different error, raise it
             raise e

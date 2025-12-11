@@ -1,129 +1,129 @@
-name: Update Bill of Materials
+# name: Update Bill of Materials
 
-on:
-  schedule:
-    - cron: '0 2 * * 1' # Runs at 2:00 AM UTC every Monday
-  workflow_dispatch:
-    inputs:
-      airflow_versions:
-        description: 'Comma-separated list of Airflow versions to update (leave empty for all)'
-        required: false
-        default: ''
+# on:
+#   schedule:
+#     - cron: '0 2 * * 1' # Runs at 2:00 AM UTC every Monday
+#   workflow_dispatch:
+#     inputs:
+#       airflow_versions:
+#         description: 'Comma-separated list of Airflow versions to update (leave empty for all)'
+#         required: false
+#         default: ''
 
-jobs:
-  update-bom:
-    name: Update Bill of Materials Job
-    runs-on: ubuntu-latest
+# jobs:
+#   update-bom:
+#     name: Update Bill of Materials Job
+#     runs-on: ubuntu-latest
 
-    container:
-      image: public.ecr.aws/amazonlinux/amazonlinux:2023
+#     container:
+#       image: public.ecr.aws/amazonlinux/amazonlinux:2023
 
-    steps:
-      - name: Install required packages
-        run: |
-          dnf update -y
-          dnf install -y \
-            gcc \
-            git \
-            gzip \
-            libcurl-devel \
-            postgresql-devel \
-            python3.11 \
-            python3.11-devel \
-            tar \
-            wget \
-            xz \
-            docker
+#     steps:
+#       - name: Install required packages
+#         run: |
+#           dnf update -y
+#           dnf install -y \
+#             gcc \
+#             git \
+#             gzip \
+#             libcurl-devel \
+#             postgresql-devel \
+#             python3.11 \
+#             python3.11-devel \
+#             tar \
+#             wget \
+#             xz \
+#             docker
 
-      - name: Check out code
-        uses: actions/checkout@v4
-        with:
-          persist-credentials: true
-          fetch-depth: 0
+#       - name: Check out code
+#         uses: actions/checkout@v4
+#         with:
+#           persist-credentials: true
+#           fetch-depth: 0
 
-      - name: Configure Git
-        run: |
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          git config --global user.email "action@github.com"
-          git config --global user.name "GitHub Action"
+#       - name: Configure Git
+#         run: |
+#           git config --global --add safe.directory "$GITHUB_WORKSPACE"
+#           git config --global user.email "action@github.com"
+#           git config --global user.name "GitHub Action"
 
-      - name: Create the necessary Python virtual environments
-        run: python3.11 ./create_venvs.py --target production
+#       - name: Create the necessary Python virtual environments
+#         run: python3.11 ./create_venvs.py --target production
 
-      - name: Start Docker service
-        run: |
-          dockerd &
-          sleep 10
-          docker info
+#       - name: Start Docker service
+#         run: |
+#           dockerd &
+#           sleep 10
+#           docker info
 
-      - name: Determine Airflow versions to update
-        id: determine-versions
-        run: |
-          if [ -n "${{ github.event.inputs.airflow_versions }}" ]; then
-            echo "airflow_versions=${{ github.event.inputs.airflow_versions }}" >> "$GITHUB_OUTPUT"
-          else
-            VERSIONS=$(ls -d images/airflow/[0-9]* | sed 's|images/airflow/||' | tr '\n' ',' | sed 's/,$//')
-            echo "airflow_versions=${VERSIONS}" >> "$GITHUB_OUTPUT"
-          fi
+#       - name: Determine Airflow versions to update
+#         id: determine-versions
+#         run: |
+#           if [ -n "${{ github.event.inputs.airflow_versions }}" ]; then
+#             echo "airflow_versions=${{ github.event.inputs.airflow_versions }}" >> "$GITHUB_OUTPUT"
+#           else
+#             VERSIONS=$(ls -d images/airflow/[0-9]* | sed 's|images/airflow/||' | tr '\n' ',' | sed 's/,$//')
+#             echo "airflow_versions=${VERSIONS}" >> "$GITHUB_OUTPUT"
+#           fi
 
-      - name: Clean up old automated/bom-update branches and create new one
-        id: create-branch
-        run: |
-          git fetch --all --prune
-          for branch in $(git branch -r | grep 'origin/automated/bom-update-' | sed 's|origin/||'); do
-            echo "🧹 Deleting remote branch: $branch"
-            git push origin --delete "$branch" || true
-          done
+#       - name: Clean up old automated/bom-update branches and create new one
+#         id: create-branch
+#         run: |
+#           git fetch --all --prune
+#           for branch in $(git branch -r | grep 'origin/automated/bom-update-' | sed 's|origin/||'); do
+#             echo "🧹 Deleting remote branch: $branch"
+#             git push origin --delete "$branch" || true
+#           done
       
-          BRANCH_NAME="automated/bom-update-$(date +%Y-%m-%d)"
-          echo "branch_name=$BRANCH_NAME" >> "$GITHUB_OUTPUT"
-          git checkout -B "$BRANCH_NAME"
+#           BRANCH_NAME="automated/bom-update-$(date +%Y-%m-%d)"
+#           echo "branch_name=$BRANCH_NAME" >> "$GITHUB_OUTPUT"
+#           git checkout -B "$BRANCH_NAME"
 
-      - name: Build Docker images with BOM generation
-        env:
-          GENERATE_BILL_OF_MATERIALS: "True"
-        run: |
-          IFS=',' read -ra VERSIONS <<< "${{ steps.determine-versions.outputs.airflow_versions }}"
-          for version in "${VERSIONS[@]}"; do
-            echo "Building Docker images for Airflow version $version"
-            cd images/airflow/$version
-            chmod +x ./build.sh
-            ./build.sh docker
-            cd ../../../
-          done
+#       - name: Build Docker images with BOM generation
+#         env:
+#           GENERATE_BILL_OF_MATERIALS: "True"
+#         run: |
+#           IFS=',' read -ra VERSIONS <<< "${{ steps.determine-versions.outputs.airflow_versions }}"
+#           for version in "${VERSIONS[@]}"; do
+#             echo "Building Docker images for Airflow version $version"
+#             cd images/airflow/$version
+#             chmod +x ./build.sh
+#             ./build.sh docker
+#             cd ../../../
+#           done
 
-      - name: Commit BOM updates
-        run: |
-          IFS=',' read -ra VERSIONS <<< "${{ steps.determine-versions.outputs.airflow_versions }}"
-          for version in "${VERSIONS[@]}"; do
-            git add images/airflow/$version/BillOfMaterials/* || echo "No changes to BOM for $version"
-          done
+#       - name: Commit BOM updates
+#         run: |
+#           IFS=',' read -ra VERSIONS <<< "${{ steps.determine-versions.outputs.airflow_versions }}"
+#           for version in "${VERSIONS[@]}"; do
+#             git add images/airflow/$version/BillOfMaterials/* || echo "No changes to BOM for $version"
+#           done
           
-          if git diff --staged --quiet; then
-            echo "No changes to commit"
-          else
-            git commit -m "Update Bill of Materials for Airflow $(date +%Y-%m-%d)"
-          fi
+#           if git diff --staged --quiet; then
+#             echo "No changes to commit"
+#           else
+#             git commit -m "Update Bill of Materials for Airflow $(date +%Y-%m-%d)"
+#           fi
 
-      - name: Push changes
-        run: |
-          BRANCH="${{ steps.create-branch.outputs.branch_name }}"
-          git push origin "$BRANCH"
+#       - name: Push changes
+#         run: |
+#           BRANCH="${{ steps.create-branch.outputs.branch_name }}"
+#           git push origin "$BRANCH"
 
-      - name: Install GitHub CLI
-        run: |
-          dnf install -y gh || (
-            echo "dnf install failed, installing from GitHub releases..."
-            curl -fsSL https://github.com/cli/cli/releases/download/v2.43.1/gh_2.43.1_linux_amd64.rpm -o gh.rpm
-            rpm -i gh.rpm
-          )
+#       - name: Install GitHub CLI
+#         run: |
+#           dnf install -y gh || (
+#             echo "dnf install failed, installing from GitHub releases..."
+#             curl -fsSL https://github.com/cli/cli/releases/download/v2.43.1/gh_2.43.1_linux_amd64.rpm -o gh.rpm
+#             rpm -i gh.rpm
+#           )
 
-      - name: Create Pull Request
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          VERSIONS="${{ steps.determine-versions.outputs.airflow_versions }}"
-          gh pr create \
-            --title "Update Bill of Materials ($(date +%Y-%m-%d))" \
-            --body "$(echo -e "This is an automated PR to update the Bill of Materials for Airflow images.\n\nThis PR was automatically generated by a GitHub Action workflow to keep dependency records up to date while keeping regular development PRs clean.\n\nUpdated versions: $VERSIONS")" \
-            --base main
+#       - name: Create Pull Request
+#         env:
+#           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#         run: |
+#           VERSIONS="${{ steps.determine-versions.outputs.airflow_versions }}"
+#           gh pr create \
+#             --title "Update Bill of Materials ($(date +%Y-%m-%d))" \
+#             --body "$(echo -e "This is an automated PR to update the Bill of Materials for Airflow images.\n\nThis PR was automatically generated by a GitHub Action workflow to keep dependency records up to date while keeping regular development PRs clean.\n\nUpdated versions: $VERSIONS")" \
+#             --base main

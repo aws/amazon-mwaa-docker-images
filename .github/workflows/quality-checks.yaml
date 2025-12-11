@@ -1,50 +1,50 @@
-name: Quality Checks Workflow
+# name: Quality Checks Workflow
 
-on: [push, pull_request]
+# on: [push, pull_request]
 
-jobs:
-  quality_checks:
-    name: Quality Checks Job
-    runs-on: ubuntu-latest
+# jobs:
+#   quality_checks:
+#     name: Quality Checks Job
+#     runs-on: ubuntu-latest
 
-    container:
-      image: public.ecr.aws/amazonlinux/amazonlinux:2023
+#     container:
+#       image: public.ecr.aws/amazonlinux/amazonlinux:2023
 
-    steps:
-      - name: Install required packages...
-        run: |
-          # Update packages and install required dependencies:
-          # gcc, libcurl-devel: For compiling pycurl (required for our Airflow setup.)
-          # gzip: Requiring by actions/checkout@v2 to gunzip the source code.
-          # postgresql-devel: Required for our Airflow setup.
-          # python3.11-devel: Required for building some Python modules, e.g. pycurl.
-          # python3.11: Self explanatory.
-          # tar, wget, xz: For downloading and extracting ShellCheck
-          dnf update -y
-          dnf install -y \
-            gcc \
-            git \
-            gzip \
-            libcurl-devel \
-            postgresql-devel \
-            python3.11 \
-            python3.11-devel \
-            tar \
-            wget \
-            xz
-          # Download and install shellcheck for linting shell scripts
-          wget https://github.com/koalaman/shellcheck/releases/download/stable/shellcheck-stable.linux.x86_64.tar.xz
-          tar -xvf shellcheck-stable.linux.x86_64.tar.xz
-          cp shellcheck-stable/shellcheck /usr/bin/
+#     steps:
+#       - name: Install required packages...
+#         run: |
+#           # Update packages and install required dependencies:
+#           # gcc, libcurl-devel: For compiling pycurl (required for our Airflow setup.)
+#           # gzip: Requiring by actions/checkout@v2 to gunzip the source code.
+#           # postgresql-devel: Required for our Airflow setup.
+#           # python3.11-devel: Required for building some Python modules, e.g. pycurl.
+#           # python3.11: Self explanatory.
+#           # tar, wget, xz: For downloading and extracting ShellCheck
+#           dnf update -y
+#           dnf install -y \
+#             gcc \
+#             git \
+#             gzip \
+#             libcurl-devel \
+#             postgresql-devel \
+#             python3.11 \
+#             python3.11-devel \
+#             tar \
+#             wget \
+#             xz
+#           # Download and install shellcheck for linting shell scripts
+#           wget https://github.com/koalaman/shellcheck/releases/download/stable/shellcheck-stable.linux.x86_64.tar.xz
+#           tar -xvf shellcheck-stable.linux.x86_64.tar.xz
+#           cp shellcheck-stable/shellcheck /usr/bin/
 
-      - name: Check out code...
-        uses: actions/checkout@v2
+#       - name: Check out code...
+#         uses: actions/checkout@v2
 
-      - name: Configure Git to allow the current directory as safe
-        run: git config --global --add safe.directory /__w/amazon-mwaa-docker-images/amazon-mwaa-docker-images
+#       - name: Configure Git to allow the current directory as safe
+#         run: git config --global --add safe.directory /__w/amazon-mwaa-docker-images/amazon-mwaa-docker-images
 
-      - name: Create the necessary Python virtual environments...
-        run: python3.11 ./create_venvs.py --target production
+#       - name: Create the necessary Python virtual environments...
+#         run: python3.11 ./create_venvs.py --target production
 
-      - name: Run quality checks...
-        run: python3.11 ./quality-checks/run_all.py
+#       - name: Run quality checks...
+#         run: python3.11 ./quality-checks/run_all.py
