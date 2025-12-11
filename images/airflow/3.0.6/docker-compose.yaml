@@ -2,7 +2,6 @@ version: "3.8"
 
 x-airflow-common: &airflow-common
   image: amazon-mwaa-docker-images/airflow:3.0.6-dev
-  platform: linux/arm64
   restart: always
   init: true
   environment:
@@ -10,8 +9,8 @@ x-airflow-common: &airflow-common
     AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
     AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
     AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN}
-    AWS_REGION: "us-east-1"
-    AWS_DEFAULT_REGION: "us-east-1"
+    AWS_REGION: "us-west-2"
+    AWS_DEFAULT_REGION: "us-west-2"
 
     # > MWAA Configurations
     # >> Core Configuration
@@ -23,7 +22,7 @@ x-airflow-common: &airflow-common
     MWAA__CORE__STARTUP_SCRIPT_PATH: ${MWAA__CORE__STARTUP_SCRIPT_PATH}
     # Additional Airflow configuration can be passed here in JSON form.
     MWAA__CORE__CUSTOM_AIRFLOW_CONFIGS: "{}"
-    MWAA__CORE__FERNET_KEY: ${FERNET_KEY}
+    MWAA__CORE__FERNET_KEY: ${FERNET_KEY:-FwlXQ2jSNVCgxuEUMcapKeK3dyDFL0CchqpTjmtjyzs=}
     MWAA__WEBSERVER__SECRET: '{"secret_key": "fake-key-aYDdF6d+Fjznai5yBW63CUAi0IipJqDHlNSWIun6y8o="}'
     # Use this enviornment variable to enable encryption with KMS.
     MWAA__CORE__KMS_KEY_ARN: ${MWAA__CORE__KMS_KEY_ARN}
@@ -62,10 +61,7 @@ x-airflow-common: &airflow-common
     MWAA__CORE__TERMINATE_IF_IDLE: ${MWAA__CORE__TERMINATE_IF_IDLE}
     MWAA__CORE__MWAA_SIGNAL_HANDLING_ENABLED: ${MWAA__CORE__MWAA_SIGNAL_HANDLING_ENABLED}
     MWAA__HEALTH_MONITORING_ENABLE_REVAMPED_HEALTHCHECK: ${MWAA__HEALTH_MONITORING_ENABLE_REVAMPED_HEALTHCHECK}
-    MWAA__CORE__API_SERVER_URL: ${MWAA__CORE__API_SERVER_URL}
-    # >> Secrets configuration
-    MWAA__SECRETS__CONNECTIONS_PREFIX: "nonprod/airflow/connections"
-    MWAA__SECRETS__VARIABLES_PREFIX: "nonprod/airflow/variables"
+    MWAA__CORE__API_SERVER_URL: ${MWAA__CORE__API_SERVER_URL:-http://webserver:8080}
 
   volumes:
     - ./dags:/usr/local/airflow/dags
@@ -82,7 +78,6 @@ x-airflow-common: &airflow-common
 services:
   postgres:
     image: postgres:13
-    platform: linux/arm64
     container_name: mwaa-306-db
     environment:
       POSTGRES_USER: airflow
