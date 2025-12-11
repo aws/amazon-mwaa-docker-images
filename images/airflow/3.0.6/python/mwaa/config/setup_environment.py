@@ -271,11 +271,21 @@ def setup_environment_variables(command: str, executor_type: str) -> Dict:
         **mwaa_essential_airflow_environ,
     }
 
+    # Filter out empty strings to avoid overwriting defaults or causing configuration errors.
+    # This is critical because Docker Compose sets unset environment variables to empty strings,
+    # which can break Airflow's logging configuration.
+    environ = {k: v for k, v in environ.items() if v}
+
     # IMPORTANT NOTE: The level for this should stay "DEBUG" to avoid logging customer
     # custom environment variables, which potentially contains sensitive credentials,
     # to stdout which, in this case of Fargate hosting (like in Amazon MWAA), ends up
     # being captured and sent to the service hosting.
     logger.debug(f"Environment variables: %s", environ)
+
+    # Update os.environ with the essential environment variables so that child processes
+    # spawned by Airflow (e.g., via multiprocessing) will inherit them.
+    # This is critical for Airflow 3.x where the api-server spawns worker processes.
+    os.environ.update(environ)
 
     # Export the environment variables to .bashrc and .bash_profile to enable
     # users to run a shell on the container and have the necessary environment

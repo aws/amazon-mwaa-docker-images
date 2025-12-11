@@ -9,8 +9,8 @@ x-airflow-common: &airflow-common
     AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
     AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
     AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN}
-    AWS_REGION: "us-west-2"
-    AWS_DEFAULT_REGION: "us-west-2"
+    AWS_REGION: "us-east-1"
+    AWS_DEFAULT_REGION: "us-east-1"
 
     # > MWAA Configurations
     # >> Core Configuration
@@ -22,7 +22,7 @@ x-airflow-common: &airflow-common
     MWAA__CORE__STARTUP_SCRIPT_PATH: ${MWAA__CORE__STARTUP_SCRIPT_PATH}
     # Additional Airflow configuration can be passed here in JSON form.
     MWAA__CORE__CUSTOM_AIRFLOW_CONFIGS: "{}"
-    MWAA__CORE__FERNET_KEY: ${FERNET_KEY}
+    MWAA__CORE__FERNET_KEY: ${FERNET_KEY:-FwlXQ2jSNVCgxuEUMcapKeK3dyDFL0CchqpTjmtjyzs=}
     MWAA__WEBSERVER__SECRET: '{"secret_key": "fake-key-aYDdF6d+Fjznai5yBW63CUAi0IipJqDHlNSWIun6y8o="}'
     # Use this enviornment variable to enable encryption with KMS.
     MWAA__CORE__KMS_KEY_ARN: ${MWAA__CORE__KMS_KEY_ARN}

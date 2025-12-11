@@ -1,0 +1,37 @@
+applications:
+  - name: STUCK_IN_INITIAL_TIL_SUBMIT
+    cron_schedule: "12 * * * 1-5"
+    enabled: true
+    job:
+      - view_name: STUCK_IN_INITIAL_TIL_SUBMIT
+        channel: alerts-apps-prod
+        title: Loans stuck in INITIAL_TIL_SUBMIT status
+        send_on_zero_results: false
+
+  - name: MISSING_REQUEST_ID
+    cron_schedule: "13 7-18 * * 1-5"
+    enabled: true
+    job:
+      - view_name: MISSING_REQUEST_ID
+        channel: alerts-apps-prod
+        title: Loan objects missing GDS Request ID
+        send_on_zero_results: false
+
+  - name: MULTIPLE_OPEN_APPLICATIONS_FOR_SAME_CODE
+    cron_schedule: "9 8-17 * * 1-5"
+    enabled: true
+    job:
+      - view_name: MULTIPLE_OPEN_APPLICATIONS_FOR_SAME_CODE
+        channel: alerts-apps-prod
+        title: Multiple Open AGL Applications for single Offer Code
+        send_on_zero_results: false
+
+  - name: MISSING_BORROWER_ADDITIONAL_INFO
+    cron_schedule: "10 8,10,12,14,16 * * 1-5"
+    enabled: true
+    job:
+      - view_name: MISSING_BORROWER_ADDITIONAL_INFO
+        channel: alerts-apps-prod
+        title: Loan Records Missing Borrower Additional Info Records
+        send_on_zero_results: false
+

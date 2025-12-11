@@ -1,0 +1,4 @@
+{
+  "table_name": "CALLS",
+  "s3_key_filter": ".*/calls.*"
+}

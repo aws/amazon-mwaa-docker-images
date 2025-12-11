@@ -48,7 +48,7 @@ export FERNET_KEY
 
 ACCOUNT_ID="" # Put your account ID here.
 ENV_NAME="" # Choose an environment name here.
-REGION="us-west-2" # Keeping the region us-west-2 as default.
+REGION="us-east-1" # Keeping the region us-east-1 as default.
 
 # AWS Credentials
 AWS_ACCESS_KEY_ID="" # Put your credentials here.

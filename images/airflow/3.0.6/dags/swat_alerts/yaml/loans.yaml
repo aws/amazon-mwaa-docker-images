@@ -1,0 +1,92 @@
+loans:
+  - name: LOAN_INVESTOR_CHANGE
+    cron_schedule: "0 7,12 * * *"
+    enabled: true
+    job:
+      - view_name: LOAN_INVESTOR_CHANGE
+        channel: logs-payments
+        title: "Loans with an Investor Change"
+        send_on_zero_results: false
+
+  - name: LOANPRO_STUCK_IN_TEMP
+    cron_schedule: "10 12 * * *"
+    enabled: true
+    job:
+      - view_name: LOANPRO_STUCK_IN_TEMP
+        channel: alerts-apps-prod
+        title: Onboarded LoanPro Loan Stuck in Temporary Status Alert
+        send_on_zero_results: false
+
+  - name: NEW_DOC_TEMPLATE_PROD
+    cron_schedule: "51 * * * *"
+    enabled: true
+    job:
+      - view_name: NEW_DOC_TEMPLATE_PROD
+        channel: alerts-apps-prod
+        title: New Doc Template for Production
+        send_on_zero_results: false
+
+  - name: MISSING_DTI
+    cron_schedule: "2 10 * * *"
+    enabled: true
+    job:
+      - view_name: MISSING_DTI
+        channel: alerts-apps-prod
+        title: Recently Onboarded Loan Missing DTI Value Alert - DTI is needed for correct allocation!
+        send_on_zero_results: false
+
+  - name: PAYMENTS_ON_SOLD_LOANS
+    cron_schedule: "31 7 * * 1"
+    enabled: true
+    job:
+      - view_name: PAYMENTS_ON_SOLD_LOANS
+        channel: alerts-capital-markets
+        title: Sold Loans Received Payments - processed payments for loans no longer serviced by Above
+        send_on_zero_results: true
+
+  - name: RETURNS_ON_SOLD_LOAN_PAYMENTS
+    cron_schedule: "32 7 * * 1"
+    enabled: true
+    job:
+      - view_name: RETURNS_ON_SOLD_LOAN_PAYMENTS
+        channel: alerts-capital-markets
+        title: Payments Returned on Sold Loans - return came in for loan no longer serviced by Above
+        send_on_zero_results: true
+
+  - name: MAX_INTEREST_NOT_SET
+    cron_schedule: "33 7 * * 1"
+    enabled: true
+    job:
+      - view_name: MAX_INTEREST_NOT_SET
+        channel: alerts-special-handling
+        title: LoanPro Loans created without Max Interest Amount value
+        send_on_zero_results: false
+
+  - name: LOANPRO_ONBOARDING_FAILURES
+    cron_schedule: "8 8 * * 1-5"
+    enabled: true
+    job:
+      - view_name: LOANPRO_ONBOARDING_FAILURES
+        channel: alerts-special-handling
+        title: "LoanPro Onboarding Failure"
+        send_on_zero_results: false
+
+  - name: INVESTORS_BORROWING_ARCHIVE_CHECK 
+    cron_schedule: "0,15,30,45 * * * *"
+    enabled: true
+    job:
+      - view_name: CRITERIA_INVESTORS_BORROWING_ARCHIVE_LOAD
+        channel: mute
+        title: "CRITERIA_INVESTORS_BORROWING_ARCHIVE_LOAD"
+        send_on_zero_results: false
+
+      - view_name: ALERT_INVESTORS_BORROWING_ARCHIVE_LOAD
+        channel: alerts-data-bi
+        title: "ALERT_INVESTORS_BORROWING_ARCHIVE_LOAD"
+        send_on_zero_results: false
+
+      - view_name: LOG_INVESTORS_BORROWING_ARCHIVE_LOAD
+        channel: logs-data-bi
+        title: "LOG_INVESTORS_BORROWING_ARCHIVE_LOAD"
+        send_on_zero_results: false
+
