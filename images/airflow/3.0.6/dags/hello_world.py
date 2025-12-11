@@ -1,11 +1,14 @@
 """A sample DAG."""
 
 # Python imports
+import logging
 from datetime import datetime, timedelta
 
 # Airflow imports.
 from airflow import DAG
 from airflow.decorators import task
+
+logger = logging.getLogger(__name__)
 
 with DAG(
     dag_id="hello_world_dag",
@@ -17,9 +20,11 @@ with DAG(
 ) as dag:
 
     @task(task_id="print_task")
-    def hello_world() -> None:
+    def hello_world() -> str:
         """print_task prints a Hello World message."""
-        print("Hello, World!")
+        message = "Hello, World!"
+        logger.info(message)
+        return message
 
     hello_world()
 
