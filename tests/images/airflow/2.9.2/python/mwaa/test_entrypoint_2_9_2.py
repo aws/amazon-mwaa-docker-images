@@ -10,7 +10,7 @@ from mwaa.entrypoint import (
     _setup_console_log_level,
     _configure_root_logger,
     airflow_db_migrate,
-    increase_pool_size_if_insufficient,
+    increase_pool_size_if_default_size,
     create_airflow_user,
     create_queue,
     main
@@ -117,8 +117,10 @@ def mock_run_command():
 
 
 @pytest.mark.asyncio
-async def test_increase_pool_size_if_insufficient(mock_environ):
+async def test_increase_pool_size_if_default_size(mock_environ):
     """Test pool size increase functionality"""
+    # Set environment variable within the problematic timeframe
+    mock_environ["MWAA__CORE__CREATED_AT"] = "Mon Jul 15 12:00:00 UTC 2024"
 
     # Track executed commands
     called_commands = []
@@ -126,7 +128,7 @@ async def test_increase_pool_size_if_insufficient(mock_environ):
     async def mock_run(cmd, env=None, stdout_logging_method=None):
         called_commands.append(cmd)
         if stdout_logging_method and "airflow pools get default_pool" in cmd:
-            stdout_logging_method("4000")  # Simulate the default pool size
+            stdout_logging_method("128")  # Simulate the default pool size
         return 0  # Simulate success
 
     with patch('mwaa.entrypoint.run_command', new_callable=AsyncMock, side_effect=mock_run) as mock_cmd, \
@@ -135,7 +137,7 @@ async def test_increase_pool_size_if_insufficient(mock_environ):
         mock_statsd.return_value = mock_stats
 
         # Run the function
-        await increase_pool_size_if_insufficient(mock_environ)
+        await increase_pool_size_if_default_size(mock_environ)
 
         # Ensure two commands were executed
         assert len(called_commands) == 2, f"Expected 2 commands, got {len(called_commands)}: {called_commands}"

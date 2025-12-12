@@ -141,32 +141,42 @@ async def airflow_dag_reserialize():
     await run_command("python3 -m mwaa.database.reserialize")
 
 
-async def increase_pool_size_if_insufficient(environ: dict[str, str]):
+async def increase_pool_size_if_default_size(environ: dict[str, str]):
     """
-    Increase the default pool size if it is too small.
+    Update the default pool size
 
-    Increases the default_pool size to 10000 if it is less than or equal 5000
-    as it improves performance in environments.
+    Fix a regression where some 2.9.2 environments were created with the default 128 default
+    pool size. This function checks if the environment was created during the problematic
+    timeframe and update the size if it has not been updated by the customer.
 
     :param environ: A dictionary containing the environment variables.
     """
-    problematic_pool_size = 5000
+    created_at = os.environ.get("MWAA__CORE__CREATED_AT")
+    problematic_pool_size = 128
 
-    try:
-        command_output = []
+    if created_at:
+        try:
+            date_format = "%a %b %d %H:%M:%S %Z %Y"
+            created_date = datetime.strptime(created_at, date_format)
+            # Has a little buffer from when 2.9.2 was released and when the fix was fully deployed
+            issue_beginning = datetime(2024, 7, 8)
+            issue_resolution = datetime(2024, 9, 6)
 
-        # Get the current default_pool size
-        await run_command("airflow pools get default_pool | grep default_pool | awk '{print $3}'",
-                        env=environ, stdout_logging_method=lambda output : command_output.append(output))
+            if created_date > issue_beginning and created_date < issue_resolution:
+                command_output = []
 
-        # Increasing the pool size if it is the default size
-        if len(command_output) == 1 and int(command_output[0]) <= problematic_pool_size:
-            logger.info("Setting default_pool size to 10000.")
-            await run_command("airflow pools set default_pool 10000 default", env=environ)
-            stats = get_statsd()
-            stats.incr("mwaa.pool.increased_default_pool_size", 1)
-    except Exception as error:
-        logger.error(f"Error checking if pool issue is present: {error}")
+                # Get the current default_pool size
+                await run_command("airflow pools get default_pool | grep default_pool | awk '{print $3}'",
+                                env=environ, stdout_logging_method=lambda output : command_output.append(output))
+
+                # Increasing the pool size if it is the default size
+                if len(command_output) == 1 and int(command_output[0]) == problematic_pool_size:
+                    logger.info("Setting default_pool size to 10000.")
+                    await run_command("airflow pools set default_pool 10000 default", env=environ)
+                    stats = get_statsd()
+                    stats.incr("mwaa.pool.increased_default_pool_size", 1)
+        except Exception as error:
+            logger.error(f"Error checking if pool issue is present: {error}")
 
 
 @with_db_lock(5678)
@@ -263,7 +273,7 @@ async def main() -> None:
         print("Finished testing requirements")
         return
 
-    await increase_pool_size_if_insufficient(environ)
+    await increase_pool_size_if_default_size(environ)
     if os.environ.get("MWAA__CORE__AUTH_TYPE", "").lower() == "testing":
         # In "simple" auth mode, we create an admin user "airflow" with password
         # "airflow". We use this to make the Docker Compose setup easy to use without
