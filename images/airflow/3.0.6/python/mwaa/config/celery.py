@@ -40,7 +40,7 @@ def create_celery_config() -> dict[str, Any]:
         "database_engine_options": {
             "pool_pre_ping": True,
             "pool_recycle": 1200,
-            'connect_args': MWAA_CONNECT_ARGS
+            "connect_args": MWAA_CONNECT_ARGS
         }
     }
 
