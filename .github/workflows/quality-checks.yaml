@@ -44,6 +44,8 @@ jobs:
 
       - name: Check out code...
         uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
 
       - name: Configure Git to allow the current directory as safe
         run: git config --global --add safe.directory /__w/amazon-mwaa-docker-images/amazon-mwaa-docker-images
