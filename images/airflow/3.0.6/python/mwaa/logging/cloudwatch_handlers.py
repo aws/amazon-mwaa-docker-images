@@ -286,7 +286,7 @@ class CloudWatchRemoteTaskLogger(BaseLogHandler, LoggingMixin):
     # value is not a regex pattern but instead a Jinja template. As a workaround for now we use a deny list instead.
     IGNORED_PATTERNS = [
         # Dag processor log (from loading DagBag) with stream name dag_processor/2025-01-01/dags-folder/dag.py.log
-        re.compile(r"^dag_processor/")
+        # re.compile(r"^dag_processor/")
     ]
 
     def __init__(
