@@ -11,22 +11,23 @@ apache-airflow[celery,statsd]==3.0.6
 # NOTE: We don't specify the version here since the constraints file take care
 # of this, making it easier to port the code to other versions.
 apache-airflow-providers-amazon[aiobotocore]
-celery[sqs]
-psycopg2
-pycurl
-watchtower
-fluent-logger
-# Additional packages for development
-# NOTE: Like above, we don't specify the version here.
+apache-airflow-providers-slack
+apache-airflow-providers-snowflake
 boto3-stubs[logs]
 boto3-stubs[sqs]
+celery[sqs]
+diff-cover
+fluent-logger
 jinja2
+psycopg2
+pycurl
 pydocstyle
 pyright
-ruff
-sqlalchemy-stubs
 pytest
 pytest-asyncio
 pytest-cov
 pytest-mock
-diff-cover
+ruff
+sqlalchemy-stubs
+tableauserverclient
+watchtower

@@ -10,6 +10,7 @@ x-airflow-common: &airflow-common
 
     # > MWAA Configurations
     # >> Core Configuration
+    MWAA__CORE__EXECUTOR_TYPE: "LocalExecutor"
     # Use this environment variable if you have custom requirements you want to install when the
     # container is up.
     MWAA__CORE__REQUIREMENTS_PATH: ${MWAA__CORE__REQUIREMENTS_PATH}

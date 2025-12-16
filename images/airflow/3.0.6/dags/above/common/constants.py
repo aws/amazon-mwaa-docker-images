@@ -17,7 +17,7 @@ S3_CONN_ID = None
 SNOWFLAKE_CONN_ID = (
     "snowflake_prod_connection"
     if ENVIRONMENT_FLAG == "prod"
-    else "snowflake_staging_connection"
+    else "snowflake_staging_connection_3x"
 )
 TALKDESK_ACCOUNT_NAME = "abovelending"
 

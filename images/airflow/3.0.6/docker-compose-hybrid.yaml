@@ -15,6 +15,7 @@ x-airflow-common: &airflow-common
 
     # > MWAA Configurations
     # >> Core Configuration
+    MWAA__CORE__EXECUTOR_TYPE: "LocalExecutor"
     # Use this environment variable if you have custom requirements you want to install when the
     # container is up.
     MWAA__CORE__REQUIREMENTS_PATH: ${MWAA__CORE__REQUIREMENTS_PATH}
@@ -66,8 +67,6 @@ x-airflow-common: &airflow-common
   depends_on: &airflow-common-depends-on
     postgres:
       condition: service_healthy
-    sqs:
-      condition: service_healthy
 
 services:
   postgres:
@@ -91,20 +90,21 @@ services:
     expose:
       - 5432
 
-  sqs:
-    image: softwaremill/elasticmq:latest
-    healthcheck:
-      # https://github.com/softwaremill/elasticmq/issues/776#issuecomment-1582527921
-      test: ["CMD-SHELL", "wget -q -S -O - 127.0.0.1:9324/?Action=ListQueues"]
-      interval: 10s
-      retries: 5
-      start_period: 5s
-    ports:
-      - 9324:9324
-      - 9325:9325
-    expose:
-      - 9324
-      - 9325
+  # SQS service removed - not needed for LocalExecutor
+  # sqs:
+  #   image: softwaremill/elasticmq:latest
+  #   healthcheck:
+  #     # https://github.com/softwaremill/elasticmq/issues/776#issuecomment-1582527921
+  #     test: ["CMD-SHELL", "wget -q -S -O - 127.0.0.1:9324/?Action=ListQueues"]
+  #     interval: 10s
+  #     retries: 5
+  #     start_period: 5s
+  #   ports:
+  #     - 9324:9324
+  #     - 9325:9325
+  #   expose:
+  #     - 9324
+  #     - 9325
 
   spy:
     <<: *airflow-common

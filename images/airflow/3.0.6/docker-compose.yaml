@@ -2,7 +2,6 @@ version: "3.8"
 
 x-airflow-common: &airflow-common
   image: amazon-mwaa-docker-images/airflow:3.0.6-dev
-  platform: linux/arm64
   restart: always
   init: true
   environment:
@@ -15,6 +14,7 @@ x-airflow-common: &airflow-common
 
     # > MWAA Configurations
     # >> Core Configuration
+    MWAA__CORE__EXECUTOR_TYPE: "LocalExecutor"
     # Use this environment variable if you have custom requirements you want to install when the
     # container is up.
     MWAA__CORE__REQUIREMENTS_PATH: ${MWAA__CORE__REQUIREMENTS_PATH}
@@ -23,7 +23,7 @@ x-airflow-common: &airflow-common
     MWAA__CORE__STARTUP_SCRIPT_PATH: ${MWAA__CORE__STARTUP_SCRIPT_PATH}
     # Additional Airflow configuration can be passed here in JSON form.
     MWAA__CORE__CUSTOM_AIRFLOW_CONFIGS: "{}"
-    MWAA__CORE__FERNET_KEY: ${FERNET_KEY}
+    MWAA__CORE__FERNET_KEY: ${FERNET_KEY:-FwlXQ2jSNVCgxuEUMcapKeK3dyDFL0CchqpTjmtjyzs=}
     MWAA__WEBSERVER__SECRET: '{"secret_key": "fake-key-aYDdF6d+Fjznai5yBW63CUAi0IipJqDHlNSWIun6y8o="}'
     # Use this enviornment variable to enable encryption with KMS.
     MWAA__CORE__KMS_KEY_ARN: ${MWAA__CORE__KMS_KEY_ARN}
@@ -62,10 +62,14 @@ x-airflow-common: &airflow-common
     MWAA__CORE__TERMINATE_IF_IDLE: ${MWAA__CORE__TERMINATE_IF_IDLE}
     MWAA__CORE__MWAA_SIGNAL_HANDLING_ENABLED: ${MWAA__CORE__MWAA_SIGNAL_HANDLING_ENABLED}
     MWAA__HEALTH_MONITORING_ENABLE_REVAMPED_HEALTHCHECK: ${MWAA__HEALTH_MONITORING_ENABLE_REVAMPED_HEALTHCHECK}
-    MWAA__CORE__API_SERVER_URL: ${MWAA__CORE__API_SERVER_URL}
+    MWAA__CORE__API_SERVER_URL: ${MWAA__CORE__API_SERVER_URL:-http://webserver:8080}
+    # Airflow Variables
+    AIRFLOW_VAR_ENVIRONMENT_FLAG: ${AIRFLOW_VAR_ENVIRONMENT_FLAG:-staging}
+
     # >> Secrets configuration
     MWAA__SECRETS__CONNECTIONS_PREFIX: "nonprod/airflow/connections"
     MWAA__SECRETS__VARIABLES_PREFIX: "nonprod/airflow/variables"
+
 
   volumes:
     - ./dags:/usr/local/airflow/dags
@@ -76,13 +80,10 @@ x-airflow-common: &airflow-common
   depends_on: &airflow-common-depends-on
     postgres:
       condition: service_healthy
-    sqs:
-      condition: service_healthy
 
 services:
   postgres:
     image: postgres:13
-    platform: linux/arm64
     container_name: mwaa-306-db
     environment:
       POSTGRES_USER: airflow
@@ -101,20 +102,21 @@ services:
     expose:
       - 5432
 
-  sqs:
-    image: softwaremill/elasticmq:latest
-    healthcheck:
-      # https://github.com/softwaremill/elasticmq/issues/776#issuecomment-1582527921
-      test: ["CMD-SHELL", "wget -q -S -O - 127.0.0.1:9324/?Action=ListQueues"]
-      interval: 10s
-      retries: 5
-      start_period: 5s
-    ports:
-      - 9324:9324
-      - 9325:9325
-    expose:
-      - 9324
-      - 9325
+  # SQS service removed - not needed for LocalExecutor
+  # sqs:
+  #   image: softwaremill/elasticmq:latest
+  #   healthcheck:
+  #     # https://github.com/softwaremill/elasticmq/issues/776#issuecomment-1582527921
+  #     test: ["CMD-SHELL", "wget -q -S -O - 127.0.0.1:9324/?Action=ListQueues"]
+  #     interval: 10s
+  #     retries: 5
+  #     start_period: 5s
+  #   ports:
+  #     - 9324:9324
+  #     - 9325:9325
+  #   expose:
+  #     - 9324
+  #     - 9325
 
   # TODO Create a local CloudWatch endpoint to allow the customer to use this Docker Compose file without a real AWS account.
   # TODO Create a local CloudWatch Metrics endpoint to allow the customer to use this Docker Compose file without a real AWS account.
@@ -149,13 +151,14 @@ services:
       migratedb:
         condition: service_completed_successfully
 
-  worker:
-    <<: *airflow-common
-    command: worker
-    container_name: mwaa-306-worker
-    depends_on:
-      migratedb:
-        condition: service_completed_successfully
+  # Worker service removed - not needed for LocalExecutor
+  # worker:
+  #   <<: *airflow-common
+  #   command: worker
+  #   container_name: mwaa-306-worker
+  #   depends_on:
+  #     migratedb:
+  #       condition: service_completed_successfully
 
 volumes:
   postgres-db-volume:

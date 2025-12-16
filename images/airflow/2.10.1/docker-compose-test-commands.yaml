@@ -4,8 +4,8 @@ x-airflow-common: &airflow-common
   image: amazon-mwaa-docker-images/airflow:2.10.1-dev
   restart: always
   environment:
-    AWS_REGION: "us-west-2"
-    AWS_DEFAULT_REGION: "us-west-2"
+    AWS_REGION: "us-east-1"
+    AWS_DEFAULT_REGION: "us-east-1"
 
     # > MWAA Configurations
     # >> Core Configuration
