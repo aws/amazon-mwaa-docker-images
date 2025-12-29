@@ -11,5 +11,6 @@
   "pythonVersion": "3.11",
   "pythonPlatform": "All",
   "typeCheckingMode": "standard",
-  "stubPath": "python/typestubs"
+  "stubPath": "python/typestubs",
+  "reportOptionalSubscript": false
 }
