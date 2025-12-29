@@ -29,7 +29,7 @@ from sqlalchemy.pool import NullPool
 
 # Our imports
 from mwaa.celery.task_monitor import WorkerTaskMonitor
-from mwaa.config.database import get_db_connection_string
+from mwaa.config.database import get_db_connection_string, MWAA_CONNECT_ARGS
 from mwaa.logging.utils import throttle
 from mwaa.subprocess import ProcessStatus
 from mwaa.utils.plogs import generate_plog
@@ -396,7 +396,7 @@ class AirflowDbReachableCondition(ProcessCondition):
             )
         self.engine = create_engine(
             get_db_connection_string(),
-            connect_args={"connect_timeout": 3},
+            connect_args=MWAA_CONNECT_ARGS,
             **engine_args,
         )
 

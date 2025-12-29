@@ -123,6 +123,7 @@ def _get_essential_airflow_db_config() -> Dict[str, str]:
     conn_string = get_db_connection_string()
     return {
         "AIRFLOW__DATABASE__SQL_ALCHEMY_CONN": conn_string,
+        "AIRFLOW__DATABASE__SQL_ALCHEMY_CONNECT_ARGS": "mwaa.config.database.MWAA_CONNECT_ARGS",
     }
 
 
