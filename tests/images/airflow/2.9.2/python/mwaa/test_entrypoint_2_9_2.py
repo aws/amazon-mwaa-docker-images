@@ -10,7 +10,7 @@ from mwaa.entrypoint import (
     _setup_console_log_level,
     _configure_root_logger,
     airflow_db_migrate,
-    increase_pool_size_if_default_size,
+    increase_pool_size_if_insufficient,
     create_airflow_user,
     create_queue,
     main
@@ -117,40 +117,32 @@ def mock_run_command():
 
 
 @pytest.mark.asyncio
-async def test_increase_pool_size_if_default_size(mock_environ):
+async def test_increase_pool_size_if_insufficient(mock_environ):
     """Test pool size increase functionality"""
-    # Set environment variable within the problematic timeframe
-    mock_environ["MWAA__CORE__CREATED_AT"] = "Mon Jul 15 12:00:00 UTC 2024"
 
-    # Track executed commands
     called_commands = []
 
     async def mock_run(cmd, env=None, stdout_logging_method=None):
         called_commands.append(cmd)
         if stdout_logging_method and "airflow pools get default_pool" in cmd:
-            stdout_logging_method("128")  # Simulate the default pool size
-        return 0  # Simulate success
+            stdout_logging_method("4000")  # Simulate the default pool size
+        return 0
 
     with patch('mwaa.entrypoint.run_command', new_callable=AsyncMock, side_effect=mock_run) as mock_cmd, \
             patch('mwaa.entrypoint.get_statsd') as mock_statsd:
         mock_stats = MagicMock()
         mock_statsd.return_value = mock_stats
 
-        # Run the function
-        await increase_pool_size_if_default_size(mock_environ)
+        await increase_pool_size_if_insufficient(mock_environ)
 
-        # Ensure two commands were executed
         assert len(called_commands) == 2, f"Expected 2 commands, got {len(called_commands)}: {called_commands}"
 
-        # Verify the first command retrieves the pool size
         assert "airflow pools get default_pool" in called_commands[0], \
             f"First command should be get pool, got: {called_commands[0]}"
 
-        # Verify the second command updates the pool size
         assert "airflow pools set default_pool 10000" in called_commands[1], \
             f"Second command should be set pool, got: {called_commands[1]}"
 
-        # Ensure the statsd increment function is called
         mock_stats.incr.assert_called_once_with("mwaa.pool.increased_default_pool_size", 1)
 
 
@@ -260,13 +252,15 @@ async def test_main_migrate_db(mock_environ, mock_db_utils):
     with patch.dict(os.environ, mock_environ), \
             patch.object(sys, 'argv', test_args), \
             patch('mwaa.entrypoint.setup_environment_variables') as mock_setup_env, \
-            patch('mwaa.entrypoint.airflow_db_migrate') as mock_db_migrate:
+            patch('mwaa.entrypoint.airflow_db_migrate') as mock_db_migrate, \
+            patch('mwaa.entrypoint.increase_pool_size_if_insufficient') as mock_increase_pool:
         mock_setup_env.return_value = mock_environ
 
         await main()
 
         mock_setup_env.assert_called_once()
         mock_db_migrate.assert_called_once()
+        mock_increase_pool.assert_called_once_with(mock_environ)
 
 
 @pytest.mark.asyncio
