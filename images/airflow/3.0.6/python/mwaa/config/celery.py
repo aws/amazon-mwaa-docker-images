@@ -10,6 +10,7 @@ from airflow.providers.celery.executors.default_celery import DEFAULT_CELERY_CON
 
 # Our import
 from mwaa.config.aws import get_aws_region
+from mwaa.config.database import MWAA_CONNECT_ARGS
 from mwaa.config.sqs import get_sqs_queue_name, get_sqs_queue_url, should_use_ssl
 
 from mwaa.celery.sqs_broker import Transport
@@ -36,8 +37,11 @@ def create_celery_config() -> dict[str, Any]:
             "is_secure": should_use_ssl(),
             "region": get_aws_region(),
         },
-        "pool_pre_ping": True,
-        "pool_recycle": 1200,
+        "database_engine_options": {
+            "pool_pre_ping": True,
+            "pool_recycle": 1200,
+            "connect_args": MWAA_CONNECT_ARGS
+        }
     }
 
     return celery_config
