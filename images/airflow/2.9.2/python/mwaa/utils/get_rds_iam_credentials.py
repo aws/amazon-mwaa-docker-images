@@ -1,3 +1,4 @@
+"""RDS IAM credential provider for generating authentication tokens."""
 import json
 import os
 import sys
@@ -9,6 +10,7 @@ from urllib.parse import quote_plus
 import boto3
 
 class RDSIAMCredentialProvider:
+    """Provider for RDS IAM authentication tokens with thread-safe caching."""
     _lock = threading.Lock()
     _token = None
     _expires_at = 0
@@ -177,6 +179,8 @@ class RDSIAMCredentialProvider:
         """
         if token is None:
             token = cls.generate_credentials()
+            if token is None:
+                raise Exception("Failed to generate RDS auth token")
 
         IAM_POSTGRES_USER = "airflow_user"
         AUTH_TOKEN = quote_plus(token)

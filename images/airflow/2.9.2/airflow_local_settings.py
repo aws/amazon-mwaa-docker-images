@@ -1,5 +1,6 @@
+"""Airflow local settings configuration for MWAA RDS IAM authentication."""
 try:
-    import mwaa.config.airflow_rds_iam_patch
+    import mwaa.config.airflow_rds_iam_patch  # type: ignore[import-untyped]
 except Exception as e:
     print(f"Failed to load RDS IAM patch: {e}")
     raise
@@ -8,12 +9,13 @@ except Exception as e:
 import os
 import subprocess
 
-AIRFLOW_HOME = os.environ.get('AIRFLOW_HOME')
+AIRFLOW_HOME = os.environ.get('AIRFLOW_HOME', '/usr/local/airflow')
 airflow_config_dir = os.path.join(AIRFLOW_HOME, 'config')
 dags_airflow_local_settings_path = os.path.join(AIRFLOW_HOME, 'dags', 'airflow_local_settings.py')
 
 
 def _copy_dags_airflow_local_settings():
+    """Copy customer's dags/airflow_local_settings.py to config folder."""
     # Copy the customer's dags/airflow_local_settings.py to the config folder to allow for python imports
     dest_config_airflow_local_settings_path = os.path.join(airflow_config_dir, 'dags_airflow_local_settings.py')
 
@@ -31,6 +33,7 @@ def _copy_dags_airflow_local_settings():
                 print(f"Error removing dags_airflow_local_settings.py: {err}")
 
 def load_dags_airflow_local_settings():
+    """Load customer's airflow_local_settings.py from dags folder."""
     # Copy the customer's /dags/airflow_local_settings.py to /config/dags_airflow_local_settings.py
     try:
         _copy_dags_airflow_local_settings()
