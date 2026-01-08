@@ -123,6 +123,18 @@ def _get_essential_airflow_db_config() -> Dict[str, str]:
     conn_string = get_db_connection_string()
     return {
         "AIRFLOW__DATABASE__SQL_ALCHEMY_CONN": conn_string,
+    }
+
+def _get_opinionated_airflow_db_config() -> Dict[str, str]:
+    """
+    Retrieve the environment variables for Airflow's "database" configuration section.
+
+    The difference between this and _get_essential_airflow_db_config is that the config set
+    here can be overridden by the user.
+
+    :returns A dictionary containing the environment variables.
+    """
+    return {
         "AIRFLOW__DATABASE__SQL_ALCHEMY_CONNECT_ARGS": "mwaa.config.database.MWAA_CONNECT_ARGS",
     }
 
@@ -334,4 +346,5 @@ def get_opinionated_airflow_config() -> Dict[str, str]:
         **_get_opinionated_airflow_scheduler_config(),
         **_get_opinionated_airflow_secrets_config(),
         **_get_opinionated_airflow_usage_data_config(),
+        **_get_opinionated_airflow_db_config(),
     }
