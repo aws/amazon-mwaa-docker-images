@@ -127,9 +127,6 @@ WORKDIR ${AIRFLOW_USER_HOME}
 # Copy python files.
 COPY ./python /python
 
-# Copy airflow_local_settings.py
-COPY ./airflow_local_settings.py ${AIRFLOW_USER_HOME}/config/airflow_local_settings.py
-
 # TODO Move this to the bin folder under airflow's home folder.
 COPY healthcheck.sh /healthcheck.sh
 RUN chmod +x /healthcheck.sh
