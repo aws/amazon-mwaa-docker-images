@@ -119,20 +119,13 @@ VOLUME ["${MWAA_HOME}"]
 EXPOSE 8080
 
 ENV PATH=${PATH_AIRFLOW_USER}
-# Forcefully add /config and /dags onto PYTHONPATH so airflow loads /config/airflow_local_settings.py first.
-ENV PYTHONPATH="${AIRFLOW_USER_HOME}/config:${AIRFLOW_USER_HOME}/dags:/python"
+ENV PYTHONPATH="/python"
 ENV PYTHONUNBUFFERED=1
 
 WORKDIR ${AIRFLOW_USER_HOME}
 
 # Copy python files.
 COPY ./python /python
-
-# Copy airflow_local_settings.py
-COPY ./airflow_local_settings.py ${AIRFLOW_USER_HOME}/config/airflow_local_settings.py
-
-# Ensure config directory has proper permissions for airflow user
-RUN chown -R airflow: ${AIRFLOW_USER_HOME}/config
 
 # TODO Move this to the bin folder under airflow's home folder.
 COPY healthcheck.sh /healthcheck.sh
