@@ -129,15 +129,43 @@ def main():
     parser.add_argument(
         "--target", choices=build_targets, required=True, help="Sets the build target"
     )
+    
+    # Add version filter argument
+    parser.add_argument(
+        "--version", type=str, help="Only create venv for specific Airflow version (e.g., 3.0.6)"
+    )
 
     # Parse the arguments
     args = parser.parse_args()
 
     verify_python_version()
-    project_dirs = [
-        Path("."),
-        *Path("./images").glob("airflow/*"),
-    ]  # Include main project dir and each image dir
+    
+    # Filter directories based on version argument
+    if args.version:
+        # Validate that the version exists
+        version_path = Path(f"./images/airflow/{args.version}")
+        if not version_path.exists() or not version_path.is_dir():
+            # Get available versions
+            available_versions = sorted([
+                d.name for d in Path("./images/airflow").iterdir() 
+                if d.is_dir() and not d.name.startswith('.')
+            ])
+            print(f"ERROR: Version '{args.version}' not found in images/airflow/")
+            print("\nAvailable versions:")
+            for v in available_versions:
+                print(f"  - {v}")
+            sys.exit(1)
+        
+        project_dirs = [
+            Path("."),
+            version_path,
+        ]
+    else:
+        project_dirs = [
+            Path("."),
+            *Path("./images").glob("airflow/*"),
+        ]  # Include main project dir and each image dir
+    
     for dir_path in project_dirs:
         if dir_path.is_dir() and (dir_path / "requirements.txt").exists():
             create_venv(
