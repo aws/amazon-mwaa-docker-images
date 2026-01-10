@@ -290,6 +290,17 @@ class TaskLogHandler(BaseLogHandler, CloudwatchTaskHandler):
             log_group_arn=log_group_arn,
             base_log_folder="",  # We only push to CloudWatch Logs.
         )
+        # For newer provider versions, `_event_to_str` was moved to `CloudWatchRemoteLogIO`.
+        # We create a local subclass that overrides it to skip the CloudWatch double timestamp prefix.
+        if getattr(self, "io", None) is not None:
+            from airflow.providers.amazon.aws.log.cloudwatch_task_handler import CloudWatchRemoteLogIO
+            class PassthroughCloudWatchRemoteLogIO(CloudWatchRemoteLogIO):
+                def _event_to_str(self, event):
+                    return event["message"]
+            self.io = PassthroughCloudWatchRemoteLogIO(
+                log_group_arn=log_group_arn,
+                base_log_folder="",
+            )
 
     def set_context(self, ti: TaskInstance, *, identifier: str | None = None) -> None:
         """
