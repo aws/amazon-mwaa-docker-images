@@ -18,8 +18,6 @@ from mwaa.config.database import get_db_connection_string
 from mwaa.utils.dblock import with_db_lock
 from airflow.cli.commands import db_command as airflow_db_command
 
-from mwaa.utils.get_rds_iam_credentials import RDSIAMCredentialProvider
-
 DB_IAM_USERNAME = "airflow_user"
 DB_NAME = "AirflowMetadata"
 
@@ -42,35 +40,10 @@ def _verify_environ():
 
 def _ensure_rds_iam_user():
     try:
-        # Set db_connection_url using RDS IAM credentials
-        try:
-            # On default, try to connect to RDS using IAM authentication
-            print("Creating db_connection_url using RDS IAM credentials")
-            token = RDSIAMCredentialProvider.get_token()
-            db_connection_url = RDSIAMCredentialProvider.create_db_connection_url(token)
-
-            print("Creating engine using RDS IAM and validating connection")
-            db_engine = create_engine(
-                db_connection_url,
-                connect_args={"connect_timeout": 3}
-            )
-            # Test that the connection is working
-            with db_engine.connect() as conn:
-                conn.execute(text("SELECT 1"))
-            print("Engine created using RDS IAM and connection validated")
-            
-        except Exception as e:
-            # If RDS IAM authentication fails, connect with static credentials
-            # This is needed on environment creation since airflow_user is not created yet
-            print(f"Exception type: {type(e).__name__}, message: {e}")
-            db_connection_url = get_db_connection_string()
-            print("Engine creation using RDS IAM failed... Attempting to create engine using static credentials")
-            db_engine = create_engine(
-                db_connection_url,
-                connect_args={"connect_timeout": 3}
-            )
-            print("Engine created using static credentials")
-
+        db_engine = create_engine(
+            get_db_connection_string(),
+            connect_args={"connect_timeout": 3}
+        )
         with db_engine.connect() as conn:
             with conn.begin():
                 result = conn.execute(text("SELECT 1 FROM pg_roles WHERE rolname = :rolename"), {"rolename": DB_IAM_USERNAME})
