@@ -1,13 +1,13 @@
 #
 # NOTE: The constraints below are part of the Airflow constraints:
 #
-# https://raw.githubusercontent.com/apache/airflow/constraints-3.0.6/constraints-3.12.txt
+# https://raw.githubusercontent.com/apache/airflow/constraints-3.1.5/constraints-3.13.txt
 #
 # We consider those to be critical to the functionality of our Airflow image
 # and, thus, do not allow the customer to override them.
 #
 
-apache-airflow==3.0.6
+apache-airflow==3.1.5
 # Webserver-related packages
 Flask-AppBuilder==4.6.3
 Flask-Babel==2.0.0
@@ -19,19 +19,19 @@ Flask-Login==0.6.3
 Flask-SQLAlchemy==2.5.1
 Flask-Session==0.5.0
 Flask-WTF==1.2.2
-Flask==2.2.5
+Flask==3.1.2
 gunicorn==23.0.0
 # Celery and related packages
-billiard==4.2.1
-celery==5.5.2
-gevent==25.5.1
-greenlet==3.2.4
-kombu==5.5.4
+billiard==4.2.4
+celery==5.6.0
+gevent==25.9.1
+greenlet==3.3.0
+kombu==5.6.1
 vine==5.1.0
 # SQLAlchemy
 SQLAlchemy-JSONField==1.0.2
-SQLAlchemy-Utils==0.41.2
-SQLAlchemy==1.4.54
+SQLAlchemy-Utils==0.42.0
+SQLAlchemy==2.0.45
 # StatsD
 statsd==4.0.1
 # Watchtower
