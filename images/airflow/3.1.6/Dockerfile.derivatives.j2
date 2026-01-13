@@ -1,0 +1,57 @@
+FROM amazon-mwaa-docker-images/airflow:3.1.6-base
+
+{% if bootstrapping_scripts_dev %}
+
+{#
+Those steps are only exectued for development images. Those are images that
+contain additional packages that help with debugging, e.g. editors, etc., but
+are not supposed to be in production.
+#}
+
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+# BEGINNING marker for dev bootstrapping steps.
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+{% for filepath in bootstrapping_scripts_dev %}
+COPY ./{{ filepath }} /{{ filepath }}
+RUN chmod +x /{{ filepath }} && /{{ filepath }}
+{% endfor %}
+
+#<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+# END marker for dev bootstrapping steps.
+#<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+# remove bootstrapping files.
+RUN rm -rf /bootstrap-dev
+
+{% endif %}
+
+{% if build_type == 'standard' %}
+{# This is the standard build type. it is what customer uses.#}
+USER airflow
+
+ENTRYPOINT ["python3", "-m", "mwaa.entrypoint"]
+
+CMD shell
+{% elif build_type == 'explorer' %}
+{#
+The 'explorer' build type is almost identical to the 'standard' build type but
+it doesn't include the entrypoint. This is useful for debugging purposes to run
+the image and look around its content without starting airflow, which might
+require further setup.
+#}
+USER airflow
+
+ENTRYPOINT ["/bin/bash"]
+{% elif build_type == 'explorer-privileged' %}
+{#
+This is similar to the 'explorer' build type, but additionally uses the root
+user, giving the user of this Docker image elevated permissions.  The user can,
+thus, install packages, remove packages, or anything else.
+#}
+USER root
+
+ENTRYPOINT ["/bin/bash"]
+{% else %}
+{{ raise("Invalid build type.") }}
+{% endif %}

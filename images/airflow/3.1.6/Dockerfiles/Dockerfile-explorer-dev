@@ -1,0 +1,25 @@
+#
+# WARNING: Don't change this file manually. This file is auto-generated from
+# the Jinja2-templated Dockerfile.j2 file, so you need to change that file
+# instead.
+#
+
+FROM amazon-mwaa-docker-images/airflow:3.1.6-base
+
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+# BEGINNING marker for dev bootstrapping steps.
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+COPY ./bootstrap-dev/001-devonly-install-dev-tools.sh /bootstrap-dev/001-devonly-install-dev-tools.sh
+RUN chmod +x /bootstrap-dev/001-devonly-install-dev-tools.sh && /bootstrap-dev/001-devonly-install-dev-tools.sh
+
+#<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+# END marker for dev bootstrapping steps.
+#<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+# remove bootstrapping files.
+RUN rm -rf /bootstrap-dev
+
+USER airflow
+
+ENTRYPOINT ["/bin/bash"]
