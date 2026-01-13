@@ -41,7 +41,7 @@ LOGGING_CONFIG = {
     'root': {
         'handlers': ['console'],
         'level': CONSOLE_LOG_LEVEL,
-        'filters': ['mask_secrets'],
+        'filters': ['mask_secrets_core'],
     }
 }
 
@@ -113,7 +113,7 @@ def _configure_task_logging():
         LOGGING_CONFIG["handlers"]["task"] = {
             "class": qualified_name(cloudwatch_handlers.CloudWatchRemoteTaskLogger),
             "formatter": "airflow",
-            "filters": ["mask_secrets"],
+            "filters": ["mask_secrets_core"],
             "log_group_arn": log_group_arn,
             "kms_key_arn": _get_kms_key_arn(),
             "enabled": logging_enabled,
@@ -177,7 +177,7 @@ def _configure_subprocesses_logging(
         LOGGING_CONFIG["handlers"][handler_name] = {
             "class": qualified_name(cloudwatch_handlers.SubprocessLogHandler),
             "formatter": "airflow",
-            "filters": ["mask_secrets"],
+            "filters": ["mask_secrets_core"],
             "log_group_arn": log_group_arn,
             "kms_key_arn": _get_kms_key_arn(),
             "stream_name_prefix": log_stream_name_prefix,
