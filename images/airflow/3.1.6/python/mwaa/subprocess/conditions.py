@@ -24,7 +24,7 @@ import time
 
 # 3rd-party imports
 from airflow.configuration import conf
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.pool import NullPool
 
 # Our imports
@@ -432,7 +432,7 @@ class AirflowDbReachableCondition(ProcessCondition):
         try:
             # try connection to the RDS metadata db and run a test query
             with self.engine.connect() as connection:  # type: ignore
-                connection.execute("SELECT 1")  # type: ignore
+                connection.execute(text("SELECT 1"))  # type: ignore
             healthy = True
             message = "Successfully connected to database."
             logger.info(message)
