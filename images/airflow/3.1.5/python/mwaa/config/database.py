@@ -99,7 +99,7 @@ def get_db_connection_string() -> str:
     addr = f"{postgres_host}:{postgres_port}"
     return f"{protocol}://{creds}@{addr}/{postgres_db}?sslmode={postgres_sslmode}"
 
-# Per recommendation from https://airflow.apache.org/docs/apache-airflow/3.0.6/howto/set-up-database.html,
+# Per recommendation from https://airflow.apache.org/docs/apache-airflow/3.1.5/howto/set-up-database.html,
 # since we are using Amazon RDS
 MWAA_CONNECT_ARGS = {
     "connect_timeout": 15,
