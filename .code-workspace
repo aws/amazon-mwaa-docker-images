@@ -25,8 +25,8 @@
       "path": "./images/airflow/3.0.6"
     },
     {
-      "name": "airflow-3.1.5",
-      "path": "./images/airflow/3.1.5"
+      "name": "airflow-3.1.6",
+      "path": "./images/airflow/3.1.6"
     }
   ],
   "settings": {}
