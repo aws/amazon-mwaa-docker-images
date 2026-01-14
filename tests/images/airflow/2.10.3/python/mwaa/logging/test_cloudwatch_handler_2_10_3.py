@@ -1,7 +1,7 @@
 import logging
 import pytest
 import os
-import importlib
+import types
 from unittest.mock import patch, Mock, MagicMock, ANY
 from airflow.models.taskinstance import TaskInstance
 from mwaa.config.setup_environment import (
@@ -18,6 +18,9 @@ from mwaa.logging.cloudwatch_handlers import (
     DagProcessorManagerLogHandler,
     DagProcessingLogHandler
 )
+from airflow.providers.amazon.aws.log.cloudwatch_task_handler import (
+        CloudwatchTaskHandler,
+    )
 
 print(BaseLogHandler.__init__.__code__.co_varnames)
 
@@ -287,3 +290,69 @@ def test_dag_processing_log_handler(mock_boto3_client, mock_fluent, mock_watchto
             'host': ANY,
             'port': 24224
         }
+
+def test_task_log_handler_io_override_exception_is_caught(mocker):
+    original_init = CloudwatchTaskHandler.__init__
+    def patched_init(self, *args, **kwargs):
+        original_init(self, *args, **kwargs)
+        self.io = object()  # FORCE condition to pass
+    mocker.patch.object(
+        CloudwatchTaskHandler,
+        "__init__",
+        patched_init,
+    )
+    fake_module = types.ModuleType(
+        "airflow.providers.amazon.aws.log.cloudwatch_task_handler"
+    )
+    mocker.patch.dict(
+        "sys.modules",
+        {
+            "airflow.providers.amazon.aws.log.cloudwatch_task_handler": fake_module
+        },
+    )
+    mock_warning = mocker.patch("logging.getLogger")
+    TaskLogHandler(
+        base_log_folder="",
+        log_group_arn="arn:aws:logs:us-west-2:123:log-group:test",
+        kms_key_arn=None,
+        enabled=True,
+    )
+    mock_warning.return_value.warning.assert_called_once()
+
+def test_task_log_handler_io_override_success_for_lower_airflow_higher_provider(mocker):
+    original_init = CloudwatchTaskHandler.__init__
+
+    def patched_init(self, *args, **kwargs):
+        original_init(self, *args, **kwargs)
+        self.io = object()
+
+    mocker.patch.object(
+        CloudwatchTaskHandler,
+        "__init__",
+        patched_init,
+    )
+
+    class FakeCloudWatchRemoteLogIO:
+        def __init__(self, log_group_arn=None, base_log_folder=None):
+            self.log_group_arn = log_group_arn
+            self.base_log_folder = base_log_folder
+
+        def _event_to_str(self, event):
+            return "original"
+
+    mocker.patch(
+        "airflow.providers.amazon.aws.log.cloudwatch_task_handler.CloudWatchRemoteLogIO",
+        FakeCloudWatchRemoteLogIO,
+        create=True,
+    )
+
+    handler = TaskLogHandler(
+        base_log_folder="",
+        log_group_arn="arn:aws:logs:us-west-2:123:log-group:test",
+        kms_key_arn=None,
+        enabled=True,
+    )
+
+    assert isinstance(handler.io, FakeCloudWatchRemoteLogIO)
+    event = {"message": "hello"}
+    assert handler.io._event_to_str(event) == "hello"
