@@ -2,6 +2,7 @@ import logging
 import pytest
 import os
 import importlib
+import types
 from unittest.mock import patch, Mock, MagicMock, ANY
 from airflow.models.taskinstance import TaskInstance
 from mwaa.config.setup_environment import (
@@ -287,3 +288,26 @@ def test_dag_processing_log_handler(mock_boto3_client, mock_fluent, mock_watchto
             'host': ANY,
             'port': 24224
         }
+
+def test_task_log_handler_io_override_exception_is_caught(mocker):
+    # Create a fake module WITHOUT CloudWatchRemoteLogIO
+    fake_module = types.ModuleType(
+        "airflow.providers.amazon.aws.log.cloudwatch_task_handler"
+    )
+
+    mocker.patch.dict(
+        "sys.modules",
+        {
+            "airflow.providers.amazon.aws.log.cloudwatch_task_handler": fake_module
+        },
+    )
+    mock_warning = mocker.patch("logging.getLogger")
+    TaskLogHandler(
+        base_log_folder="",
+        log_group_arn="arn:aws:logs:us-west-2:123:log-group:test",
+        kms_key_arn=None,
+        enabled=True,
+    )
+
+    # Assert warning logged
+    mock_warning.return_value.warning.assert_called_once()
