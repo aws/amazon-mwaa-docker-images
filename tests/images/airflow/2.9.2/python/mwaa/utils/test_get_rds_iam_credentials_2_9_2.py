@@ -60,7 +60,7 @@ def test_get_rds_iam_token_hostname_missing():
     from mwaa.utils.get_rds_iam_credentials import RDSIAMCredentialProvider
     
     with patch.dict('os.environ', {}, clear=True), \
-         patch('builtins.print') as mock_print:
+         patch('mwaa.utils.get_rds_iam_credentials.logger') as mock_logger:
         
         with pytest.raises(ValueError, match="RDS_IAM_TOKEN_HOSTNAME environment variable is required"):
             RDSIAMCredentialProvider.get_rds_iam_token_hostname()
@@ -100,7 +100,7 @@ def test_generate_rds_auth_token_failure():
     }
     
     with patch('boto3.client') as mock_boto3, \
-         patch('builtins.print') as mock_print:
+         patch('mwaa.utils.get_rds_iam_credentials.logger') as mock_logger:
         
         mock_rds_client = MagicMock()
         mock_rds_client.generate_db_auth_token.side_effect = Exception("Token generation failed")
@@ -111,7 +111,7 @@ def test_generate_rds_auth_token_failure():
                 mock_credentials, 'test.rds.amazonaws.com', 5432, 'airflow_user'
             )
         
-        mock_print.assert_called_once_with("Failed to generate RDS auth token: Token generation failed")
+        mock_logger.error.assert_called_once_with("Failed to generate RDS auth token: Token generation failed")
 
 
 def test_get_token_cached():
@@ -149,11 +149,11 @@ def test_generate_credentials_success():
     with patch.object(RDSIAMCredentialProvider, 'get_ecs_credentials', return_value=mock_credentials), \
          patch.object(RDSIAMCredentialProvider, 'get_rds_iam_token_hostname', return_value='test.rds.amazonaws.com'), \
          patch.object(RDSIAMCredentialProvider, 'generate_rds_auth_token', return_value='auth_token'), \
-         patch('builtins.print') as mock_print:
+         patch('mwaa.utils.get_rds_iam_credentials.logger') as mock_logger:
         
         result = RDSIAMCredentialProvider.generate_credentials()
         assert result == 'auth_token'
-        mock_print.assert_called_with(f"Successfully generated RDS auth token at {time.strftime('%Y-%m-%d %H:%M:%S')}")
+        mock_logger.info.assert_called_with(f"Successfully generated RDS auth token at {time.strftime('%Y-%m-%d %H:%M:%S')}")
 
 
 def test_generate_credentials_failure():
@@ -161,11 +161,11 @@ def test_generate_credentials_failure():
     from mwaa.utils.get_rds_iam_credentials import RDSIAMCredentialProvider
     
     with patch.object(RDSIAMCredentialProvider, 'get_ecs_credentials', side_effect=Exception("ECS error")), \
-         patch('builtins.print') as mock_print:
+         patch('mwaa.utils.get_rds_iam_credentials.logger') as mock_logger:
         
         result = RDSIAMCredentialProvider.generate_credentials()
         assert result is None
-        mock_print.assert_called_with("Failed to update credentials: ECS error")
+        mock_logger.error.assert_called_with("Failed to update credentials: ECS error")
 
 
 def test_create_db_connection_url():

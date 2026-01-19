@@ -45,11 +45,11 @@ def _ensure_rds_iam_user():
         # Set db_connection_url using RDS IAM credentials
         try:
             # On default, try to connect to RDS using IAM authentication
-            print("Creating db_connection_url using RDS IAM credentials")
+            logger.info("Creating db_connection_url using RDS IAM credentials")
             token = RDSIAMCredentialProvider.get_token()
             db_connection_url = RDSIAMCredentialProvider.create_db_connection_url(token)
 
-            print("Creating engine using RDS IAM and validating connection")
+            logger.info("Creating engine using RDS IAM and validating connection")
             db_engine = create_engine(
                 db_connection_url,
                 connect_args={"connect_timeout": 3}
@@ -57,29 +57,29 @@ def _ensure_rds_iam_user():
             # Test that the connection is working
             with db_engine.connect() as conn:
                 conn.execute(text("SELECT 1"))
-            print("Engine created using RDS IAM and connection validated")
+            logger.info("Engine created using RDS IAM and connection validated")
             
         except Exception as e:
             # If RDS IAM authentication fails, connect with static credentials
             # This is needed on environment creation since airflow_user is not created yet
-            print(f"Exception type: {type(e).__name__}, message: {e}")
+            logger.warning(f"Exception type: {type(e).__name__}, message: {e}")
             db_connection_url = get_db_connection_string()
-            print("Engine creation using RDS IAM failed... Attempting to create engine using static credentials")
+            logger.warning("Engine creation using RDS IAM failed... Attempting to create engine using static credentials")
             db_engine = create_engine(
                 db_connection_url,
                 connect_args={"connect_timeout": 3}
             )
-            print("Engine created using static credentials")
+            logger.info("Engine created using static credentials")
 
         with db_engine.connect() as conn:
             with conn.begin():
                 result = conn.execute(text("SELECT 1 FROM pg_roles WHERE rolname = :rolename"), {"rolename": DB_IAM_USERNAME})
                 if not result.fetchone():
-                    print(f"Creating user '{DB_IAM_USERNAME}'")
+                    logger.info(f"Creating user '{DB_IAM_USERNAME}'")
                     conn.execute(text(f"CREATE USER {DB_IAM_USERNAME}"))
-                    print(f"Created db rds iam user")
+                    logger.info(f"Created db rds iam user")
                 else:
-                    print(f"db rds iam user already exists")
+                    logger.info(f"db rds iam user already exists")
 
                 # Always ensure permissions are up to date
                 conn.execute(text(f"GRANT rds_iam TO {DB_IAM_USERNAME}"))
