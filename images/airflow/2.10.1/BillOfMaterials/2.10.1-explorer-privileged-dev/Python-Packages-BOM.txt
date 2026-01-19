@@ -5802,7 +5802,7 @@ UNKNOWN
 
 attrs
 24.2.0
-MIT License
+MIT
 https://www.attrs.org/en/stable/changelog.html
 /usr/local/airflow/.local/lib/python3.11/site-packages/attrs-24.2.0.dist-info/licenses/LICENSE
 The MIT License (MIT)
@@ -6162,13 +6162,13 @@ Copyright 2013-2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 /usr/local/airflow/.local/lib/python3.11/site-packages/boto3-1.35.7.dist-info/NOTICE
 
 boto3-stubs
-1.40.50
-MIT License
+1.42.30
+MIT
 https://github.com/youtype/mypy_boto3_builder
-/usr/local/airflow/.local/lib/python3.11/site-packages/boto3_stubs-1.40.50.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.11/site-packages/boto3_stubs-1.42.30.dist-info/licenses/LICENSE
 MIT License
 
-Copyright (c) 2025 Vlad Emelianov
+Copyright (c) 2026 Vlad Emelianov
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -6437,10 +6437,10 @@ one at http://mozilla.org/MPL/2.0/.
 /usr/local/airflow/.local/lib/python3.11/site-packages/botocore-1.35.7.dist-info/NOTICE
 
 botocore-stubs
-1.40.50
-UNKNOWN
+1.42.30
+MIT
 https://github.com/youtype/botocore-stubs
-/usr/local/airflow/.local/lib/python3.11/site-packages/botocore_stubs-1.40.50.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.11/site-packages/botocore_stubs-1.42.30.dist-info/licenses/LICENSE
 MIT License
 
 Copyright (c) 2022 Vlad Emelianov
@@ -7293,7 +7293,7 @@ UNKNOWN
 
 dnspython
 2.6.1
-ISC License (ISCL)
+ISC
 https://www.dnspython.org
 /usr/local/airflow/.local/lib/python3.11/site-packages/dnspython-2.6.1.dist-info/licenses/LICENSE
 ISC License
@@ -7519,7 +7519,7 @@ UNKNOWN
 
 filelock
 3.15.4
-The Unlicense (Unlicense)
+Unlicense
 https://github.com/tox-dev/py-filelock
 /usr/local/airflow/.local/lib/python3.11/site-packages/filelock-3.15.4.dist-info/licenses/LICENSE
 This is free and unencumbered software released into the public domain.
@@ -8805,7 +8805,7 @@ UNKNOWN
 
 httpcore
 1.0.5
-BSD License
+BSD-3-Clause
 https://www.encode.io/httpcore/
 /usr/local/airflow/.local/lib/python3.11/site-packages/httpcore-1.0.5.dist-info/licenses/LICENSE.md
 Copyright © 2020, [Encode OSS Ltd](https://www.encode.io/).
@@ -8841,7 +8841,7 @@ UNKNOWN
 
 httpx
 0.27.0
-BSD License
+BSD-3-Clause
 https://github.com/encode/httpx
 /usr/local/airflow/.local/lib/python3.11/site-packages/httpx-0.27.0.dist-info/licenses/LICENSE.md
 Copyright © 2019, [Encode OSS Ltd](https://www.encode.io/).
@@ -10196,10 +10196,10 @@ UNKNOWN
 UNKNOWN
 
 mypy-boto3-logs
-1.40.32
-MIT License
+1.42.10
+MIT
 https://github.com/youtype/mypy_boto3_builder
-/usr/local/airflow/.local/lib/python3.11/site-packages/mypy_boto3_logs-1.40.32.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.11/site-packages/mypy_boto3_logs-1.42.10.dist-info/licenses/LICENSE
 MIT License
 
 Copyright (c) 2025 Vlad Emelianov
@@ -10225,10 +10225,10 @@ UNKNOWN
 UNKNOWN
 
 mypy-boto3-sqs
-1.40.35
-MIT License
+1.42.3
+MIT
 https://github.com/youtype/mypy_boto3_builder
-/usr/local/airflow/.local/lib/python3.11/site-packages/mypy_boto3_sqs-1.40.35.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.11/site-packages/mypy_boto3_sqs-1.42.3.dist-info/licenses/LICENSE
 MIT License
 
 Copyright (c) 2025 Vlad Emelianov
@@ -12367,7 +12367,7 @@ UNKNOWN
 
 platformdirs
 4.2.2
-MIT License
+MIT
 https://github.com/platformdirs/platformdirs
 /usr/local/airflow/.local/lib/python3.11/site-packages/platformdirs-4.2.2.dist-info/licenses/LICENSE
 MIT License
@@ -14329,7 +14329,7 @@ UNKNOWN
 
 rich-argparse
 1.5.2
-MIT License
+MIT
 https://github.com/hamdanal/rich-argparse
 /usr/local/airflow/.local/lib/python3.11/site-packages/rich_argparse-1.5.2.dist-info/licenses/LICENSE
 MIT License
@@ -14675,7 +14675,7 @@ UNKNOWN
 
 soupsieve
 2.6
-MIT License
+MIT
 https://github.com/facelessuser/soupsieve
 /usr/local/airflow/.local/lib/python3.11/site-packages/soupsieve-2.6.dist-info/licenses/LICENSE.md
 MIT License
@@ -15434,10 +15434,10 @@ UNKNOWN
 UNKNOWN
 
 types-awscrt
-0.28.1
+0.31.1
 MIT License
 https://github.com/youtype/types-awscrt
-/usr/local/airflow/.local/lib/python3.11/site-packages/types_awscrt-0.28.1.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.11/site-packages/types_awscrt-0.31.1.dist-info/licenses/LICENSE
 MIT License
 
 Copyright (c) 2022 Vlad Emelianov
@@ -15464,10 +15464,10 @@ UNKNOWN
 UNKNOWN
 
 types-s3transfer
-0.14.0
-MIT License
+0.16.0
+MIT
 https://github.com/youtype/types-s3transfer
-/usr/local/airflow/.local/lib/python3.11/site-packages/types_s3transfer-0.14.0.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.11/site-packages/types_s3transfer-0.16.0.dist-info/licenses/LICENSE
 MIT License
 
 Copyright (c) 2022 Vlad Emelianov
@@ -15992,7 +15992,7 @@ UNKNOWN
 
 virtualenv
 20.26.3
-MIT License
+MIT
 https://github.com/pypa/virtualenv
 /usr/local/airflow/.local/lib/python3.11/site-packages/virtualenv-20.26.3.dist-info/licenses/LICENSE
 Copyright (c) 2020-202x The virtualenv developers
