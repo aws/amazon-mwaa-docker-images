@@ -11,9 +11,9 @@ validate_version_with_pip() {
   fi
 }
 
-if ! python3 -c 'import sys; assert sys.version_info[:2] == (3,13)' > /dev/null;
+if ! python3 -c 'import sys; assert sys.version_info[:2] == (3,12)' > /dev/null;
 then
-  echo "Validation Error: Python version 3.13 expected"
+  echo "Validation Error: Python version 3.12 expected"
 fi
 
 validate_version_with_pip "apache-airflow" "$EXPECTED_AIRFLOW_VERSION"
