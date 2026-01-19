@@ -1,5 +1,6 @@
 """RDS IAM credential provider for generating authentication tokens."""
 import json
+import logging
 import os
 import sys
 import threading
@@ -8,6 +9,8 @@ import urllib.request
 from urllib.parse import quote_plus
 
 import boto3
+
+logger = logging.getLogger(__name__)
 
 class RDSIAMCredentialProvider:
     """Provider for RDS IAM authentication tokens with thread-safe caching."""
@@ -68,8 +71,8 @@ class RDSIAMCredentialProvider:
         if token_hostname:
             return token_hostname
         else:
-            print("ERROR: RDS_IAM_TOKEN_HOSTNAME not set in environment")
-            print("This should be set by the CDK stack to the RDS Cluster/Proxy endpoint")
+            logger.error("ERROR: RDS_IAM_TOKEN_HOSTNAME not set in environment")
+            logger.error("This should be set by the CDK stack to the RDS Cluster/Proxy endpoint")
             raise ValueError("RDS_IAM_TOKEN_HOSTNAME environment variable is required")
 
     @staticmethod
@@ -111,7 +114,7 @@ class RDSIAMCredentialProvider:
             return auth_token
 
         except Exception as e:
-            print(f"Failed to generate RDS auth token: {e}")
+            logger.error(f"Failed to generate RDS auth token: {e}")
             raise
 
     @staticmethod
@@ -138,11 +141,11 @@ class RDSIAMCredentialProvider:
                 username='airflow_user'
             )
             
-            print(f"Successfully generated RDS auth token at {time.strftime('%Y-%m-%d %H:%M:%S')}")
+            logger.info(f"Successfully generated RDS auth token at {time.strftime('%Y-%m-%d %H:%M:%S')}")
             return auth_token
 
         except Exception as e:
-            print(f"Failed to update credentials: {e}")
+            logger.error(f"Failed to update credentials: {e}")
             return None
 
     @classmethod

@@ -12,9 +12,9 @@ def test_is_from_migrate_db():
     with patch.dict('os.environ', {'MWAA_AIRFLOW_COMPONENT': 'scheduler'}):
         assert is_from_migrate_db() is False
 
-    with patch.dict('os.environ', {}, clear=True), patch('builtins.print') as mock_print:
+    with patch.dict('os.environ', {}, clear=True), patch('mwaa.config.airflow_rds_iam_patch.logger') as mock_logger:
         assert is_from_migrate_db() is False
-        mock_print.assert_called_once_with("MWAA_AIRFLOW_COMPONENT does not exist as an environment variable.")
+        mock_logger.error.assert_called_once_with("MWAA_AIRFLOW_COMPONENT does not exist as an environment variable.")
 
 
 def test_is_using_rds_proxy():
@@ -27,9 +27,9 @@ def test_is_using_rds_proxy():
     with patch.dict('os.environ', {'SSL_MODE': 'disable'}):
         assert is_using_rds_proxy() is False
 
-    with patch.dict('os.environ', {}, clear=True), patch('builtins.print') as mock_print:
+    with patch.dict('os.environ', {}, clear=True), patch('mwaa.config.airflow_rds_iam_patch.logger') as mock_logger:
         assert is_using_rds_proxy() is False
-        mock_print.assert_called_once_with("SSL_MODE does not exist as an environment variable.")
+        mock_logger.error.assert_called_once_with("SSL_MODE does not exist as an environment variable.")
 
 
 def test_is_accessing_metadata_db():

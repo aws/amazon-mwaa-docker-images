@@ -1,8 +1,12 @@
 """Airflow local settings configuration for MWAA RDS IAM authentication."""
+import logging
+
+logger = logging.getLogger(__name__)
+
 try:
     import mwaa.config.airflow_rds_iam_patch  # type: ignore[import-untyped]
 except Exception as e:
-    print(f"Failed to load RDS IAM patch: {e}")
+    logger.error(f"Failed to load RDS IAM patch: {e}")
     raise
 
 # Load ${AIRFLOW_HOME}/dags/airflow_local_settings.py if it exists for airflow version < 2.10.1
@@ -23,14 +27,14 @@ def _copy_dags_airflow_local_settings():
         try:
             subprocess.run(["cp", dags_airflow_local_settings_path, dest_config_airflow_local_settings_path], check=True)
         except Exception as err:
-            print(f"Error copying airflow_local_settings.py to config folder: {err}")
+            logger.error(f"Error copying airflow_local_settings.py to config folder: {err}")
             raise err
     else:
         if os.path.exists(dest_config_airflow_local_settings_path):
             try:
                 subprocess.run(["rm", "-f", dest_config_airflow_local_settings_path], check=True)
             except Exception as err:
-                print(f"Error removing dags_airflow_local_settings.py: {err}")
+                logger.error(f"Error removing dags_airflow_local_settings.py: {err}")
 
 def load_dags_airflow_local_settings():
     """Load customer's airflow_local_settings.py from dags folder."""
@@ -38,7 +42,7 @@ def load_dags_airflow_local_settings():
     try:
         _copy_dags_airflow_local_settings()
     except Exception as e:
-        print(f"Failed to copy dags/airflow_local_settings.py to config folder: {e}")
+        logger.error(f"Failed to copy dags/airflow_local_settings.py to config folder: {e}")
         raise
 
     # Check if the dags airflow_local_settings.py exists
@@ -47,7 +51,7 @@ def load_dags_airflow_local_settings():
         try:
             import dags_airflow_local_settings
         except Exception as e:
-            print(f"Failed to import airflow_local_settings from {dags_airflow_local_settings_path}: {e}")
+            logger.error(f"Failed to import airflow_local_settings from {dags_airflow_local_settings_path}: {e}")
             raise
 
 load_dags_airflow_local_settings()

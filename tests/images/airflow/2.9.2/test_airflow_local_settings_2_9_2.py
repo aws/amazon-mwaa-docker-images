@@ -64,18 +64,19 @@ def test_copy_dags_airflow_local_settings_remove_error():
     """Test error handling during remove operation"""
     with patch('subprocess.run') as mock_subprocess, \
          patch('os.path.exists') as mock_exists, \
-         patch('builtins.print') as mock_print:
+         patch.dict('sys.modules', {'dags_airflow_local_settings': Mock()}), \
+         patch('logging.getLogger') as mock_get_logger:
+        
+        mock_logger = Mock()
+        mock_get_logger.return_value = mock_logger
         mock_exists.side_effect = [False, True, False]
         mock_subprocess.side_effect = Exception("Remove failed")
         
         spec, module = import_airflow_local_settings()
-        with patch.dict('sys.modules', {'dags_airflow_local_settings': Mock()}):
-            spec.loader.exec_module(module)
+        spec.loader.exec_module(module)
         
         mock_subprocess.assert_called_once()
-        mock_print.assert_any_call("Error removing dags_airflow_local_settings.py: Remove failed")
-
-
+        mock_logger.error.assert_any_call("Error removing dags_airflow_local_settings.py: Remove failed")
 
 def test_load_dags_airflow_local_settings_no_file():
     """Test when no dags file exists"""
