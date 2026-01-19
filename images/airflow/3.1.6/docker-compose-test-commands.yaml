@@ -1,0 +1,55 @@
+version: "3.8"
+
+x-airflow-common: &airflow-common
+  image: amazon-mwaa-docker-images/airflow:3.1.6-dev
+  restart: always
+  environment:
+    AWS_REGION: "us-west-2"
+    AWS_DEFAULT_REGION: "us-west-2"
+
+    # > MWAA Configurations
+    # >> Core Configuration
+    # Use this environment variable if you have custom requirements you want to install when the
+    # container is up.
+    MWAA__CORE__REQUIREMENTS_PATH: ${MWAA__CORE__REQUIREMENTS_PATH}
+    MWAA__CORE__AUTH_TYPE: "testing"
+    # Additional Airflow configuration can be passed here in JSON form.
+    MWAA__CORE__CUSTOM_AIRFLOW_CONFIGS: "{}"
+    MWAA__CORE__FERNET_KEY: ${FERNET_KEY}
+    MWAA__WEBSERVER__SECRET: '{"secret_key": "fake-key-aYDdF6d+Fjznai5yBW63CUAi0IipJqDHlNSWIun6y8o="}'
+    # Use this enviornment variable to enable encryption with KMS.
+    MWAA__CORE__KMS_KEY_ARN: ${MWAA__CORE__KMS_KEY_ARN}
+    # Use this environment variable if you have a custom start-up script.
+    MWAA__CORE__STARTUP_SCRIPT_PATH: ${MWAA__CORE__STARTUP_SCRIPT_PATH}
+    # >> Database configuration
+    MWAA__DB__CREDENTIALS: '{"username": "airflow", "password": "airflow"}'
+    MWAA__DB__POSTGRES_DB: "airflow"
+    MWAA__DB__POSTGRES_HOST: "postgres"
+    MWAA__DB__POSTGRES_PORT: "5432"
+    MWAA__DB__POSTGRES_SSLMODE: "prefer"
+    # >> SQS configuration
+    MWAA__SQS__CREATE_QUEUE: True
+    MWAA__SQS__CUSTOM_ENDPOINT: http://sqs:9324
+    MWAA__SQS__QUEUE_URL: http://sqs:9324/000000000000/celery-queue
+    MWAA__SQS__USE_SSL: False
+
+  volumes:
+    - ./dags:/usr/local/airflow/dags
+    - ./plugins:/usr/local/airflow/plugins
+    - ./requirements:/usr/local/airflow/requirements
+    - ./startup:/usr/local/airflow/startup
+
+services:
+  test-requirements:
+    <<: *airflow-common
+    command: test-requirements
+    container_name: mwaa-316-requirements
+
+  test-startup-script:
+    <<: *airflow-common
+    command: test-startup-script
+    container_name: mwaa-316-startup-script
+
+volumes:
+  postgres-db-volume:
+    name: "mwaa-316-db-volume"

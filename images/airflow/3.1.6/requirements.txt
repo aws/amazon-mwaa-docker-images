@@ -1,0 +1,32 @@
+# This requirements file is used when creating a virtual environment for
+# building and developing the Airflow image. It is not to be confused with
+# the requirements of Airflow within the image. Still, they are largely similar
+# apart from some additional requirements for type checking, e.g. boto3-stubs
+# or similar stuff for aiding build and development, e.g. pydocstyle.
+--constraint https://raw.githubusercontent.com/apache/airflow/constraints-3.1.6/constraints-3.12.txt
+# Main Airflow packages.
+# NOTE: We always specify the version here.
+apache-airflow[celery,statsd]==3.1.6
+# Additional packages for MWAA Airflow.
+# NOTE: We don't specify the version here since the constraints file take care
+# of this, making it easier to port the code to other versions.
+apache-airflow-providers-amazon[aiobotocore]
+celery[sqs]
+psycopg2
+pycurl
+watchtower
+fluent-logger
+# Additional packages for development
+# NOTE: Like above, we don't specify the version here.
+boto3-stubs[logs]
+boto3-stubs[sqs]
+jinja2
+pydocstyle
+pyright
+ruff
+sqlalchemy-stubs
+pytest
+pytest-asyncio
+pytest-cov
+pytest-mock
+diff-cover

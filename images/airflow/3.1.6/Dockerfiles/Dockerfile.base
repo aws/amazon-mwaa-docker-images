@@ -1,0 +1,156 @@
+#
+# WARNING: Don't change this file manually. This file is auto-generated from
+# the Jinja2-templated Dockerfile.j2 file, so you need to change that file
+# instead.
+#
+
+FROM public.ecr.aws/amazonlinux/amazonlinux:2023
+
+# Environment variables
+
+ENV AIRFLOW_VERSION=3.1.6
+
+ENV AIRFLOW_USER_HOME=/usr/local/airflow
+ENV AIRFLOW_HOME=${AIRFLOW_USER_HOME}
+ENV MWAA_HOME=/usr/local/mwaa
+ENV PYTHON_VERSION=3.12.10
+
+# We don't want those variables to stay in the final image, so we use ARG instead of ENV.
+ARG BUILDARCH
+ARG AIRFLOW_USER_LOCAL_PATH=${AIRFLOW_USER_HOME}/.local
+ARG AIRFLOW_USER_LOCAL_BIN_PATH=${AIRFLOW_USER_LOCAL_PATH}/bin
+ARG AIRFLOW_USER_LOCAL_ETC_PATH=${AIRFLOW_USER_LOCAL_PATH}/etc
+ARG PATH_DEFAULT=${PATH}
+ARG PATH_AIRFLOW_USER=${AIRFLOW_USER_LOCAL_BIN_PATH}:${PATH_DEFAULT}
+ARG PYTHON_MD5_CHECKSUM=0c0a6cce86d7611aed691d61e0599de0
+ARG MARIADB_DOWNLOAD_BASE_URL=https://mirror.mariadb.org/yum/11.4/fedora38-
+ARG MARIADB_DOWLOAD_URL_X86_SUFFIX=amd64/rpms
+ARG MARIADB_DOWLOAD_URL_ARM_SUFFIX=aarch64/rpms
+ARG MARIADB_X86_SUFFIX=.x86_64.rpm
+ARG MARIADB_ARM_SUFFIX=.aarch64.rpm
+ARG MARIADB_RPM_COMMON_PREFIX=MariaDB-common-11.4.3-1.fc38
+ARG MARIADB_RPM_COMMON_X86_CHECKSUM=14e7b1c5f21ea5818c4dc439ce5625ad
+ARG MARIADB_RPM_COMMON_ARM_CHECKSUM=baac78a46ec01b69fcaf60eba38bc2f3
+ARG MARIADB_RPM_DEVEL_PREFIX=MariaDB-devel-11.4.3-1.fc38
+ARG MARIADB_RPM_DEVEL_X86_CHECKSUM=3f967a5737c997f8da80079d1ebec82a
+ARG MARIADB_RPM_DEVEL_ARM_CHECKSUM=a49c1402378581ba2d63d97daa4a4c04
+ARG MARIADB_RPM_SHARED_PREFIX=MariaDB-shared-11.4.3-1.fc38
+ARG MARIADB_RPM_SHARED_X86_CHECKSUM=26a6c7fb021c09b85c21ec1878c1953f
+ARG MARIADB_RPM_SHARED_ARM_CHECKSUM=fd2ce395bf7d2cb959495bbd02ffec2e
+
+ENV AIRFLOW_CONSTRAINTS_FILE=${AIRFLOW_USER_LOCAL_ETC_PATH}/airflow_constraints.txt
+ENV MWAA_ESSENTIAL_CONSTRAINTS_FILE=${AIRFLOW_USER_LOCAL_ETC_PATH}/mwaa_essential_constraints.txt
+
+# Copy files common to all bootstrapping files.
+COPY ./bootstrap/common.sh /bootstrap/common.sh
+
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+# BEGINNING marker for root user, first pass bootstrapping steps.
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+COPY ./bootstrap/01-root-firstpass/001-init.sh /bootstrap/01-root-firstpass/001-init.sh
+RUN chmod +x /bootstrap/01-root-firstpass/001-init.sh && /bootstrap/01-root-firstpass/001-init.sh
+
+COPY ./bootstrap/01-root-firstpass/002-install-python.sh /bootstrap/01-root-firstpass/002-install-python.sh
+RUN chmod +x /bootstrap/01-root-firstpass/002-install-python.sh && /bootstrap/01-root-firstpass/002-install-python.sh
+
+COPY ./bootstrap/01-root-firstpass/003-install-mariadb.sh /bootstrap/01-root-firstpass/003-install-mariadb.sh
+RUN chmod +x /bootstrap/01-root-firstpass/003-install-mariadb.sh && /bootstrap/01-root-firstpass/003-install-mariadb.sh
+
+COPY ./bootstrap/01-root-firstpass/004-create-airflow-user.sh /bootstrap/01-root-firstpass/004-create-airflow-user.sh
+RUN chmod +x /bootstrap/01-root-firstpass/004-create-airflow-user.sh && /bootstrap/01-root-firstpass/004-create-airflow-user.sh
+
+COPY ./bootstrap/01-root-firstpass/005-install-aws-cli.sh /bootstrap/01-root-firstpass/005-install-aws-cli.sh
+RUN chmod +x /bootstrap/01-root-firstpass/005-install-aws-cli.sh && /bootstrap/01-root-firstpass/005-install-aws-cli.sh
+
+COPY ./bootstrap/01-root-firstpass/100-install-needed-dnf-packages.sh /bootstrap/01-root-firstpass/100-install-needed-dnf-packages.sh
+RUN chmod +x /bootstrap/01-root-firstpass/100-install-needed-dnf-packages.sh && /bootstrap/01-root-firstpass/100-install-needed-dnf-packages.sh
+
+#<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+# END marker for root user, first pass bootstrapping steps.
+#<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+# Copy the etc/ directory 
+COPY ./etc $AIRFLOW_USER_LOCAL_ETC_PATH
+
+# Copy airflow user's bin/ directory before starting the bootstrapping steps for
+# airflow user.
+COPY ./bin/airflow-user $AIRFLOW_USER_LOCAL_BIN_PATH
+RUN chmod -R +x ${AIRFLOW_USER_LOCAL_BIN_PATH}/* 
+
+# Make sure airflow user owns everything in its home directory.
+RUN chown -R airflow: ${AIRFLOW_USER_LOCAL_PATH}
+
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+# > BEGINNING marker for airflow user bootstrapping steps.
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+# Switch to 'airflow' user and update the PATH environment variable.
+USER airflow
+ENV PATH=${PATH_AIRFLOW_USER} 
+
+USER root
+COPY ./bootstrap/02-airflow/001-install-required-pip-packages.sh /bootstrap/02-airflow/001-install-required-pip-packages.sh
+RUN chmod +x /bootstrap/02-airflow/001-install-required-pip-packages.sh
+USER airflow
+RUN /bootstrap/02-airflow/001-install-required-pip-packages.sh
+
+# Revert the PATH and user.
+ENV PATH=${PATH_DEFAULT}
+USER root
+
+#<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+# > END marker for airflow user bootstrapping steps.
+#<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+# BEGINNING marker for root user, second pass bootstrapping steps.
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+# Those steps are also executed as the root user. However, they rely on the
+# successfull execution of the airflow user bootstrapping steps. For example,
+# giving ownership of the Airflow home user to the 'airflow' user requires the
+# the folder to be fully setup first.
+
+COPY ./bootstrap/03-root-secondpass/001-create-mwaa-dir.sh /bootstrap/03-root-secondpass/001-create-mwaa-dir.sh
+RUN chmod +x /bootstrap/03-root-secondpass/001-create-mwaa-dir.sh && /bootstrap/03-root-secondpass/001-create-mwaa-dir.sh
+
+COPY ./bootstrap/03-root-secondpass/002-make-airflow-sudoer.sh /bootstrap/03-root-secondpass/002-make-airflow-sudoer.sh
+RUN chmod +x /bootstrap/03-root-secondpass/002-make-airflow-sudoer.sh && /bootstrap/03-root-secondpass/002-make-airflow-sudoer.sh
+
+COPY ./bootstrap/03-root-secondpass/100-chown-airflow-folder.sh /bootstrap/03-root-secondpass/100-chown-airflow-folder.sh
+RUN chmod +x /bootstrap/03-root-secondpass/100-chown-airflow-folder.sh && /bootstrap/03-root-secondpass/100-chown-airflow-folder.sh
+
+COPY ./bootstrap/03-root-secondpass/999-generate-bill-of-materials.sh /bootstrap/03-root-secondpass/999-generate-bill-of-materials.sh
+RUN chmod +x /bootstrap/03-root-secondpass/999-generate-bill-of-materials.sh && /bootstrap/03-root-secondpass/999-generate-bill-of-materials.sh
+
+#<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+# END marker for root user, second pass bootstrapping steps.
+#<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+# remove bootstrapping files.
+RUN rm -rf /bootstrap
+
+# Create a volume for syncing files with the sidecar. The actual folder
+# is created by the `001-create-mwaa-dir.sh` script.
+VOLUME ["${MWAA_HOME}"]
+
+# Expose the web server port
+# TODO We should only expose this port if the command is 'webserver'.
+EXPOSE 8080
+
+ENV PATH=${PATH_AIRFLOW_USER}
+ENV PYTHONPATH="/python"
+ENV PYTHONUNBUFFERED=1
+
+WORKDIR ${AIRFLOW_USER_HOME}
+
+# Copy python files.
+COPY ./python /python
+
+# TODO Move this to the bin folder under airflow's home folder.
+COPY healthcheck.sh /healthcheck.sh
+RUN chmod +x /healthcheck.sh
+
+COPY healthcheck.py /healthcheck.py
+RUN chmod +x /healthcheck.py
