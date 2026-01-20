@@ -90,6 +90,9 @@ jobs:
             chmod +x ./build.sh
             ./build.sh docker
             cd ../../../
+
+            echo "Pruning Docker data to free space"
+            docker system prune -af --volumes
           done
 
       - name: Commit BOM updates
