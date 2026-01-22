@@ -138,7 +138,7 @@ def test_get_token_refresh_needed():
         assert RDSIAMCredentialProvider._token == 'new_token'
 
 
-def test_generate_credentials_success():
+def test_generate_credentials_success(capsys):
     """Test successful credential generation"""
     from mwaa.utils.get_rds_iam_credentials import RDSIAMCredentialProvider
     
@@ -146,12 +146,13 @@ def test_generate_credentials_success():
     
     with patch.object(RDSIAMCredentialProvider, 'get_ecs_credentials', return_value=mock_credentials), \
          patch.object(RDSIAMCredentialProvider, 'get_rds_iam_token_hostname', return_value='test.rds.amazonaws.com'), \
-         patch.object(RDSIAMCredentialProvider, 'generate_rds_auth_token', return_value='auth_token'), \
-         patch('mwaa.utils.get_rds_iam_credentials.logger') as mock_logger:
+         patch.object(RDSIAMCredentialProvider, 'generate_rds_auth_token', return_value='auth_token'):
         
         result = RDSIAMCredentialProvider.generate_credentials()
         assert result == 'auth_token'
-        mock_logger.info.assert_called_with(f"Successfully generated RDS auth token at {time.strftime('%Y-%m-%d %H:%M:%S')}")
+        
+        captured = capsys.readouterr()
+        assert "Successfully generated RDS auth token at" in captured.err
 
 
 def test_generate_credentials_failure():
