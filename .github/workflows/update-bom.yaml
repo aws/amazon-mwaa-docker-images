@@ -10,6 +10,11 @@ on:
         required: false
         default: ''
 
+permissions:
+  contents: write
+  pull-requests: write
+  packages: read
+
 jobs:
   update-bom:
     name: Update Bill of Materials Job
