@@ -28,6 +28,10 @@ def is_from_migrate_db():
         return False
     return 'migrate-db' == MWAA_AIRFLOW_COMPONENT
 
+def is_local_runner():
+    """Check if running in local runner mode."""
+    return os.environ.get('MWAA_LOCAL_RUNNER', '').lower() == 'true'
+
 def is_using_rds_proxy():
     """Check if using RDS proxy with SSL mode."""
     SSL_MODE = os.environ.get('SSL_MODE')
@@ -69,9 +73,9 @@ def is_accessing_metadata_db(dialect, cargs, cparams):
 
 
 # Attaches a global listener to SQLAlchemy's Engine class
-# But do not attach the MigrateDb processes
+# But do not attach for MigrateDb processes or local runner
 
-if is_using_rds_proxy() and not is_from_migrate_db():
+if is_using_rds_proxy() and not is_from_migrate_db() and not is_local_runner():
     from sqlalchemy.engine import Engine
     from sqlalchemy import event
 
