@@ -53,7 +53,8 @@ def is_accessing_metadata_db(dialect, cargs, cparams):
             if (
                 url_obj.host == metadata_url.host and
                 url_obj.database == metadata_url.database and
-                url_obj.port == metadata_url.port
+                url_obj.port == metadata_url.port and
+                url_obj.username in ['airflow_user', 'adminuser']
             ):
                 return True
         except Exception:
@@ -63,12 +64,14 @@ def is_accessing_metadata_db(dialect, cargs, cparams):
     host = cparams.get('host')
     db = cparams.get('dbname') or cparams.get('database')
     port = cparams.get("port")
+    username = cparams.get("username") or cparams.get("user")
 
     # Compare essential components that uniquely identify the same DB
     return (
         host == metadata_url.host and
         db == metadata_url.database and
-        port == metadata_url.port
+        port == metadata_url.port and
+        username in ['airflow_user', 'adminuser']
     )
 
 

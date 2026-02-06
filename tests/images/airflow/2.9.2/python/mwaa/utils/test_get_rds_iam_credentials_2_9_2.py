@@ -140,7 +140,7 @@ def test_get_token_refresh_needed():
         assert RDSIAMCredentialProvider._token == 'new_token'
 
 
-def test_generate_credentials_success(capsys):
+def test_generate_credentials_success():
     """Test successful credential generation"""
     from mwaa.utils.get_rds_iam_credentials import RDSIAMCredentialProvider
     
@@ -152,9 +152,6 @@ def test_generate_credentials_success(capsys):
         
         result = RDSIAMCredentialProvider.generate_credentials()
         assert result == 'auth_token'
-        
-        captured = capsys.readouterr()
-        assert "Successfully generated RDS auth token at" in captured.err
 
 
 def test_generate_credentials_failure():

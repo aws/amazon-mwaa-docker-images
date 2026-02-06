@@ -42,12 +42,20 @@ def test_is_accessing_metadata_db():
         mock_url.database = 'airflow'
         mock_url.port = 5432
         
-        # Test with matching parameters
-        cparams = {'host': 'test.rds.amazonaws.com', 'database': 'airflow', 'port': 5432}
+        # Test with matching parameters including username
+        cparams = {'host': 'test.rds.amazonaws.com', 'database': 'airflow', 'port': 5432, 'username': 'airflow_user'}
+        assert is_accessing_metadata_db('postgresql', [], cparams) is True
+        
+        # Test with adminuser username
+        cparams = {'host': 'test.rds.amazonaws.com', 'database': 'airflow', 'port': 5432, 'username': 'adminuser'}
         assert is_accessing_metadata_db('postgresql', [], cparams) is True
         
         # Test with non-matching parameters
-        cparams = {'host': 'other.rds.amazonaws.com', 'database': 'other', 'port': 3306}
+        cparams = {'host': 'other.rds.amazonaws.com', 'database': 'other', 'port': 3306, 'username': 'airflow_user'}
+        assert is_accessing_metadata_db('postgresql', [], cparams) is False
+        
+        # Test with missing username
+        cparams = {'host': 'test.rds.amazonaws.com', 'database': 'airflow', 'port': 5432}
         assert is_accessing_metadata_db('postgresql', [], cparams) is False
 
 
@@ -60,8 +68,12 @@ def test_is_accessing_metadata_db_with_cargs():
         mock_url.database = 'airflow'
         mock_url.port = 5432
         
-        # Test with matching cargs
-        cargs = ['postgresql://user:pass@test.rds.amazonaws.com:5432/airflow']
+        # Test with matching cargs including airflow_user
+        cargs = ['postgresql://airflow_user:pass@test.rds.amazonaws.com:5432/airflow']
+        assert is_accessing_metadata_db('postgresql', cargs, {}) is True
+        
+        # Test with matching cargs including adminuser
+        cargs = ['postgresql://adminuser:pass@test.rds.amazonaws.com:5432/airflow']
         assert is_accessing_metadata_db('postgresql', cargs, {}) is True
 
 
@@ -79,9 +91,9 @@ def test_is_accessing_metadata_db_cargs_exception():
         # Mock make_url to raise an exception when called with cargs
         mock_make_url.side_effect = Exception("Invalid URL")
         
-        # Test with cargs that cause exception - should fall back to cparams
+        # Test with cargs that cause exception - should fall back to cparams with username
         cargs = ['some_url']
-        cparams = {'host': 'test.rds.amazonaws.com', 'database': 'airflow', 'port': 5432}
+        cparams = {'host': 'test.rds.amazonaws.com', 'database': 'airflow', 'port': 5432, 'username': 'airflow_user'}
         assert is_accessing_metadata_db('postgresql', cargs, cparams) is True
         
         # Verify make_url was called and raised exception
