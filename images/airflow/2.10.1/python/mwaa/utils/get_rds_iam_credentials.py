@@ -141,7 +141,6 @@ class RDSIAMCredentialProvider:
                 username='airflow_user'
             )
 
-            print(f"Successfully generated RDS auth token at {time.strftime('%Y-%m-%d %H:%M:%S')}", file=sys.stderr)
             return auth_token
 
         except Exception as e:
