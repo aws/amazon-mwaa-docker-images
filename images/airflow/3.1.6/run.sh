@@ -49,6 +49,7 @@ export FERNET_KEY
 ACCOUNT_ID="" # Put your account ID here.
 ENV_NAME="" # Choose an environment name here.
 REGION="us-west-2" # Keeping the region us-west-2 as default.
+export REGION
 
 # AWS Credentials
 AWS_ACCESS_KEY_ID="" # Put your credentials here.
@@ -59,7 +60,7 @@ export AWS_SECRET_ACCESS_KEY
 export AWS_SESSION_TOKEN
 
 # Set to http://host_name:8080
-MWAA__CORE__API_SERVER_URL=""
+MWAA__CORE__API_SERVER_URL="http://mwaa-316-webserver:8080"
 
 # BOM Generation
 GENERATE_BILL_OF_MATERIALS="False"
