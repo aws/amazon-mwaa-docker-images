@@ -50,7 +50,7 @@ def load_dags_airflow_local_settings():
     if os.path.exists(dags_airflow_local_settings_path):
         # load /config/dags_airflow_local_settings.py if it exists
         try:
-            import dags_airflow_local_settings
+            import dags_airflow_local_settings  # type: ignore[import-not-found]
             logger.info("Successfully imported airflow_local_settings from dags folder")
         except Exception as e:
             logger.error(f"Failed to import airflow_local_settings from {dags_airflow_local_settings_path}: {e}")
@@ -83,7 +83,7 @@ def load_plugins_airflow_local_settings():
 
     if os.path.exists(plugins_airflow_local_settings_path):
         try:
-            import plugins_airflow_local_settings
+            import plugins_airflow_local_settings  # type: ignore[import-not-found]
             logger.info("Successfully imported airflow_local_settings from plugins folder")
         except Exception as e:
             logger.error(f"Failed to import airflow_local_settings from {plugins_airflow_local_settings_path}: {e}")
