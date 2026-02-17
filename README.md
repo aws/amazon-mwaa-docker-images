@@ -28,6 +28,9 @@ python3 create_venvs.py --target <development | production>
 
 # Or create venv for a specific version only
 python3 create_venvs.py --target <development | production> --version 3.0.6
+
+# Optionally use uv for faster package installation (requires uv: https://docs.astral.sh/uv/)
+python3 create_venvs.py --target <development | production> --use-uv
 ```
 
 3. Build a supported Airflow version Docker image
