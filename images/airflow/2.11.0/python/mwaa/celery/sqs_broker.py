@@ -173,6 +173,7 @@ from kombu.utils.json import dumps, loads
 from kombu.utils.objects import cached_property
 
 from kombu.transport import virtual
+import kombu
 
 # 2022-11-25: Amazon addition.
 # Airflow Stats object.
@@ -280,9 +281,12 @@ def make_request(self, operation_name, params, queue_url, verb, callback=None, p
 
 # Override the implementation of make_request to bring the fix in this PR:
 # https://github.com/celery/kombu/pull/1807
-AsyncSQSConnection._create_query_request = _create_query_request
-AsyncSQSConnection._create_json_request = _create_json_request
-AsyncSQSConnection.make_request = make_request
+# Only override if kombu version is < 5.6, since later versions already has this fix
+kombu_major_version, kombu_minor_version = map(int, kombu.__version__.split('.')[:2])
+if (kombu_major_version, kombu_minor_version) < (5, 6):
+    AsyncSQSConnection._create_query_request = _create_query_request
+    AsyncSQSConnection._create_json_request = _create_json_request
+    AsyncSQSConnection.make_request = make_request
 
 
 class UndefinedQueueException(Exception):
