@@ -74,11 +74,15 @@ def is_accessing_metadata_db(dialect, cargs, cparams):
         username in ['airflow_user', 'adminuser']
     )
 
+def use_iam_credentials() -> bool:
+    """Check if RDS IAM credentials should be used."""
+    return os.environ.get('USE_IAM_CREDENTIALS', '').lower() == 'true'
 
 # Attaches a global listener to SQLAlchemy's Engine class
-# But do not attach for MigrateDb processes or local runner
+# if the environment uses rds proxy and the feature flag is enabled,
+# but do not attach for MigrateDb processes or local runner
 
-if is_using_rds_proxy() and not is_from_migrate_db() and not is_local_runner():
+if use_iam_credentials() and is_using_rds_proxy() and not is_from_migrate_db() and not is_local_runner():
     from sqlalchemy.engine import Engine
     from sqlalchemy import event
 
