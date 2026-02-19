@@ -32,6 +32,20 @@ def test_is_using_rds_proxy():
         mock_logger.error.assert_called_once_with("SSL_MODE does not exist as an environment variable.")
 
 
+def test_use_iam_credentials():
+    """Test IAM credentials flag detection"""
+    from mwaa.config.airflow_rds_iam_patch import use_iam_credentials
+    
+    with patch.dict('os.environ', {'USE_IAM_CREDENTIALS': 'true'}):
+        assert use_iam_credentials() is True
+    
+    with patch.dict('os.environ', {'USE_IAM_CREDENTIALS': 'false'}):
+        assert use_iam_credentials() is False
+    
+    with patch.dict('os.environ', {}, clear=True):
+        assert use_iam_credentials() is False
+
+
 def test_is_accessing_metadata_db():
     """Test metadata database detection"""
     from mwaa.config.airflow_rds_iam_patch import is_accessing_metadata_db
@@ -102,7 +116,7 @@ def test_is_accessing_metadata_db_cargs_exception():
 
 def test_event_listener_setup():
     """Test SQLAlchemy event listener setup when conditions are met"""
-    with patch.dict('os.environ', {'SSL_MODE': 'require', 'MWAA_AIRFLOW_COMPONENT': 'scheduler'}), \
+    with patch.dict('os.environ', {'SSL_MODE': 'require', 'MWAA_AIRFLOW_COMPONENT': 'scheduler', 'USE_IAM_CREDENTIALS': 'true'}), \
          patch('mwaa.config.database.get_db_connection_string', return_value='postgresql://test:test@localhost/test'), \
          patch('sqlalchemy.event.listen') as mock_listen:
         
@@ -116,7 +130,7 @@ def test_event_listener_setup():
 
 def test_patch_rds_iam_authentication_function():
     """Test the patch_rds_iam_authentication function execution"""
-    with patch.dict('os.environ', {'SSL_MODE': 'require', 'MWAA_AIRFLOW_COMPONENT': 'scheduler'}), \
+    with patch.dict('os.environ', {'SSL_MODE': 'require', 'MWAA_AIRFLOW_COMPONENT': 'scheduler', 'USE_IAM_CREDENTIALS': 'true'}), \
          patch('mwaa.config.database.get_db_connection_string', return_value='postgresql://test:test@localhost/test'), \
          patch('mwaa.utils.get_rds_iam_credentials.RDSIAMCredentialProvider.get_token', return_value='test_token'), \
          patch('mwaa.utils.get_rds_iam_credentials.RDSIAMCredentialProvider.create_db_connection_url', return_value='postgresql://user:token@host:5432/db?sslmode=require'):
