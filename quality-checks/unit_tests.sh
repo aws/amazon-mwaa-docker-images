@@ -3,7 +3,6 @@ set -e
 
 check_dir() {
     local dir=$1  # Directory to work in
-    local venv_dir="${dir}/.venv"  # virtual environment path
 
     echo "Checking directory \"${dir}\"..."
     # Ensure the script is being executed while being in the repo root.
@@ -17,25 +16,33 @@ check_dir() {
 
     status=0
 
-    # Check if virtualenv exists
-    if [[ ! -d "$venv_dir" ]]; then
-        echo "Virtual environment doesn't exist at ${venv_dir}. Please run the script ./create_venvs.py."
-        exit 1
-    fi
-
     # Suppress pip installation messages
     export PIP_QUIET=1
-
-    # shellcheck source=/dev/null
-    source "${venv_dir}/bin/activate" > /dev/null 2>&1
 
     # Find all version directories
     versions_path="tests/images/airflow"
     for version_dir in "$versions_path"/*/; do
         if [ -d "$version_dir" ]; then
             version=$(basename "$version_dir")
+            
+            # Use version-specific venv
+            version_venv_dir="images/airflow/${version}/.venv"
+            
+            # Check if version-specific virtualenv exists
+            if [[ ! -d "$version_venv_dir" ]]; then
+                echo "❌ Virtual environment doesn't exist at ${version_venv_dir}"
+                echo "   Please run: python create_venvs.py --target development"
+                status=1
+                continue
+            fi
+            
             echo -e "\nTesting Airflow version: $version"
+            echo "Using venv: $version_venv_dir"
             echo "----------------------------------------"
+
+            # Activate version-specific venv
+            # shellcheck source=/dev/null
+            source "${version_venv_dir}/bin/activate" > /dev/null 2>&1
 
             # Run pytest with minimal output
             if ! pytest "tests/images/airflow/$version/" --quiet --no-header --tb=short -v; then
@@ -44,10 +51,11 @@ check_dir() {
             else
                 echo "✅ All tests passed for version $version"
             fi
+
+            # Deactivate current venv before moving to next version
+            deactivate > /dev/null 2>&1
         fi
     done
-
-    deactivate > /dev/null 2>&1
 
     exit $status
 }
