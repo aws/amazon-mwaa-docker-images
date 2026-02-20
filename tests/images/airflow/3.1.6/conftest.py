@@ -32,6 +32,11 @@ def pytest_configure(config):
     os.environ["MWAA__CORE__TESTING_MODE"] = "true"
     os.environ["MWAA__CORE__STARTUP_SCRIPT_PATH"] = "../../startup/startup.sh"
 
+    # Mock airflow modules
+    sys.modules['airflow'] = MagicMock()
+    sys.modules['airflow.configuration'] = MagicMock()
+    sys.modules['airflow.providers.celery.executors.default_celery'] = MagicMock()
+
     if os.path.exists(requirements_path):
         try:
             print(f"Installing requirements from: {requirements_path}")
