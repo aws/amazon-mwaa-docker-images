@@ -79,3 +79,12 @@ class TestDatabaseConfig(BaseConfigTest):
         # Check all values are integers
         for key in expected_keys:
             assert isinstance(MWAA_CONNECT_ARGS[key], int)
+
+    def test_connection_string_sets_default_sslmode(self, env_helper, sample_db_credentials):
+        """Test that sslmode defaults to 'require' when not set."""
+        creds = sample_db_credentials.copy()
+        creds.pop("MWAA__DB__POSTGRES_SSLMODE")  # remove sslmode
+        env_helper.set(creds)
+
+        with pytest.raises(RuntimeError, match="One or more of the required environment variables for configuring Postgres are not set."):
+            get_db_connection_string()
