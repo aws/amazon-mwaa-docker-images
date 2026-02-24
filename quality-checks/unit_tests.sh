@@ -26,16 +26,26 @@ check_dir() {
     # Suppress pip installation messages
     export PIP_QUIET=1
 
-    # shellcheck source=/dev/null
-    source "${venv_dir}/bin/activate" > /dev/null 2>&1
-
     # Find all version directories
     versions_path="tests/images/airflow"
     for version_dir in "$versions_path"/*/; do
         if [ -d "$version_dir" ]; then
             version=$(basename "$version_dir")
+            version_venv="images/airflow/$version/.venv"
+            
             echo -e "\nTesting Airflow version: $version"
             echo "----------------------------------------"
+
+            # Check if version-specific venv exists
+            if [[ ! -d "$version_venv" ]]; then
+                echo "❌ Virtual environment doesn't exist at ${version_venv}. Please run ./create_venvs.py"
+                status=1
+                continue
+            fi
+
+            # Activate version-specific venv
+            # shellcheck source=/dev/null
+            source "${version_venv}/bin/activate" > /dev/null 2>&1
 
             # Run pytest with minimal output
             if ! pytest "tests/images/airflow/$version/" --quiet --no-header --tb=short -v; then
@@ -44,10 +54,11 @@ check_dir() {
             else
                 echo "✅ All tests passed for version $version"
             fi
+
+            # Deactivate after each version
+            deactivate > /dev/null 2>&1
         fi
     done
-
-    deactivate > /dev/null 2>&1
 
     exit $status
 }
