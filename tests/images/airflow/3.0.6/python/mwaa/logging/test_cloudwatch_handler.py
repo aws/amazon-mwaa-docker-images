@@ -233,7 +233,7 @@ def test_cloudwatch_remote_task_logger_get_handler(mock_boto3_client, mock_watch
     assert handler is handler2
 
 
-def test_cloudwatch_remote_task_logger_processors_property():
+def test_cloudwatch_remote_task_logger_processors_property(mock_boto3_client, mock_watchtower):
     """Test CloudWatchRemoteTaskLogger processors property returns tuple."""
     logger = CloudWatchRemoteTaskLogger(
         log_group_arn='arn:aws:logs:us-west-2:123456789012:log-group:test-Task',
