@@ -16,6 +16,7 @@ from mwaa.celery.task_monitor import (
     _get_airflow_process_id_mapping
 )
 
+
 @pytest.fixture
 def task_monitor():
     """Create a minimal WorkerTaskMonitor instance for testing"""
@@ -132,17 +133,17 @@ def test_signal_data_from_json_string_all_types(signal_type):
     assert signal_data.createdAt == 1234567890
     assert signal_data.processed is False  # Default value
 
+
 def test_get_airflow_process_id_mapping():
-    """Test process ID extraction from airflow processes in Airflow 2.x format"""
-    # Airflow 2.x uses "airflow tasks run" command format
+    """Test process ID extraction from airflow processes"""
     mock_processes = [
         {
             'pid': 1234,
-            'cmdline': ['airflow', 'tasks', 'run', 'my_dag', 'my_task', '2024-01-01']
+            'cmdline': ['airflow', 'worker', '--', 'test-uuid-001', 'arg1', 'arg2']
         },
         {
             'pid': 1235,
-            'cmdline': ['airflow', 'tasks', 'run', 'another_dag', 'another_task', '2024-01-02', '--local']
+            'cmdline': ['airflow', 'worker', '--', 'test-uuid-002']
         },
         {
             'pid': 1236,
@@ -150,7 +151,7 @@ def test_get_airflow_process_id_mapping():
         },
         {
             'pid': 1237,
-            'cmdline': ['airflow', 'scheduler']  # Different airflow command
+            'cmdline': ['airflow', 'worker', '--']  # Missing UUID
         },
         {
             'pid': 1238,
@@ -171,15 +172,12 @@ def test_get_airflow_process_id_mapping():
     with patch('mwaa.celery.task_monitor.psutil.process_iter', side_effect=mock_process_iter):
         result = _get_airflow_process_id_mapping()
         
-        # Verify only valid Airflow 2.x task processes are mapped
-        # The key is the command starting from "airflow tasks run"
+        # Verify only valid Airflow worker processes are mapped
         assert len(result) == 2
-        assert 'airflow tasks run my_dag my_task 2024-01-01' in result
-        assert result['airflow tasks run my_dag my_task 2024-01-01'] == 1234
-        assert 'airflow tasks run another_dag another_task 2024-01-02 --local' in result
-        assert result['airflow tasks run another_dag another_task 2024-01-02 --local'] == 1235
-        
-        # Non-airflow processes and other airflow commands should not be in the mapping
+        assert result['test-uuid-001'] == 1234
+        assert result['test-uuid-002'] == 1235
+        # Non-airflow processes should not be in the mapping
+        assert 'python' not in result
         assert 1236 not in result.values()
         assert 1237 not in result.values()
         assert 1238 not in result.values()
