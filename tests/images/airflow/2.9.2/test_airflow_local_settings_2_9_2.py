@@ -1,9 +1,9 @@
 import pytest
 import sys
-import os
 import importlib.util
 from pathlib import Path
-from unittest.mock import patch, Mock
+from unittest.mock import patch, MagicMock
+
 
 def test_import_all_modules():
     """Test that imports all modules to ensure coverage tracking"""
@@ -14,93 +14,110 @@ def test_import_all_modules():
         # Import the modules directly to get them in coverage
         import mwaa.config.airflow_rds_iam_patch  # noqa: F401
         import mwaa.utils.get_rds_iam_credentials  # noqa: F401
-
-def import_airflow_local_settings():
-    """Helper function to import airflow_local_settings module."""
-    airflow_local_settings_path = Path(__file__).parent.parent.parent.parent.parent / "images/airflow/2.9.2/airflow_local_settings.py"
-    spec = importlib.util.spec_from_file_location("airflow_local_settings", airflow_local_settings_path)
-    module = importlib.util.module_from_spec(spec)
-    return spec, module
-
-def test_copy_dags_airflow_local_settings_success():
-    """Test successful copying of dags airflow_local_settings.py"""
-    with patch('subprocess.run') as mock_subprocess, \
-         patch('os.path.exists') as mock_exists:
-        mock_exists.return_value = True
         
-        spec, module = import_airflow_local_settings()
-        
-        # Mock the problematic import within the module's namespace
-        with patch.dict('sys.modules', {'dags_airflow_local_settings': Mock()}):
+        # Also test airflow_local_settings
+        airflow_local_settings_path = Path(__file__).parent.parent.parent.parent.parent / "images/airflow/2.9.2/airflow_local_settings.py"
+        spec = importlib.util.spec_from_file_location("airflow_local_settings", airflow_local_settings_path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+def test_rds_iam_patch_import_failure():
+    """Test RDS IAM patch import failure handling"""
+    with patch.dict('sys.modules', {'mwaa.config.airflow_rds_iam_patch': None}):
+        with pytest.raises(ModuleNotFoundError):
+            airflow_local_settings_path = Path(__file__).parent.parent.parent.parent.parent / "images/airflow/2.9.2/airflow_local_settings.py"
+            spec = importlib.util.spec_from_file_location("airflow_local_settings", airflow_local_settings_path)
+            module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
-        
-        mock_subprocess.assert_called_once()
 
-def test_copy_dags_airflow_local_settings_remove_existing():
-    """Test removal of existing config file when source doesn't exist"""
-    with patch('subprocess.run') as mock_subprocess, \
-         patch('os.path.exists') as mock_exists:
-        mock_exists.side_effect = [False, True, False]  # source doesn't exist, dest exists, source doesn't exist for load
+def test_load_dags_airflow_local_settings_success():
+    """Test successful loading of dags/airflow_local_settings.py"""
+    import tempfile
+    import os
+    
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Create the dags directory and a dummy airflow_local_settings.py
+        dags_dir = os.path.join(temp_dir, 'dags')
+        os.makedirs(dags_dir)
+        dags_file = os.path.join(dags_dir, 'airflow_local_settings.py')
         
-        spec, module = import_airflow_local_settings()
-        with patch.dict('sys.modules', {'dags_airflow_local_settings': Mock()}):
+        # Write a simple Python file
+        with open(dags_file, 'w') as f:
+            f.write('# Test dags airflow_local_settings\ntest_var = "dags_loaded"\n')
+        
+        # Set AIRFLOW_HOME to our temp directory
+        with patch.dict('os.environ', {'AIRFLOW_HOME': temp_dir}):
+            # Import and execute the module
+            airflow_local_settings_path = Path(__file__).parent.parent.parent.parent.parent / "images/airflow/2.9.2/airflow_local_settings.py"
+            spec = importlib.util.spec_from_file_location("airflow_local_settings", airflow_local_settings_path)
+            module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
-        
-        mock_subprocess.assert_called_once()
 
-def test_copy_dags_airflow_local_settings_copy_error():
-    """Test error handling during copy operation"""
-    with patch('subprocess.run') as mock_subprocess, \
-         patch('os.path.exists') as mock_exists:
-        mock_exists.return_value = True
-        mock_subprocess.side_effect = Exception("Copy failed")
+def test_load_dags_airflow_local_settings_failure():
+    """Test error handling when loading dags/airflow_local_settings.py fails"""
+    import tempfile
+    import os
+    
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Create the dags directory and a bad Python file
+        dags_dir = os.path.join(temp_dir, 'dags')
+        os.makedirs(dags_dir)
+        dags_file = os.path.join(dags_dir, 'airflow_local_settings.py')
         
-        spec, module = import_airflow_local_settings()
-        with patch.dict('sys.modules', {'dags_airflow_local_settings': Mock()}):
-            with pytest.raises(Exception, match="Copy failed"):
+        # Write invalid Python code that will cause an import error
+        with open(dags_file, 'w') as f:
+            f.write('invalid python syntax !!!')
+        
+        # Set AIRFLOW_HOME to our temp directory
+        with patch.dict('os.environ', {'AIRFLOW_HOME': temp_dir}):
+            with pytest.raises(Exception):
+                airflow_local_settings_path = Path(__file__).parent.parent.parent.parent.parent / "images/airflow/2.9.2/airflow_local_settings.py"
+                spec = importlib.util.spec_from_file_location("airflow_local_settings", airflow_local_settings_path)
+                module = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(module)
 
-def test_copy_dags_airflow_local_settings_remove_error():
-    """Test error handling during remove operation"""
-    with patch('subprocess.run') as mock_subprocess, \
-         patch('os.path.exists') as mock_exists, \
-         patch.dict('sys.modules', {'dags_airflow_local_settings': Mock()}), \
-         patch('logging.getLogger') as mock_get_logger:
+def test_load_plugins_airflow_local_settings_success():
+    """Test successful loading of plugins/airflow_local_settings.py"""
+    import tempfile
+    import os
+    
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Create the plugins directory and a dummy airflow_local_settings.py
+        plugins_dir = os.path.join(temp_dir, 'plugins')
+        os.makedirs(plugins_dir)
+        plugins_file = os.path.join(plugins_dir, 'airflow_local_settings.py')
         
-        mock_logger = Mock()
-        mock_get_logger.return_value = mock_logger
-        mock_exists.side_effect = [False, True, False]
-        mock_subprocess.side_effect = Exception("Remove failed")
+        # Write a simple Python file
+        with open(plugins_file, 'w') as f:
+            f.write('# Test plugins airflow_local_settings\ntest_var = "plugins_loaded"\n')
         
-        spec, module = import_airflow_local_settings()
-        spec.loader.exec_module(module)
-        
-        mock_subprocess.assert_called_once()
-        mock_logger.error.assert_any_call("Error removing dags_airflow_local_settings.py: Remove failed")
-
-def test_load_dags_airflow_local_settings_no_file():
-    """Test when no dags file exists"""
-    with patch('os.path.exists') as mock_exists:
-        mock_exists.return_value = False
-        
-        spec, module = import_airflow_local_settings()
-        with patch.dict('sys.modules', {'dags_airflow_local_settings': Mock()}):
+        # Set AIRFLOW_HOME to our temp directory
+        with patch.dict('os.environ', {'AIRFLOW_HOME': temp_dir}):
+            # Import and execute the module
+            airflow_local_settings_path = Path(__file__).parent.parent.parent.parent.parent / "images/airflow/2.9.2/airflow_local_settings.py"
+            spec = importlib.util.spec_from_file_location("airflow_local_settings", airflow_local_settings_path)
+            module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
 
-def test_airflow_local_settings_import_error():
-    """Test import error handling for RDS IAM patch"""
-    with patch.dict('sys.modules', {'mwaa.config.airflow_rds_iam_patch': None}):
-        with pytest.raises(ImportError):
-            spec, module = import_airflow_local_settings()
-            spec.loader.exec_module(module)
-
-def test_load_dags_airflow_local_settings_import_error():
-    """Test error handling when importing dags_airflow_local_settings fails"""
-    with patch('subprocess.run') as mock_subprocess, \
-         patch('os.path.exists') as mock_exists:
-        mock_exists.return_value = True
+def test_load_plugins_airflow_local_settings_failure():
+    """Test error handling when loading plugins/airflow_local_settings.py fails"""
+    import tempfile
+    import os
+    
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Create the plugins directory and a bad Python file
+        plugins_dir = os.path.join(temp_dir, 'plugins')
+        os.makedirs(plugins_dir)
+        plugins_file = os.path.join(plugins_dir, 'airflow_local_settings.py')
         
-        spec, module = import_airflow_local_settings()
-        with patch.dict('sys.modules', {'dags_airflow_local_settings': None}):
-            with pytest.raises(ImportError):
+        # Write invalid Python code that will cause an import error
+        with open(plugins_file, 'w') as f:
+            f.write('invalid python syntax !!!')
+        
+        # Set AIRFLOW_HOME to our temp directory
+        with patch.dict('os.environ', {'AIRFLOW_HOME': temp_dir}):
+            with pytest.raises(Exception):
+                airflow_local_settings_path = Path(__file__).parent.parent.parent.parent.parent / "images/airflow/2.9.2/airflow_local_settings.py"
+                spec = importlib.util.spec_from_file_location("airflow_local_settings", airflow_local_settings_path)
+                module = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(module)
