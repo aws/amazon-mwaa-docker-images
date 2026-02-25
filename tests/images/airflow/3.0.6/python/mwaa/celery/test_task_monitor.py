@@ -8,7 +8,13 @@ from datetime import datetime, timedelta
 from unittest.mock import patch, mock_open, MagicMock
 
 from dateutil.tz import tz
-from mwaa.celery.task_monitor import WorkerTaskMonitor, SignalData, SignalType, MWAA_SIGNALS_DIRECTORY
+from mwaa.celery.task_monitor import (
+    WorkerTaskMonitor, 
+    SignalData, 
+    SignalType, 
+    MWAA_SIGNALS_DIRECTORY, 
+    _get_airflow_process_id_mapping
+)
 
 
 @pytest.fixture
@@ -126,3 +132,52 @@ def test_signal_data_from_json_string_all_types(signal_type):
     assert signal_data.signalType == SignalType.from_string(signal_type)
     assert signal_data.createdAt == 1234567890
     assert signal_data.processed is False  # Default value
+
+
+def test_get_airflow_process_id_mapping():
+    """Test process ID extraction from airflow processes"""
+    mock_processes = [
+        {
+            'pid': 1234,
+            'cmdline': ['airflow', 'worker', '--', 'test-uuid-001', 'arg1', 'arg2']
+        },
+        {
+            'pid': 1235,
+            'cmdline': ['airflow', 'worker', '--', 'test-uuid-002']
+        },
+        {
+            'pid': 1236,
+            'cmdline': ['python', 'some_script.py']  # Non-airflow process
+        },
+        {
+            'pid': 1237,
+            'cmdline': ['airflow', 'worker', '--']  # Missing UUID
+        },
+        {
+            'pid': 1238,
+            'cmdline': []  # Empty cmdline
+        }
+    ]
+    
+    def mock_process_iter(attrs):
+        """Mock psutil.process_iter to return test processes"""
+        for proc_data in mock_processes:
+            proc = MagicMock()
+            proc.info = {
+                'pid': proc_data['pid'],
+                'cmdline': proc_data['cmdline']
+            }
+            yield proc
+    
+    with patch('mwaa.celery.task_monitor.psutil.process_iter', side_effect=mock_process_iter):
+        result = _get_airflow_process_id_mapping()
+        
+        # Verify only valid Airflow worker processes are mapped
+        assert len(result) == 2
+        assert result['test-uuid-001'] == 1234
+        assert result['test-uuid-002'] == 1235
+        # Non-airflow processes should not be in the mapping
+        assert 'python' not in result
+        assert 1236 not in result.values()
+        assert 1237 not in result.values()
+        assert 1238 not in result.values()
