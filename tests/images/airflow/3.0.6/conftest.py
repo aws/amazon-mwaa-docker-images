@@ -63,3 +63,16 @@ def clean_env() -> Generator[None, None, None]:
     # Restore original environment
     os.environ.clear()
     os.environ.update(original_env)
+
+@pytest.fixture
+def env_helper(monkeypatch):
+    class EnvHelper:
+        def set(self, vars):
+            for k, v in vars.items():
+                monkeypatch.setenv(k, v)
+
+        def delete(self, keys):
+            for k in keys:
+                monkeypatch.delenv(k, raising=False)
+
+    return EnvHelper()
