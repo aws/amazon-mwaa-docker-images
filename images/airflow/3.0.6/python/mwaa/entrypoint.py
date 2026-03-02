@@ -197,8 +197,30 @@ def create_queue() -> None:
             raise e
 
 
+def _fix_shared_log_volume_permissions():
+    """
+    When /usr/local/airflow/logs is backed by a shared volume (e.g. for Fluent Bit
+    to tail log files), Docker creates it owned by root. Fix ownership so the
+    airflow user can write logs.
+    """
+    import subprocess
+
+    log_dir = "/usr/local/airflow/logs"
+    if os.path.ismount(log_dir):
+        try:
+            subprocess.run(
+                ["sudo", "chown", "-R", "airflow:", log_dir],
+                check=True,
+            )
+            logger.info("Fixed ownership of shared log volume %s", log_dir)
+        except Exception as e:
+            logger.warning("Could not fix ownership of %s: %s", log_dir, e)
+
+
 async def main() -> None:
     """Start execution of the script."""
+    _fix_shared_log_volume_permissions()
+
     try:
         (
             _,
