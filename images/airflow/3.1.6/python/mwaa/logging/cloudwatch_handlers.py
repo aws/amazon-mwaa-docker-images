@@ -415,7 +415,7 @@ class CloudWatchRemoteTaskLogger(BaseLogHandler, LoggingMixin):
         except Exception as e:
             messages = [
                 StructuredLogMessage(
-                    event=f"Reading remote log from Cloudwatch log_group: {self.log_group_arn} log_stream: {relative_path}"
+                    event=f"Failed to read remote log from Cloudwatch log_group: {self.log_group_arn} log_stream: {relative_path}"
                 ),
                 StructuredLogMessage(event=str(e)),
             ]
