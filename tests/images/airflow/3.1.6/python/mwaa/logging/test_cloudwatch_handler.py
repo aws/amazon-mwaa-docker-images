@@ -286,18 +286,123 @@ def test_cloudwatch_remote_task_logger_upload_is_noop():
     logger.handler.flush.assert_called_once()
 
 
-def test_cloudwatch_remote_task_logger_read(mock_boto3_client):
-    """Test CloudWatchRemoteTaskLogger read() method."""
-    with patch('mwaa.logging.cloudwatch_handlers.AwsLogsHook') as mock_hook_class:
-        mock_hook = Mock()
-        mock_hook_class.return_value = mock_hook
+def _make_task_instance_mock():
+    """Helper to create a mock TaskInstance with standard test values."""
+    ti = MagicMock()
+    ti.dag_id = 'test_dag'
+    ti.task_id = 'test_task'
+    ti.run_id = 'test_run'
+    ti.try_number = 1
+    ti.end_date = None
 
-        mock_hook.get_log_events.return_value = [
+    mock_dag_run = MagicMock()
+    mock_dag_run.logical_date = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    mock_dag_run.run_after = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    mock_dag_run.data_interval_start = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    mock_dag_run.data_interval_end = datetime(2024, 1, 2, tzinfo=timezone.utc)
+
+    mock_log_template = MagicMock()
+    mock_log_template.filename = "dag_id={dag_id}/run_id={run_id}/task_id={task_id}/attempt={try_number}.log"
+    mock_dag_run.get_log_template.return_value = mock_log_template
+
+    ti.get_dagrun.return_value = mock_dag_run
+    return ti
+
+
+def _make_logger_with_hook(mock_hook_class, log_events):
+    """Helper to create a CloudWatchRemoteTaskLogger with a mocked AwsLogsHook."""
+    mock_hook = Mock()
+    mock_hook_class.return_value = mock_hook
+    mock_hook.get_log_events.return_value = log_events
+
+    logger = CloudWatchRemoteTaskLogger(
+        log_group_arn='arn:aws:logs:us-west-2:123456789012:log-group:test-Task',
+        kms_key_arn=None,
+        enabled=True,
+        log_level='INFO'
+    )
+    return logger
+
+
+def test_cloudwatch_remote_task_logger_read(mock_boto3_client):
+    """Test CloudWatchRemoteTaskLogger read() returns StructuredLogMessage objects."""
+    from airflow.utils.log.file_task_handler import StructuredLogMessage
+
+    with patch('mwaa.logging.cloudwatch_handlers.AwsLogsHook') as mock_hook_class:
+        logger = _make_logger_with_hook(mock_hook_class, [
             {
                 'timestamp': int(datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc).timestamp() * 1000),
                 'message': '{"event": "test message", "level": "info"}'
             }
-        ]
+        ])
+        ti = _make_task_instance_mock()
+
+        messages, metadata = logger.read(ti, 1)
+
+        assert len(messages) >= 2  # at least 1 info message + 1 log entry
+        for msg in messages:
+            assert isinstance(msg, StructuredLogMessage), (
+                f"Expected StructuredLogMessage, got {type(msg).__name__}: {msg}"
+            )
+
+
+def test_read_returns_end_of_log_true_in_metadata(mock_boto3_client):
+    """Test that read() always sets end_of_log=True in metadata.
+
+    This is critical for Airflow 3.1.6 where the UI sends Accept: application/x-ndjson,
+    causing the server to use read_log_stream() which loops until end_of_log is True.
+    Without this, the stream loops forever.
+    """
+    with patch('mwaa.logging.cloudwatch_handlers.AwsLogsHook') as mock_hook_class:
+        logger = _make_logger_with_hook(mock_hook_class, [])
+        ti = _make_task_instance_mock()
+
+        # Test with no initial metadata
+        _, metadata = logger.read(ti, 1)
+        assert metadata["end_of_log"] is True
+
+        # Test with existing metadata dict (should not lose other keys)
+        _, metadata = logger.read(ti, 1, metadata={"offset": 42})
+        assert metadata["end_of_log"] is True
+        assert metadata["offset"] == 42
+
+
+def test_read_messages_are_ndjson_serializable(mock_boto3_client):
+    """Test that all messages from read() can be serialized via model_dump_json().
+
+    The NDJSON streaming path calls .model_dump_json() on every item returned by read().
+    If any item is a plain string instead of StructuredLogMessage, it crashes.
+    """
+    with patch('mwaa.logging.cloudwatch_handlers.AwsLogsHook') as mock_hook_class:
+        logger = _make_logger_with_hook(mock_hook_class, [
+            {
+                'timestamp': int(datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc).timestamp() * 1000),
+                'message': '{"event": "line one", "level": "info"}'
+            },
+            {
+                'timestamp': int(datetime(2024, 1, 1, 12, 0, 1, tzinfo=timezone.utc).timestamp() * 1000),
+                'message': 'plain text line'
+            },
+        ])
+        ti = _make_task_instance_mock()
+
+        messages, _ = logger.read(ti, 1)
+
+        for msg in messages:
+            # This is exactly what the NDJSON streaming path does
+            json_str = msg.model_dump_json()
+            assert isinstance(json_str, str)
+            assert len(json_str) > 0
+
+
+def test_read_remote_logs_error_returns_structured_messages(mock_boto3_client):
+    """Test that _read_remote_logs wraps error messages as StructuredLogMessage too."""
+    from airflow.utils.log.file_task_handler import StructuredLogMessage
+
+    with patch('mwaa.logging.cloudwatch_handlers.AwsLogsHook') as mock_hook_class:
+        mock_hook = Mock()
+        mock_hook_class.return_value = mock_hook
+        mock_hook.get_log_events.side_effect = Exception("CloudWatch unavailable")
 
         logger = CloudWatchRemoteTaskLogger(
             log_group_arn='arn:aws:logs:us-west-2:123456789012:log-group:test-Task',
@@ -305,30 +410,16 @@ def test_cloudwatch_remote_task_logger_read(mock_boto3_client):
             enabled=True,
             log_level='INFO'
         )
-
-        ti = MagicMock()
-        ti.dag_id = 'test_dag'
-        ti.task_id = 'test_task'
-        ti.run_id = 'test_run'
-        ti.try_number = 1
-        ti.end_date = None
-
-        mock_dag_run = MagicMock()
-        mock_dag_run.logical_date = datetime(2024, 1, 1, tzinfo=timezone.utc)
-        mock_dag_run.run_after = datetime(2024, 1, 1, tzinfo=timezone.utc)
-        mock_dag_run.data_interval_start = datetime(2024, 1, 1, tzinfo=timezone.utc)
-        mock_dag_run.data_interval_end = datetime(2024, 1, 2, tzinfo=timezone.utc)
-
-        mock_log_template = MagicMock()
-        mock_log_template.filename = "dag_id={dag_id}/run_id={run_id}/task_id={task_id}/attempt={try_number}.log"
-        mock_dag_run.get_log_template.return_value = mock_log_template
-
-        ti.get_dagrun.return_value = mock_dag_run
+        ti = _make_task_instance_mock()
 
         messages, metadata = logger.read(ti, 1)
 
-        assert len(messages) >= 1
-        assert any('Reading remote log from Cloudwatch' in msg for msg in messages if isinstance(msg, str))
+        assert metadata["end_of_log"] is True
+        assert len(messages) >= 2  # info message + error message
+        for msg in messages:
+            assert isinstance(msg, StructuredLogMessage)
+        # The error message should contain the exception text
+        assert any("CloudWatch unavailable" in msg.event for msg in messages if hasattr(msg, 'event'))
 
 
 def test_cloudwatch_remote_task_logger_event_to_dict_with_json():
