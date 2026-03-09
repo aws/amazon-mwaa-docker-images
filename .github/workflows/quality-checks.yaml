@@ -2,6 +2,9 @@ name: Quality Checks Workflow
 
 on: [push, pull_request]
 
+permissions:
+  contents: read
+
 jobs:
   quality_checks:
     name: Quality Checks Job
