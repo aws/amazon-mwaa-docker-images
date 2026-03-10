@@ -45,7 +45,14 @@ class RDSIAMCredentialProvider:
 
         credentials_url = f"{base_url}{relative_uri}"
 
-        with urllib.request.urlopen(credentials_url) as response:
+        # Bypass proxy for ECS metadata endpoint
+        request = urllib.request.Request(credentials_url)
+        no_proxy_handler = urllib.request.ProxyHandler({})
+        opener = urllib.request.build_opener(no_proxy_handler)
+
+        with opener.open(request) as response:
+            if response.status != 200:
+                raise Exception(f"Failed to fetch ECS credentials: {response.status}")
             credentials_data = json.loads(response.read().decode('utf-8'))
 
         return credentials_data
