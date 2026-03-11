@@ -18,11 +18,15 @@ def test_get_ecs_credentials_success():
         'AWS_TASK_EXEC_CREDENTIALS_RELATIVE_URI': '/v2/credentials/test',
         'ECS_CONTAINER_METADATA_URI': 'http://169.254.170.2/v3/containers/test'
     }), \
-    patch('urllib.request.urlopen') as mock_urlopen:
+    patch('urllib.request.build_opener') as mock_build_opener:
         
         mock_response = MagicMock()
+        mock_response.status = 200
         mock_response.read.return_value = json.dumps(mock_credentials).encode('utf-8')
-        mock_urlopen.return_value.__enter__.return_value = mock_response
+        
+        mock_opener = MagicMock()
+        mock_opener.open.return_value.__enter__.return_value = mock_response
+        mock_build_opener.return_value = mock_opener
         
         result = RDSIAMCredentialProvider.get_ecs_credentials()
         assert result == mock_credentials
@@ -44,6 +48,66 @@ def test_get_ecs_credentials_missing_metadata_uri():
     with patch.dict('os.environ', {'AWS_TASK_EXEC_CREDENTIALS_RELATIVE_URI': '/v2/credentials/test'}, clear=True):
         with pytest.raises(ValueError, match="ECS_CONTAINER_METADATA_URI not set"):
             RDSIAMCredentialProvider.get_ecs_credentials()
+
+
+def test_get_ecs_credentials_http_error():
+    """Test ECS credentials with HTTP error response"""
+    from mwaa.utils.get_rds_iam_credentials import RDSIAMCredentialProvider
+    
+    with patch.dict('os.environ', {
+        'AWS_TASK_EXEC_CREDENTIALS_RELATIVE_URI': '/v2/credentials/test',
+        'ECS_CONTAINER_METADATA_URI': 'http://169.254.170.2/v3/containers/test'
+    }), \
+    patch('urllib.request.build_opener') as mock_build_opener:
+        
+        mock_response = MagicMock()
+        mock_response.status = 404
+        
+        mock_opener = MagicMock()
+        mock_opener.open.return_value.__enter__.return_value = mock_response
+        mock_build_opener.return_value = mock_opener
+        
+        with pytest.raises(Exception, match="Failed to fetch ECS credentials: 404"):
+            RDSIAMCredentialProvider.get_ecs_credentials()
+
+
+def test_get_ecs_credentials_ignores_proxy_env_vars():
+    """Test that proxy environment variables don't affect ECS metadata requests"""
+    from mwaa.utils.get_rds_iam_credentials import RDSIAMCredentialProvider
+    
+    mock_credentials = {
+        'AccessKeyId': 'test_key',
+        'SecretAccessKey': 'test_secret', 
+        'Token': 'test_token'
+    }
+    
+    with patch.dict('os.environ', {
+        'AWS_TASK_EXEC_CREDENTIALS_RELATIVE_URI': '/v2/credentials/test',
+        'ECS_CONTAINER_METADATA_URI': 'http://169.254.170.2/v3/containers/test',
+        'HTTP_PROXY': 'http://should-not-be-used:8080',
+        'HTTPS_PROXY': 'http://should-not-be-used:8080',
+        'http_proxy': 'http://should-not-be-used:8080',
+        'https_proxy': 'http://should-not-be-used:8080'
+    }), \
+    patch('urllib.request.build_opener') as mock_build_opener, \
+    patch('urllib.request.ProxyHandler') as mock_proxy_handler:
+        
+        mock_response = MagicMock()
+        mock_response.status = 200
+        mock_response.read.return_value = json.dumps(mock_credentials).encode('utf-8')
+        
+        mock_opener = MagicMock()
+        mock_opener.open.return_value.__enter__.return_value = mock_response
+        mock_build_opener.return_value = mock_opener
+        
+        result = RDSIAMCredentialProvider.get_ecs_credentials()
+        
+        # Verify that ProxyHandler was instantiated with empty dict
+        mock_proxy_handler.assert_called_once_with({})
+        # Verify build_opener was called with the no-proxy handler
+        mock_build_opener.assert_called_once()
+        
+        assert result == mock_credentials
 
 
 def test_get_rds_iam_token_hostname_success():

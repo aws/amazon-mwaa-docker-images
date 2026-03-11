@@ -30,7 +30,7 @@ from airflow.providers.amazon.aws.hooks.logs import AwsLogsHook
 from airflow.providers.amazon.aws.utils import datetime_to_epoch_utc_ms
 from airflow.sdk.types import RuntimeTaskInstanceProtocol as RuntimeTI
 from airflow.utils.helpers import parse_template_string, render_template
-from airflow.utils.log.file_task_handler import LogMessages, LogSourceInfo, LogMetadata
+from airflow.utils.log.file_task_handler import LogMetadata, StructuredLogMessage
 from airflow.utils.log.logging_mixin import LoggingMixin
 from airflow.utils.session import provide_session, NEW_SESSION
 from mypy_boto3_logs.client import CloudWatchLogsClient
@@ -387,32 +387,41 @@ class CloudWatchRemoteTaskLogger(BaseLogHandler, LoggingMixin):
 
     def read(
         self, task_instance, try_number, metadata=None
-    ) -> tuple[LogMessages, LogMetadata]:
+    ) -> tuple[list[StructuredLogMessage], LogMetadata]:
         """
-            Invoked by airflow-core/src/airflow/utils/log/log_reader.py when console tries to load task log. This is
-            the reason why we set Task logging handler to this class even though the actual log writing is done through
-            remote logging processor.
+        Invoked by airflow-core/src/airflow/utils/log/log_reader.py when the UI loads task logs.
+
+        Returns StructuredLogMessage objects (not plain strings) so that the NDJSON streaming
+        path in read_log_stream() can call .model_dump_json() on each item without crashing.
+        Also always sets end_of_log=True so the streaming loop terminates.
         """
         stream_name = self._render_filename(task_instance, try_number).replace(":", "_")
         messages, logs = self._read_remote_logs(stream_name, task_instance)
-        return messages + logs, metadata
+        out_metadata = dict(metadata) if metadata else {}
+        out_metadata["end_of_log"] = True
+        return messages + logs, out_metadata
 
-    def _read_remote_logs(self, relative_path, ti: RuntimeTI) -> tuple[LogSourceInfo, LogMessages | None]:
-        messages = [
-            f"Reading remote log from Cloudwatch log_group: {self.log_group_arn} log_stream: {relative_path}"
-        ]
+    def _read_remote_logs(self, relative_path, ti: RuntimeTI) -> tuple[list[StructuredLogMessage], list[StructuredLogMessage]]:
         try:
-            from airflow.utils.log.file_task_handler import StructuredLogMessage
-
+            messages = [
+                StructuredLogMessage(
+                    event=f"Reading remote log from Cloudwatch log_group: {self.log_group_arn} log_stream: {relative_path}"
+                )
+            ]
             logs = [
                 StructuredLogMessage.model_validate(log)
                 for log in self.get_cloudwatch_logs(relative_path, ti)
             ]
         except Exception as e:
-            logs = None
-            messages.append(str(e))
+            messages = [
+                StructuredLogMessage(
+                    event=f"Failed to read remote log from Cloudwatch log_group: {self.log_group_arn} log_stream: {relative_path}"
+                ),
+                StructuredLogMessage(event=str(e)),
+            ]
+            logs = []
 
-        return messages, logs or []
+        return messages, logs
 
     @provide_session
     def _render_filename(self, ti: TaskInstance, try_number: int, session=NEW_SESSION) -> str:
