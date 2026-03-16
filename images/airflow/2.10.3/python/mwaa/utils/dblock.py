@@ -16,7 +16,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 
 # Our imports
-from mwaa.config.database import get_db_connection_string, MWAA_CONNECT_ARGS
+from mwaa.config.database import get_db_connection_string
 
 logger = logging.getLogger(__name__)
 
@@ -95,7 +95,7 @@ def with_db_lock(
     ) -> Union[Callable[..., Any], Callable[..., Awaitable[Any]]]:
         async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
             func_name: str = func.__name__
-            db_engine: Engine = create_engine(get_db_connection_string(), connect_args=MWAA_CONNECT_ARGS)
+            db_engine: Engine = create_engine(get_db_connection_string())
             with db_engine.connect() as conn:  # type: ignore
                 try:
                     _obtain_db_lock(conn, lock_id, timeout_ms, func_name)
@@ -105,7 +105,7 @@ def with_db_lock(
 
         def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
             func_name: str = func.__name__
-            db_engine: Engine = create_engine(get_db_connection_string(), connect_args=MWAA_CONNECT_ARGS)
+            db_engine: Engine = create_engine(get_db_connection_string())
             with db_engine.connect() as conn:  # type: ignore
                 try:
                     _obtain_db_lock(conn, lock_id, timeout_ms, func_name)
