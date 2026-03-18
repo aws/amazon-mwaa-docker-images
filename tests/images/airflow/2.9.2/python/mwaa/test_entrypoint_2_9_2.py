@@ -261,3 +261,34 @@ def test_mark_as_unhealthy_error(mock_environ):
         
         # Verify sleep was still called
         mock_sleep.assert_called_once_with(1100)
+
+
+def test_fix_shared_log_volume_permissions_on_mount(mock_environ):
+    """Test _fix_shared_log_volume_permissions runs chown when path is a mount point."""
+    with patch('os.path.ismount', return_value=True) as mock_ismount, \
+         patch('subprocess.run') as mock_run:
+        entrypoint._fix_shared_log_volume_permissions()
+
+        mock_ismount.assert_called_once_with('/usr/local/airflow/logs')
+        mock_run.assert_called_once_with(
+            ['sudo', 'chown', '-R', 'airflow:', '/usr/local/airflow/logs'],
+            check=True,
+        )
+
+
+def test_fix_shared_log_volume_permissions_not_mount(mock_environ):
+    """Test _fix_shared_log_volume_permissions skips chown when path is not a mount."""
+    with patch('os.path.ismount', return_value=False) as mock_ismount, \
+         patch('subprocess.run') as mock_run:
+        entrypoint._fix_shared_log_volume_permissions()
+
+        mock_ismount.assert_called_once_with('/usr/local/airflow/logs')
+        mock_run.assert_not_called()
+
+
+def test_fix_shared_log_volume_permissions_chown_failure(mock_environ):
+    """Test _fix_shared_log_volume_permissions handles chown failure gracefully."""
+    with patch('os.path.ismount', return_value=True), \
+         patch('subprocess.run', side_effect=Exception('Permission denied')):
+        # Should not raise — just prints a warning
+        entrypoint._fix_shared_log_volume_permissions()
