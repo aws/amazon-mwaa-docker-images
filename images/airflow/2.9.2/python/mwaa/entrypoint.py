@@ -6,11 +6,36 @@ first and only argument. It accordingly runs the requested Airflow component
 after setting up the necessary configurations.
 """
 
+# Fix shared log volume permissions before any Airflow imports, since Airflow's
+# logging config tries to create subdirectories under /usr/local/airflow/logs
+# at import time.
+# ruff: noqa: E402
+import os
+import subprocess
+
+def _fix_shared_log_volume_permissions():
+    """
+    When /usr/local/airflow/logs is backed by a shared volume (e.g. for Fluent Bit
+    to tail log files), Docker creates it owned by root. Fix ownership so the
+    airflow user can write logs.
+    """
+    log_dir = "/usr/local/airflow/logs"
+    if os.path.ismount(log_dir):
+        try:
+            subprocess.run(
+                ["sudo", "chown", "-R", "airflow:", log_dir],
+                check=True,
+            )
+            print(f"Fixed ownership of shared log volume {log_dir}")
+        except Exception as e:
+            print(f"WARNING: Could not fix ownership of {log_dir}: {e}")
+
+_fix_shared_log_volume_permissions()
+
 # Setup logging first thing to make sure all logs happen under the right setup. The
 # reason for needing this is that typically a `logger` object is defined at the top
 # of the module and is used through out it. So, if we import a module before logging
 # is setup, its `logger` object will not have the right setup.
-# ruff: noqa: E402
 # fmt: off
 from airflow.config_templates.airflow_local_settings import DEFAULT_LOGGING_CONFIG
 import logging.config
@@ -21,7 +46,6 @@ logging.config.dictConfig(DEFAULT_LOGGING_CONFIG)
 from datetime import datetime
 import asyncio
 import logging
-import os
 import sys
 import time
 
