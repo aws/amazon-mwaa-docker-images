@@ -32,6 +32,20 @@ def verify_python_version():
         sys.exit(1)
 
 
+def get_airflow_versions() -> list[str]:
+    """Scan ./images/airflow/ and return folder names that look like semantic versions."""
+    airflow_path = Path("./images/airflow")
+    if not airflow_path.is_dir():
+        return []
+    return sorted(
+        [
+            d.name
+            for d in airflow_path.iterdir()
+            if d.is_dir() and re.match(r"^\d+\.\d+\.\d+$", d.name)
+        ]
+    )
+
+
 def create_venv(path: Path, development_build: bool, recreate: bool = False):
     """
     Create a venv in the given directory and optionally recreate it if it already exists.
@@ -71,6 +85,7 @@ def create_venv(path: Path, development_build: bool, recreate: bool = False):
     print("")
     print("")
 
+
 def generate_requirements(path: Path, development_build: bool) -> Path:
     """
     If the requirements.txt file at the path needs to be updated for local development, generate
@@ -102,6 +117,7 @@ def generate_requirements(path: Path, development_build: bool) -> Path:
 
     return dev_requirements_path
 
+
 def pip_install(venv_dir: Path, *args: str):
     """
     Install dependencies from requirements.txt if it exists.
@@ -129,49 +145,36 @@ def main():
     parser.add_argument(
         "--target", choices=build_targets, required=True, help="Sets the build target"
     )
-    
-    # Add version filter argument
+
+    available_versions = get_airflow_versions()
     parser.add_argument(
-        "--version", type=str, help="Only create venv for specific Airflow version (e.g., 3.0.6)"
+        "--version",
+        choices=available_versions,
+        help="Only create venv for specific Airflow version (e.g., 3.0.6)",
     )
 
     # Parse the arguments
     args = parser.parse_args()
 
     verify_python_version()
-    
-    # Filter directories based on version argument
+
     if args.version:
-        # Validate that the version exists
-        version_path = Path(f"./images/airflow/{args.version}")
-        if not version_path.exists() or not version_path.is_dir():
-            # Get available versions
-            available_versions = sorted([
-                d.name for d in Path("./images/airflow").iterdir() 
-                if d.is_dir() and not d.name.startswith('.')
-            ])
-            print(f"ERROR: Version '{args.version}' not found in images/airflow/")
-            print("\nAvailable versions:")
-            for v in available_versions:
-                print(f"  - {v}")
-            sys.exit(1)
-        
         project_dirs = [
             Path("."),
-            version_path,
+            Path(f"./images/airflow/{args.version}"),
         ]
     else:
         project_dirs = [
             Path("."),
             *Path("./images").glob("airflow/*"),
-        ]  # Include main project dir and each image dir
-    
+        ]
+
     for dir_path in project_dirs:
         if dir_path.is_dir() and (dir_path / "requirements.txt").exists():
             create_venv(
                 dir_path,
                 development_build=args.target == development_target_choice,
-                recreate=args.recreate
+                recreate=args.recreate,
             )
 
 
