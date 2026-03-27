@@ -85,6 +85,7 @@ def _get_opinionated_airflow_core_config() -> Dict[str, str]:
 
     return {
         "AIRFLOW__CORE__EXECUTE_TASKS_NEW_PYTHON_INTERPRETER": "True",
+        "AIRFLOW__CORE__SENSITIVE_VAR_CONN_NAMES": "proxy,proxies",
     }
 
 

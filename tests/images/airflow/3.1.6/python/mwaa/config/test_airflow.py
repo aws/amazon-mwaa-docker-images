@@ -95,6 +95,7 @@ def test_get_opinionated_airflow_core_config():
     result = _get_opinionated_airflow_core_config()
 
     assert result["AIRFLOW__CORE__EXECUTE_TASKS_NEW_PYTHON_INTERPRETER"] == "True"
+    assert result["AIRFLOW__CORE__SENSITIVE_VAR_CONN_NAMES"] == "proxy,proxies"
 
 # ---------------------------------
 # User Airflow Config Tests
