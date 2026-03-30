@@ -194,7 +194,7 @@ UNKNOWN
 Flask-SQLAlchemy
 3.0.5
 BSD License
-UNKNOWN
+https://flask-sqlalchemy.palletsprojects.com
 /usr/local/airflow/.local/lib/python3.12/site-packages/flask_sqlalchemy-3.0.5.dist-info/LICENSE.rst
 Copyright 2010 Pallets
 
@@ -231,7 +231,7 @@ UNKNOWN
 Flask-Session
 0.8.0
 BSD License
-UNKNOWN
+https://flask-session.readthedocs.io
 /usr/local/airflow/.local/lib/python3.12/site-packages/flask_session-0.8.0.dist-info/LICENSE.rst
 Copyright 2014 Pallets Community Ecosystem
 
@@ -268,7 +268,7 @@ UNKNOWN
 Flask-WTF
 1.2.2
 BSD License
-UNKNOWN
+https://flask-wtf.readthedocs.io/
 /usr/local/airflow/.local/lib/python3.12/site-packages/flask_wtf-1.2.2.dist-info/licenses/LICENSE.rst
 Copyright 2010 WTForms
 
@@ -801,7 +801,7 @@ UNKNOWN
 WTForms
 3.2.1
 BSD License
-UNKNOWN
+https://wtforms.readthedocs.io
 /usr/local/airflow/.local/lib/python3.12/site-packages/wtforms-3.2.1.dist-info/licenses/LICENSE.rst
 Copyright 2008 WTForms
 
@@ -1874,7 +1874,7 @@ UNKNOWN
 aiosqlite
 0.21.0
 MIT License
-UNKNOWN
+https://aiosqlite.omnilib.dev
 /usr/local/airflow/.local/lib/python3.12/site-packages/aiosqlite-0.21.0.dist-info/LICENSE
 MIT License
 
@@ -5658,10 +5658,10 @@ Copyright 2013-2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 /usr/local/airflow/.local/lib/python3.12/site-packages/boto3-1.41.5.dist-info/NOTICE
 
 boto3-stubs
-1.42.73
+1.42.78
 MIT
 https://github.com/youtype/mypy_boto3_builder
-/usr/local/airflow/.local/lib/python3.12/site-packages/boto3_stubs-1.42.73.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/boto3_stubs-1.42.78.dist-info/licenses/LICENSE
 MIT License
 
 Copyright (c) 2026 Vlad Emelianov
@@ -6002,7 +6002,7 @@ UNKNOWN
 cadwyn
 5.4.6
 MIT
-UNKNOWN
+https://docs.cadwyn.dev
 /usr/local/airflow/.local/lib/python3.12/site-packages/cadwyn-5.4.6.dist-info/licenses/LICENSE
 MIT License
 
@@ -9584,10 +9584,10 @@ UNKNOWN
 UNKNOWN
 
 mypy-boto3-logs
-1.42.60
+1.42.77
 MIT
 https://github.com/youtype/mypy_boto3_builder
-/usr/local/airflow/.local/lib/python3.12/site-packages/mypy_boto3_logs-1.42.60.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/mypy_boto3_logs-1.42.77.dist-info/licenses/LICENSE
 MIT License
 
 Copyright (c) 2026 Vlad Emelianov
@@ -11385,7 +11385,7 @@ UNKNOWN
 pathspec
 1.0.1
 Mozilla Public License 2.0 (MPL 2.0)
-UNKNOWN
+https://python-path-specification.readthedocs.io/en/latest/index.html
 /usr/local/airflow/.local/lib/python3.12/site-packages/pathspec-1.0.1.dist-info/licenses/LICENSE
 Mozilla Public License Version 2.0
 ==================================

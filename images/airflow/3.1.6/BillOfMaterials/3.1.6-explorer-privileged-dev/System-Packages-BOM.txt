@@ -1,7 +1,7 @@
 This Docker image includes the following third-party software/licensing:
 python3-setuptools-wheel-59.6.0: MIT and (BSD or ASL 2.0)
 pcre2-syntax-10.40: BSD
-ncurses-libs-6.2: MIT
+ncurses-libs-6.6: MIT-open-group
 bash-5.2.15: GPLv3+
 setup-2.13.7: Public Domain
 basesystem-11: Public Domain
@@ -53,9 +53,9 @@ python3-dnf-4.14.0: GPLv2+
 yum-4.14.0: GPLv2+
 tzdata-2025c: Public Domain
 publicsuffix-list-dafsa-20260116: MPL-2.0
-ncurses-base-6.2: MIT
-amazon-linux-repo-cdn-2023.10.20260302: MIT
-system-release-2023.10.20260302: MIT
+ncurses-base-6.6: MIT-open-group
+amazon-linux-repo-cdn-2023.10.20260325: MIT
+system-release-2023.10.20260325: MIT
 filesystem-3.14: Public Domain
 libgcc-14.2.1: GPL-3.0-or-later AND LGPL-3.0-or-later AND (GPL-3.0-or-later WITH GCC-exception-3.1) AND (GPL-3.0-or-later WITH Texinfo-exception) AND (LGPL-2.1-or-later WITH GCC-exception-2.0) AND (GPL-2.0-or-later WITH GCC-exception-2.0) AND (GPL-2.0-or-later WITH GNU-compiler-exception) AND BSL-1.0 AND GFDL-1.3-or-later AND Linux-man-pages-copyleft-2-para AND SunPro AND BSD-1-Clause AND BSD-2-Clause AND BSD-2-Clause-Views AND BSD-3-Clause AND BSD-4-Clause AND BSD-Source-Code AND Zlib AND MIT AND Apache-2.0 AND (Apache-2.0 WITH LLVM-Exception) AND ZPL-2.1 AND ISC AND LicenseRef-Fedora-Public-Domain AND HP-1986 AND curl AND Martin-Birgmeier AND HPND-Markus-Kuhn AND dtoa AND SMLNJ AND AMD-newlib AND OAR AND HPND-merchantability-variant AND HPND-Intel
 glibc-common-2.34: LGPLv2+ and LGPLv2+ with exceptions and GPLv2+ and GPLv2+ with exceptions and BSD and Inner-Net and ISC and Public Domain and GFDL
@@ -135,7 +135,7 @@ libfdisk-2.37.4: LGPLv2+
 libedit-3.1: BSD
 libXau-1.0.11: MIT-open-group
 libxcb-1.17.0: X11
-kernel6.18-headers-6.18.8: GPLv2 and Redistributable, no modification permitted
+kernel6.18-headers-6.18.15: GPLv2 and Redistributable, no modification permitted
 jansson-2.14: MIT
 binutils-2.41: GPL-3.0-or-later AND (GPL-3.0-or-later WITH Bison-exception-2.2) AND (LGPL-2.0-or-later WITH GCC-exception-2.0) AND BSD-3-Clause AND GFDL-1.3-or-later AND GPL-2.0-or-later AND LGPL-2.1-or-later AND LGPL-2.0-or-later
 graphite2-1.3.14: (LGPLv2+ or GPLv2+ or MPLv1.1) and (Netscape or GPLv2+ or LGPLv2+)
@@ -170,8 +170,8 @@ pcre2-utf16-10.40: BSD
 package-notes-srpm-macros-0.4: CC0
 openblas-srpm-macros-2: MIT
 ocaml-srpm-macros-6: GPLv2+
-ncurses-c++-libs-6.2: MIT
-ncurses-6.2: MIT
+ncurses-c++-libs-6.6: MIT-open-group
+ncurses-6.6: MIT-open-group
 m4-1.4.19: GPLv3+
 lua-srpm-macros-1: MIT
 lm_sensors-libs-3.6.0: LGPLv2+
@@ -274,7 +274,7 @@ perl-Carp-1.50: GPL+ or Artistic
 perl-Exporter-5.74: GPL+ or Artistic
 perl-NDBM_File-1.15: GPL+ or Artistic
 perl-PathTools-3.78: (GPL+ or Artistic) and BSD
-perl-Encode-3.15: (GPL+ or Artistic) and Artistic 2.0 and UCD
+perl-Encode-3.21: (GPL-1.0-or-later OR Artistic-1.0-Perl) AND Artistic-2.0
 perl-libs-5.32.1: (GPL+ or Artistic) and BSD and HSRL and MIT and UCD and Public domain
 perl-interpreter-5.32.1: GPL+ or Artistic
 valgrind-3.19.0: GPLv2+
@@ -351,7 +351,7 @@ libpciaccess-devel-0.16: MIT
 libsepol-devel-3.4: LGPLv2+
 libselinux-devel-3.4: Public Domain
 libmount-devel-2.37.4: LGPLv2+
-ncurses-devel-6.2: MIT
+ncurses-devel-6.6: MIT-open-group
 sysprof-capture-devel-3.40.1: BSD-2-Clause-Patent
 glib2-devel-2.82.2: LGPL-2.1-or-later
 harfbuzz-devel-7.0.0: MIT
