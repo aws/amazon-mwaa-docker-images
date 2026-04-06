@@ -1,7 +1,7 @@
 This Docker image includes the following third-party software/licensing:
 python3-setuptools-wheel-59.6.0: MIT and (BSD or ASL 2.0)
 pcre2-syntax-10.40: BSD
-ncurses-libs-6.2: MIT
+ncurses-libs-6.6: MIT-open-group
 bash-5.2.15: GPLv3+
 setup-2.13.7: Public Domain
 basesystem-11: Public Domain
@@ -32,7 +32,7 @@ coreutils-single-8.32: GPLv3+
 libmount-2.37.4: LGPLv2+
 libsigsegv-2.13: GPLv2+
 p11-kit-trust-0.24.1: BSD
-openssl-fips-provider-latest-3.2.2: ASL 2.0
+openssl-fips-provider-latest-3.5.5: ASL 2.0
 glib2-2.82.2: LGPL-2.1-or-later
 libverto-0.3.2: MIT
 libcurl-minimal-8.17.0: curl
@@ -51,11 +51,11 @@ rpm-build-libs-4.16.1.3: GPLv2+ and LGPLv2+ with exceptions
 libreport-filesystem-2.15.2: GPLv2+
 python3-dnf-4.14.0: GPLv2+
 yum-4.14.0: GPLv2+
-tzdata-2025c: Public Domain
+tzdata-2026a: LicenseRef-Fedora-Public-Domain AND (GPL-2.0-only WITH ClassPath-exception-2.0)
 publicsuffix-list-dafsa-20260116: MPL-2.0
-ncurses-base-6.2: MIT
-amazon-linux-repo-cdn-2023.10.20260302: MIT
-system-release-2023.10.20260302: MIT
+ncurses-base-6.6: MIT-open-group
+amazon-linux-repo-cdn-2023.10.20260330: MIT
+system-release-2023.10.20260330: MIT
 filesystem-3.14: Public Domain
 libgcc-14.2.1: GPL-3.0-or-later AND LGPL-3.0-or-later AND (GPL-3.0-or-later WITH GCC-exception-3.1) AND (GPL-3.0-or-later WITH Texinfo-exception) AND (LGPL-2.1-or-later WITH GCC-exception-2.0) AND (GPL-2.0-or-later WITH GCC-exception-2.0) AND (GPL-2.0-or-later WITH GNU-compiler-exception) AND BSL-1.0 AND GFDL-1.3-or-later AND Linux-man-pages-copyleft-2-para AND SunPro AND BSD-1-Clause AND BSD-2-Clause AND BSD-2-Clause-Views AND BSD-3-Clause AND BSD-4-Clause AND BSD-Source-Code AND Zlib AND MIT AND Apache-2.0 AND (Apache-2.0 WITH LLVM-Exception) AND ZPL-2.1 AND ISC AND LicenseRef-Fedora-Public-Domain AND HP-1986 AND curl AND Martin-Birgmeier AND HPND-Markus-Kuhn AND dtoa AND SMLNJ AND AMD-newlib AND OAR AND HPND-merchantability-variant AND HPND-Intel
 glibc-common-2.34: LGPLv2+ and LGPLv2+ with exceptions and GPLv2+ and GPLv2+ with exceptions and BSD and Inner-Net and ISC and Public Domain and GFDL
@@ -85,7 +85,7 @@ libblkid-2.37.4: LGPLv2+
 sed-4.8: GPLv3+
 libtasn1-4.19.0: GPLv3+ and LGPLv2+
 ca-certificates-2025.2.76: Public Domain
-openssl-libs-3.2.2: ASL 2.0
+openssl-libs-3.5.5: ASL 2.0
 python3-pip-wheel-21.3.1: MIT and Python and ASL 2.0 and BSD and ISC and LGPLv2 and MPLv2.0 and (ASL 2.0 or BSD)
 krb5-libs-1.21.3: MIT
 curl-minimal-8.17.0: curl
@@ -135,7 +135,7 @@ libfdisk-2.37.4: LGPLv2+
 libedit-3.1: BSD
 libXau-1.0.11: MIT-open-group
 libxcb-1.17.0: X11
-kernel6.18-headers-6.18.8: GPLv2 and Redistributable, no modification permitted
+kernel6.18-headers-6.18.16: GPLv2 and Redistributable, no modification permitted
 jansson-2.14: MIT
 binutils-2.41: GPL-3.0-or-later AND (GPL-3.0-or-later WITH Bison-exception-2.2) AND (LGPL-2.0-or-later WITH GCC-exception-2.0) AND BSD-3-Clause AND GFDL-1.3-or-later AND GPL-2.0-or-later AND LGPL-2.1-or-later AND LGPL-2.0-or-later
 graphite2-1.3.14: (LGPLv2+ or GPLv2+ or MPLv1.1) and (Netscape or GPLv2+ or LGPLv2+)
@@ -170,8 +170,8 @@ pcre2-utf16-10.40: BSD
 package-notes-srpm-macros-0.4: CC0
 openblas-srpm-macros-2: MIT
 ocaml-srpm-macros-6: GPLv2+
-ncurses-c++-libs-6.2: MIT
-ncurses-6.2: MIT
+ncurses-c++-libs-6.6: MIT-open-group
+ncurses-6.6: MIT-open-group
 m4-1.4.19: GPLv3+
 lua-srpm-macros-1: MIT
 lm_sensors-libs-3.6.0: LGPLv2+
@@ -220,13 +220,12 @@ openssh-8.7p1: BSD
 openssh-clients-8.7p1: BSD
 groff-base-1.22.4: GPLv3+ and GFDL and BSD and MIT
 perl-Digest-1.20: GPL+ or Artistic
-perl-Digest-MD5-2.58: (GPL+ or Artistic) and RSA
+perl-Digest-MD5-2.59: GPL-1.0-or-later OR Artistic-1.0-Perl
 perl-B-1.80: GPL+ or Artistic
 perl-FileHandle-2.03: GPL+ or Artistic
 perl-AutoLoader-5.74: GPL+ or Artistic
-perl-Data-Dumper-2.174: GPL+ or Artistic
+perl-Data-Dumper-2.191: GPL-1.0-or-later OR Artistic-1.0-Perl
 perl-libnet-3.13: GPL+ or Artistic
-perl-base-2.27: GPL+ or Artistic
 perl-URI-5.09: GPL+ or Artistic
 perl-Net-SSLeay-1.94: Artistic 2.0
 perl-Text-Tabs+Wrap-2021.0726: TTWL
@@ -242,7 +241,7 @@ perl-POSIX-1.94: GPL+ or Artistic
 perl-Term-ANSIColor-5.01: GPL+ or Artistic
 perl-IPC-Open3-1.21: GPL+ or Artistic
 perl-subs-1.03: GPL+ or Artistic
-perl-File-Temp-0.231.100: GPL+ or Artistic
+perl-File-Temp-0.231.200: GPL-1.0-or-later OR Artistic-1.0-Perl
 perl-HTTP-Tiny-0.078: GPL+ or Artistic
 perl-Term-Cap-1.17: GPL+ or Artistic
 perl-Pod-Simple-3.42: GPL+ or Artistic
@@ -254,6 +253,7 @@ perl-podlators-4.14: (GPL+ or Artistic) and FSFAP
 perl-Pod-Perldoc-3.28.01: GPL+ or Artistic
 perl-Fcntl-1.13: GPL+ or Artistic
 perl-Text-ParseWords-3.30: GPL+ or Artistic
+perl-base-2.27: GPL+ or Artistic
 perl-mro-1.23: GPL+ or Artistic
 perl-IO-1.43: GPL+ or Artistic
 perl-overloading-0.02: GPL+ or Artistic
@@ -268,13 +268,13 @@ perl-Storable-3.21: GPL+ or Artistic
 perl-overload-1.31: GPL+ or Artistic
 perl-parent-0.238: GPL+ or Artistic
 perl-vars-1.05: GPL+ or Artistic
-perl-Getopt-Long-2.52: GPLv2+ or Artistic
+perl-Getopt-Long-2.58: GPL-2.0-or-later OR Artistic-1.0-Perl
 perl-DynaLoader-1.47: GPL+ or Artistic
 perl-Carp-1.50: GPL+ or Artistic
-perl-Exporter-5.74: GPL+ or Artistic
+perl-Exporter-5.79: GPL-1.0-or-later OR Artistic-1.0-Perl
 perl-NDBM_File-1.15: GPL+ or Artistic
 perl-PathTools-3.78: (GPL+ or Artistic) and BSD
-perl-Encode-3.15: (GPL+ or Artistic) and Artistic 2.0 and UCD
+perl-Encode-3.21: (GPL-1.0-or-later OR Artistic-1.0-Perl) AND Artistic-2.0
 perl-libs-5.32.1: (GPL+ or Artistic) and BSD and HSRL and MIT and UCD and Public domain
 perl-interpreter-5.32.1: GPL+ or Artistic
 valgrind-3.19.0: GPLv2+
@@ -351,7 +351,7 @@ libpciaccess-devel-0.16: MIT
 libsepol-devel-3.4: LGPLv2+
 libselinux-devel-3.4: Public Domain
 libmount-devel-2.37.4: LGPLv2+
-ncurses-devel-6.2: MIT
+ncurses-devel-6.6: MIT-open-group
 sysprof-capture-devel-3.40.1: BSD-2-Clause-Patent
 glib2-devel-2.82.2: LGPL-2.1-or-later
 harfbuzz-devel-7.0.0: MIT
@@ -370,7 +370,7 @@ bluez-libs-devel-5.62: GPLv2+
 expat-devel-2.6.3: MIT
 gmp-devel-6.2.1: LGPLv3+ or GPLv2+
 libuuid-devel-2.37.4: BSD
-openssl-devel-3.2.2: ASL 2.0
+openssl-devel-3.5.5: ASL 2.0
 sqlite-devel-3.40.0: Public Domain
 gcc-c++-11.5.0: GPLv3+ and GPLv3+ with exceptions and GPLv2+ with exceptions and LGPLv2+ and BSD
 net-tools-2.0: GPLv2+
@@ -402,7 +402,7 @@ python3-colorama-0.4.4: BSD
 python3-awscrt-0.31.1: AL-2.0
 perl-locale-1.09: GPL+ or Artistic
 paper-2.3: GPLv3+ and FSFAP
-perl-IPC-Run3-0.048: GPL+ or Artistic or BSD
+perl-IPC-Run3-0.049: GPL-1.0-or-later OR Artistic-1.0-Perl OR BSD-2-Clause
 psutils-2.05: GPLv3+ and psutils
 groff-1.22.4: GPLv3+ and GFDL and BSD and MIT
 awscli-2-2.33.15: ASL 2.0 and MIT
@@ -422,12 +422,18 @@ chkconfig-1.15: GPLv2
 alsa-lib-1.2.7.2: LGPLv2+
 java-17-amazon-corretto-headless-17.0.18+9: ASL 1.1 and ASL 2.0 and BSD and BSD with advertising and GPL+ and GPLv2 and GPLv2 with exceptions and IJG and LGPLv2+ and MIT and MPLv2.0 and Public Domain and W3C and zlib and ISC and FTL and RSA.
 java-17-amazon-corretto-17.0.18+9: ASL 1.1 and ASL 2.0 and BSD and BSD with advertising and GPL+ and GPLv2 and GPLv2 with exceptions and IJG and LGPLv2+ and MIT and MPLv2.0 and Public Domain and W3C and zlib and ISC and FTL and RSA.
+ngtcp2-1.21.0: MIT
+ngtcp2-devel-1.21.0: MIT
+ngtcp2-crypto-ossl-1.21.0: MIT
+ngtcp2-crypto-ossl-devel-1.21.0: MIT
 publicsuffix-list-20260116: MPL-2.0
 libpsl-devel-0.21.5: MIT
 libverto-devel-0.3.2: MIT
 libssh-config-0.10.6: LGPL-2.1-or-later
 libssh-0.10.6: LGPL-2.1-or-later
 libssh-devel-0.10.6: LGPL-2.1-or-later
+libnghttp3-1.15.0: MIT
+libnghttp3-devel-1.15.0: MIT
 libnghttp2-devel-1.59.0: MIT
 libkadm5-1.21.3: MIT
 libidn2-devel-2.3.2: (GPLv2+ or LGPLv3+) and GPLv3+
