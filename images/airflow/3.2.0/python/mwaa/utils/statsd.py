@@ -7,7 +7,7 @@ from functools import cache
 
 # 3rd-party imports
 from statsd import StatsClient  # type: ignore
-from airflow.metrics.statsd_logger import SafeStatsdLogger
+from airflow._shared.observability.metrics.statsd_logger import SafeStatsdLogger
 
 
 @cache
