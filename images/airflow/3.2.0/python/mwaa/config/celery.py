@@ -17,25 +17,49 @@ from mwaa.celery.sqs_broker import Transport
 from mwaa.utils import qualified_name
 
 
+def get_broker_transport_config() -> dict[str, Any]:
+    """
+    Return the MWAA broker transport configuration for Celery.
+
+    This is the broker settings shared by:
+      - The worker-side Celery app (via celery_config_options / MWAA_CELERY_CONFIG)
+      - The scheduler-side Celery app (via AIRFLOW__CELERY__EXTRA_CELERY_CONFIG)
+
+    If you change anything here, both code paths pick it up automatically.
+
+    :returns A dictionary with broker_transport and broker_transport_options keys.
+    """
+    sqs_queue_name = get_sqs_queue_name()
+    sqs_queue_url = get_sqs_queue_url()
+    return {
+        "broker_transport": qualified_name(Transport),
+        "broker_transport_options": {
+            "predefined_queues": {
+                sqs_queue_name: {"url": sqs_queue_url},
+                "default": {"url": sqs_queue_url},
+            },
+            "is_secure": should_use_ssl(),
+            "region": get_aws_region(),
+            "visibility_timeout": 43200,
+        },
+    }
+
+
 def create_celery_config() -> dict[str, Any]:
     """
     Generate the configuration that will be passed to Celery.
 
-    This is used in the "celery" section of the Airflow configuration.
-
     :returns A dictionary containing the Celery configuration.
     """
+    broker_config = get_broker_transport_config()
     # We use Airflow's default configuration and make the changes we want.
     celery_config: dict[str, Any] = copy.deepcopy(DEFAULT_CELERY_CONFIG)
     celery_config = {
         **celery_config,
-        "broker_transport": qualified_name(Transport),
+        "broker_transport": broker_config["broker_transport"],
         "broker_transport_options": {
             **celery_config["broker_transport_options"],
-            "predefined_queues": {get_sqs_queue_name(): {"url": get_sqs_queue_url()},
-                                  "default": {"url": get_sqs_queue_url()}},
-            "is_secure": should_use_ssl(),
-            "region": get_aws_region(),
+            **broker_config["broker_transport_options"],
         },
         "database_engine_options": {
             "pool_pre_ping": True,

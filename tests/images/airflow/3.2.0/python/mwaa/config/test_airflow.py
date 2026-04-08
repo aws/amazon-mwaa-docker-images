@@ -1,6 +1,7 @@
 """Tests for airflow configuration module."""
 
 import json
+from unittest.mock import patch
 import pytest
 
 from mwaa.config.airflow import (
@@ -43,19 +44,34 @@ def test_essential_airflow_executor_config(monkeypatch, executor_name, expected_
         result = _get_essential_airflow_executor_config(executor_name)
         assert result == {"AIRFLOW__CORE__EXECUTOR": expected_executor}
     elif expected_executor == "CeleryExecutor":
-         # Mock Celery dependencies
         monkeypatch.setattr("mwaa.config.airflow.get_sqs_endpoint", lambda: "sqs://endpoint")
         monkeypatch.setattr("mwaa.config.airflow.get_sqs_queue_name", lambda: "test-queue")
         monkeypatch.setattr("mwaa.config.airflow.get_db_connection_string", lambda: "postgresql://db")
 
-        result = _get_essential_airflow_executor_config(executor_name)
+        with \
+            patch("mwaa.config.sqs.get_sqs_queue_url", return_value="https://sqs.us-east-1.amazonaws.com/123456789/test-queue"), \
+            patch("mwaa.config.sqs.get_sqs_queue_name", return_value="test-queue"), \
+            patch("mwaa.config.sqs.should_use_ssl", return_value=True), \
+            patch("mwaa.config.aws.get_aws_region", return_value="us-east-1"), \
+            patch("mwaa.utils.qualified_name", return_value="mocked.transport.Transport"):
+
+            result = _get_essential_airflow_executor_config(executor_name)
+
         assert result["AIRFLOW__CORE__EXECUTOR"] == expected_executor
         assert result["AIRFLOW__CELERY__BROKER_URL"] == "sqs://endpoint"
         assert result["AIRFLOW__OPERATORS__DEFAULT_QUEUE"] == "test-queue"
         assert result["AIRFLOW__CELERY__RESULT_BACKEND"] == "db+postgresql://db"
         assert result["AIRFLOW__CELERY__WORKER_ENABLE_REMOTE_CONTROL"] == "False"
-        assert result["AIRFLOW__CELERY_BROKER_TRANSPORT_OPTIONS__VISIBILITY_TIMEOUT"] == "43200"
         assert result["AIRFLOW__CELERY__CELERY_CONFIG_OPTIONS"] == "mwaa.config.celery.MWAA_CELERY_CONFIG"
+        # Verify extra_celery_config is set as JSON — it should match the
+        # output of get_broker_transport_config() (the shared single source of truth).
+        extra_config = json.loads(result["AIRFLOW__CELERY__EXTRA_CELERY_CONFIG"])
+        assert "broker_transport" in extra_config
+        assert extra_config["broker_transport"] == "mocked.transport.Transport"
+        assert extra_config["broker_transport_options"]["visibility_timeout"] == 43200
+        assert extra_config["broker_transport_options"]["is_secure"] is True
+        assert extra_config["broker_transport_options"]["region"] == "us-east-1"
+        assert "test-queue" in extra_config["broker_transport_options"]["predefined_queues"]
 
 @pytest.mark.parametrize("invalid_executor", ["UnknownExecutor", "unknownexecutor"])
 def test_invalid_executor(invalid_executor):

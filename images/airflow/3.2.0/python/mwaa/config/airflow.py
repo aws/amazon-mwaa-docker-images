@@ -37,14 +37,26 @@ def _get_essential_airflow_executor_config(executor_type: str) -> Dict[str, str]
             }
         case 'celeryexecutor':
             celery_config_module_path = "mwaa.config.celery.MWAA_CELERY_CONFIG"
+            sqs_queue_name = get_sqs_queue_name()
+            # In Airflow 3.2+, CeleryExecutor uses create_celery_app() which calls
+            # get_default_celery_config(). This function reads broker_transport_options
+            # from getsection("celery_broker_transport_options") which returns all
+            # values as strings, breaking predefined_queues (which must be a dict).
+            # It also ignores celery_config_options entirely.
+            #
+            # To work around this, we use extra_celery_config which is parsed via
+            # getjson() and properly preserves nested dict types. This config is
+            # merged into the Celery config dict built by get_default_celery_config().
+            from mwaa.config.celery import get_broker_transport_config
+            extra_celery_config = get_broker_transport_config()
             return {
-                "AIRFLOW__CELERY_BROKER_TRANSPORT_OPTIONS__VISIBILITY_TIMEOUT": "43200",
                 "AIRFLOW__CELERY__BROKER_URL": get_sqs_endpoint(),
                 "AIRFLOW__CELERY__CELERY_CONFIG_OPTIONS": celery_config_module_path,
+                "AIRFLOW__CELERY__EXTRA_CELERY_CONFIG": json.dumps(extra_celery_config),
                 "AIRFLOW__CELERY__RESULT_BACKEND": f"db+{get_db_connection_string()}",
                 "AIRFLOW__CELERY__WORKER_ENABLE_REMOTE_CONTROL": "False",
                 "AIRFLOW__CORE__EXECUTOR": "CeleryExecutor",
-                "AIRFLOW__OPERATORS__DEFAULT_QUEUE": get_sqs_queue_name(),
+                "AIRFLOW__OPERATORS__DEFAULT_QUEUE": sqs_queue_name,
             }
         case _:
             raise ValueError(f"Executor type {executor_type} is not supported.")
