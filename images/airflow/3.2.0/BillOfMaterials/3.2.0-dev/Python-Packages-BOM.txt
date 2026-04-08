@@ -65,42 +65,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 UNKNOWN
 UNKNOWN
 
-Flask-AppBuilder
-5.0.1
-BSD License
-https://github.com/dpgaspar/flask-appbuilder/
-/usr/local/airflow/.local/lib/python3.12/site-packages/Flask_AppBuilder-5.0.1.dist-info/LICENSE
-Copyright (c) 2013, Daniel Vaz Gaspar
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without modification,
-are permitted provided that the following conditions are met:
-
-* Redistributions of source code must retain the above copyright notice, this
-  list of conditions and the following disclaimer.
-
-* Redistributions in binary form must reproduce the above copyright notice, this
-  list of conditions and the following disclaimer in the documentation and/or
-  other materials provided with the distribution.
-
-* Neither the name of the {organization} nor the names of its
-  contributors may be used to endorse or promote products derived from
-  this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
-ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
-ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-UNKNOWN
-UNKNOWN
-
 Flask-JWT-Extended
 4.7.1
 MIT License
@@ -192,10 +156,10 @@ UNKNOWN
 UNKNOWN
 
 Flask-SQLAlchemy
-3.0.5
+3.1.1
 BSD License
-UNKNOWN
-/usr/local/airflow/.local/lib/python3.12/site-packages/flask_sqlalchemy-3.0.5.dist-info/LICENSE.rst
+https://flask-sqlalchemy.palletsprojects.com
+/usr/local/airflow/.local/lib/python3.12/site-packages/flask_sqlalchemy-3.1.1.dist-info/LICENSE.rst
 Copyright 2010 Pallets
 
 Redistribution and use in source and binary forms, with or without
@@ -231,7 +195,7 @@ UNKNOWN
 Flask-Session
 0.8.0
 BSD License
-UNKNOWN
+https://flask-session.readthedocs.io
 /usr/local/airflow/.local/lib/python3.12/site-packages/flask_session-0.8.0.dist-info/LICENSE.rst
 Copyright 2014 Pallets Community Ecosystem
 
@@ -268,7 +232,7 @@ UNKNOWN
 Flask-WTF
 1.2.2
 BSD License
-UNKNOWN
+https://flask-wtf.readthedocs.io/
 /usr/local/airflow/.local/lib/python3.12/site-packages/flask_wtf-1.2.2.dist-info/licenses/LICENSE.rst
 Copyright 2010 WTForms
 
@@ -405,10 +369,10 @@ UNKNOWN
 UNKNOWN
 
 PyAthena
-3.24.1
+3.30.1
 MIT License
-https://github.com/laughingman7743/PyAthena/
-/usr/local/airflow/.local/lib/python3.12/site-packages/pyathena-3.24.1.dist-info/licenses/LICENSE
+https://github.com/pyathena-dev/PyAthena/
+/usr/local/airflow/.local/lib/python3.12/site-packages/pyathena-3.30.1.dist-info/licenses/LICENSE
 Copyright 2017 laughingman7743
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -432,10 +396,10 @@ UNKNOWN
 UNKNOWN
 
 PyJWT
-2.10.1
-MIT License
+2.12.1
+MIT
 https://github.com/jpadilla/pyjwt
-/usr/local/airflow/.local/lib/python3.12/site-packages/PyJWT-2.10.1.dist-info/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/pyjwt-2.12.1.dist-info/licenses/LICENSE
 The MIT License (MIT)
 
 Copyright (c) 2015-2022 José Padilla
@@ -525,11 +489,11 @@ UNKNOWN
 UNKNOWN
 
 SQLAlchemy
-1.4.54
-MIT License
+2.0.48
+MIT
 https://www.sqlalchemy.org
-/usr/local/airflow/.local/lib/python3.12/site-packages/SQLAlchemy-1.4.54.dist-info/LICENSE
-Copyright 2005-2024 SQLAlchemy authors and contributors <see AUTHORS file>.
+/usr/local/airflow/.local/lib/python3.12/site-packages/sqlalchemy-2.0.48.dist-info/licenses/LICENSE
+Copyright 2005-2026 SQLAlchemy authors and contributors <see AUTHORS file>.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in
@@ -548,216 +512,6 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
-UNKNOWN
-UNKNOWN
-
-SQLAlchemy-JSONField
-1.0.2
-Apache Software License
-https://github.com/penguinolog/sqlalchemy_jsonfield
-/usr/local/airflow/.local/lib/python3.12/site-packages/SQLAlchemy_JSONField-1.0.2.dist-info/LICENSE
-                                 Apache License
-                           Version 2.0, January 2004
-                        http://www.apache.org/licenses/
-
-   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
-
-   1. Definitions.
-
-      "License" shall mean the terms and conditions for use, reproduction,
-      and distribution as defined by Sections 1 through 9 of this document.
-
-      "Licensor" shall mean the copyright owner or entity authorized by
-      the copyright owner that is granting the License.
-
-      "Legal Entity" shall mean the union of the acting entity and all
-      other entities that control, are controlled by, or are under common
-      control with that entity. For the purposes of this definition,
-      "control" means (i) the power, direct or indirect, to cause the
-      direction or management of such entity, whether by contract or
-      otherwise, or (ii) ownership of fifty percent (50%) or more of the
-      outstanding shares, or (iii) beneficial ownership of such entity.
-
-      "You" (or "Your") shall mean an individual or Legal Entity
-      exercising permissions granted by this License.
-
-      "Source" form shall mean the preferred form for making modifications,
-      including but not limited to software source code, documentation
-      source, and configuration files.
-
-      "Object" form shall mean any form resulting from mechanical
-      transformation or translation of a Source form, including but
-      not limited to compiled object code, generated documentation,
-      and conversions to other media types.
-
-      "Work" shall mean the work of authorship, whether in Source or
-      Object form, made available under the License, as indicated by a
-      copyright notice that is included in or attached to the work
-      (an example is provided in the Appendix below).
-
-      "Derivative Works" shall mean any work, whether in Source or Object
-      form, that is based on (or derived from) the Work and for which the
-      editorial revisions, annotations, elaborations, or other modifications
-      represent, as a whole, an original work of authorship. For the purposes
-      of this License, Derivative Works shall not include works that remain
-      separable from, or merely link (or bind by name) to the interfaces of,
-      the Work and Derivative Works thereof.
-
-      "Contribution" shall mean any work of authorship, including
-      the original version of the Work and any modifications or additions
-      to that Work or Derivative Works thereof, that is intentionally
-      submitted to Licensor for inclusion in the Work by the copyright owner
-      or by an individual or Legal Entity authorized to submit on behalf of
-      the copyright owner. For the purposes of this definition, "submitted"
-      means any form of electronic, verbal, or written communication sent
-      to the Licensor or its representatives, including but not limited to
-      communication on electronic mailing lists, source code control systems,
-      and issue tracking systems that are managed by, or on behalf of, the
-      Licensor for the purpose of discussing and improving the Work, but
-      excluding communication that is conspicuously marked or otherwise
-      designated in writing by the copyright owner as "Not a Contribution."
-
-      "Contributor" shall mean Licensor and any individual or Legal Entity
-      on behalf of whom a Contribution has been received by Licensor and
-      subsequently incorporated within the Work.
-
-   2. Grant of Copyright License. Subject to the terms and conditions of
-      this License, each Contributor hereby grants to You a perpetual,
-      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
-      copyright license to reproduce, prepare Derivative Works of,
-      publicly display, publicly perform, sublicense, and distribute the
-      Work and such Derivative Works in Source or Object form.
-
-   3. Grant of Patent License. Subject to the terms and conditions of
-      this License, each Contributor hereby grants to You a perpetual,
-      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
-      (except as stated in this section) patent license to make, have made,
-      use, offer to sell, sell, import, and otherwise transfer the Work,
-      where such license applies only to those patent claims licensable
-      by such Contributor that are necessarily infringed by their
-      Contribution(s) alone or by combination of their Contribution(s)
-      with the Work to which such Contribution(s) was submitted. If You
-      institute patent litigation against any entity (including a
-      cross-claim or counterclaim in a lawsuit) alleging that the Work
-      or a Contribution incorporated within the Work constitutes direct
-      or contributory patent infringement, then any patent licenses
-      granted to You under this License for that Work shall terminate
-      as of the date such litigation is filed.
-
-   4. Redistribution. You may reproduce and distribute copies of the
-      Work or Derivative Works thereof in any medium, with or without
-      modifications, and in Source or Object form, provided that You
-      meet the following conditions:
-
-      (a) You must give any other recipients of the Work or
-          Derivative Works a copy of this License; and
-
-      (b) You must cause any modified files to carry prominent notices
-          stating that You changed the files; and
-
-      (c) You must retain, in the Source form of any Derivative Works
-          that You distribute, all copyright, patent, trademark, and
-          attribution notices from the Source form of the Work,
-          excluding those notices that do not pertain to any part of
-          the Derivative Works; and
-
-      (d) If the Work includes a "NOTICE" text file as part of its
-          distribution, then any Derivative Works that You distribute must
-          include a readable copy of the attribution notices contained
-          within such NOTICE file, excluding those notices that do not
-          pertain to any part of the Derivative Works, in at least one
-          of the following places: within a NOTICE text file distributed
-          as part of the Derivative Works; within the Source form or
-          documentation, if provided along with the Derivative Works; or,
-          within a display generated by the Derivative Works, if and
-          wherever such third-party notices normally appear. The contents
-          of the NOTICE file are for informational purposes only and
-          do not modify the License. You may add Your own attribution
-          notices within Derivative Works that You distribute, alongside
-          or as an addendum to the NOTICE text from the Work, provided
-          that such additional attribution notices cannot be construed
-          as modifying the License.
-
-      You may add Your own copyright statement to Your modifications and
-      may provide additional or different license terms and conditions
-      for use, reproduction, or distribution of Your modifications, or
-      for any such Derivative Works as a whole, provided Your use,
-      reproduction, and distribution of the Work otherwise complies with
-      the conditions stated in this License.
-
-   5. Submission of Contributions. Unless You explicitly state otherwise,
-      any Contribution intentionally submitted for inclusion in the Work
-      by You to the Licensor shall be under the terms and conditions of
-      this License, without any additional terms or conditions.
-      Notwithstanding the above, nothing herein shall supersede or modify
-      the terms of any separate license agreement you may have executed
-      with Licensor regarding such Contributions.
-
-   6. Trademarks. This License does not grant permission to use the trade
-      names, trademarks, service marks, or product names of the Licensor,
-      except as required for reasonable and customary use in describing the
-      origin of the Work and reproducing the content of the NOTICE file.
-
-   7. Disclaimer of Warranty. Unless required by applicable law or
-      agreed to in writing, Licensor provides the Work (and each
-      Contributor provides its Contributions) on an "AS IS" BASIS,
-      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-      implied, including, without limitation, any warranties or conditions
-      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
-      PARTICULAR PURPOSE. You are solely responsible for determining the
-      appropriateness of using or redistributing the Work and assume any
-      risks associated with Your exercise of permissions under this License.
-
-   8. Limitation of Liability. In no event and under no legal theory,
-      whether in tort (including negligence), contract, or otherwise,
-      unless required by applicable law (such as deliberate and grossly
-      negligent acts) or agreed to in writing, shall any Contributor be
-      liable to You for damages, including any direct, indirect, special,
-      incidental, or consequential damages of any character arising as a
-      result of this License or out of the use or inability to use the
-      Work (including but not limited to damages for loss of goodwill,
-      work stoppage, computer failure or malfunction, or any and all
-      other commercial damages or losses), even if such Contributor
-      has been advised of the possibility of such damages.
-
-   9. Accepting Warranty or Additional Liability. While redistributing
-      the Work or Derivative Works thereof, You may choose to offer,
-      and charge a fee for, acceptance of support, warranty, indemnity,
-      or other liability obligations and/or rights consistent with this
-      License. However, in accepting such obligations, You may act only
-      on Your own behalf and on Your sole responsibility, not on behalf
-      of any other Contributor, and only if You agree to indemnify,
-      defend, and hold each Contributor harmless for any liability
-      incurred by, or claims asserted against, such Contributor by reason
-      of your accepting any such warranty or additional liability.
-
-   END OF TERMS AND CONDITIONS
-
-   APPENDIX: How to apply the Apache License to your work.
-
-      To apply the Apache License to your work, attach the following
-      boilerplate notice, with the fields enclosed by brackets "{}"
-      replaced with your own identifying information. (Don't include
-      the brackets!)  The text should be enclosed in the appropriate
-      comment syntax for the file format. We also recommend that a
-      file or class name and description of purpose be included on the
-      same "printed page" as the copyright notice for easier
-      identification within third-party archives.
-
-   Copyright 2016-2022 Alexey Stepanov aka penguinolog
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
 
 UNKNOWN
 UNKNOWN
@@ -801,7 +555,7 @@ UNKNOWN
 WTForms
 3.2.1
 BSD License
-UNKNOWN
+https://wtforms.readthedocs.io
 /usr/local/airflow/.local/lib/python3.12/site-packages/wtforms-3.2.1.dist-info/licenses/LICENSE.rst
 Copyright 2008 WTForms
 
@@ -836,10 +590,10 @@ UNKNOWN
 UNKNOWN
 
 Werkzeug
-2.2.3
-BSD License
-https://palletsprojects.com/p/werkzeug/
-/usr/local/airflow/.local/lib/python3.12/site-packages/Werkzeug-2.2.3.dist-info/LICENSE.rst
+3.1.7
+BSD-3-Clause
+https://github.com/pallets/werkzeug/
+/usr/local/airflow/.local/lib/python3.12/site-packages/werkzeug-3.1.7.dist-info/licenses/LICENSE.txt
 Copyright 2007 Pallets
 
 Redistribution and use in source and binary forms, with or without
@@ -1083,10 +837,10 @@ UNKNOWN
 UNKNOWN
 
 aiobotocore
-2.26.0
+3.3.0
 Apache-2.0
 https://github.com/aio-libs/aiobotocore
-/usr/local/airflow/.local/lib/python3.12/site-packages/aiobotocore-2.26.0.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/aiobotocore-3.3.0.dist-info/licenses/LICENSE
 Apache License
                            Version 2.0, January 2004
                         http://www.apache.org/licenses/
@@ -1843,10 +1597,10 @@ UNKNOWN
 UNKNOWN
 
 aiosmtplib
-5.0.0
+5.1.0
 MIT
 https://github.com/cole/aiosmtplib/blob/main/CHANGELOG.rst
-/usr/local/airflow/.local/lib/python3.12/site-packages/aiosmtplib-5.0.0.dist-info/licenses/LICENSE.txt
+/usr/local/airflow/.local/lib/python3.12/site-packages/aiosmtplib-5.1.0.dist-info/licenses/LICENSE.txt
 The MIT License (MIT)
 
 Copyright (c) 2022 Cole Maclean
@@ -1874,7 +1628,7 @@ UNKNOWN
 aiosqlite
 0.21.0
 MIT License
-UNKNOWN
+https://aiosqlite.omnilib.dev
 /usr/local/airflow/.local/lib/python3.12/site-packages/aiosqlite-0.21.0.dist-info/LICENSE
 MIT License
 
@@ -1902,11 +1656,11 @@ UNKNOWN
 UNKNOWN
 
 alembic
-1.17.2
+1.18.4
 MIT
 https://alembic.sqlalchemy.org
-/usr/local/airflow/.local/lib/python3.12/site-packages/alembic-1.17.2.dist-info/licenses/LICENSE
-Copyright 2009-2025 Michael Bayer.
+/usr/local/airflow/.local/lib/python3.12/site-packages/alembic-1.18.4.dist-info/licenses/LICENSE
+Copyright 2009-2026 Michael Bayer.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in
@@ -1985,6 +1739,36 @@ Footnotes
 UNKNOWN
 UNKNOWN
 
+annotated-doc
+0.0.4
+MIT
+https://github.com/fastapi/annotated-doc
+/usr/local/airflow/.local/lib/python3.12/site-packages/annotated_doc-0.0.4.dist-info/licenses/LICENSE
+The MIT License (MIT)
+
+Copyright (c) 2025 Sebastián Ramírez
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+UNKNOWN
+UNKNOWN
+
 annotated-types
 0.7.0
 MIT License
@@ -2016,10 +1800,10 @@ UNKNOWN
 UNKNOWN
 
 anyio
-4.12.1
+4.13.0
 MIT
 https://anyio.readthedocs.io/en/stable/versionhistory.html
-/usr/local/airflow/.local/lib/python3.12/site-packages/anyio-4.12.1.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/anyio-4.13.0.dist-info/licenses/LICENSE
 The MIT License (MIT)
 
 Copyright (c) 2018 Alex Grönholm
@@ -2045,10 +1829,10 @@ UNKNOWN
 UNKNOWN
 
 apache-airflow
-3.1.6
+3.2.0
 Apache-2.0
 https://airflow.apache.org/
-/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow-3.1.6.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow-3.2.0.dist-info/licenses/LICENSE
                               Apache License
                         Version 2.0, January 2004
                      http://www.apache.org/licenses/
@@ -2252,18 +2036,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 Apache Airflow
-Copyright 2016-2025 The Apache Software Foundation
+Copyright 2016-2026 The Apache Software Foundation
 
 This product includes software developed at
 The Apache Software Foundation (http://www.apache.org/).
 
-/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow-3.1.6.dist-info/licenses/NOTICE
+/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow-3.2.0.dist-info/licenses/NOTICE
 
 apache-airflow-core
-3.1.6
+3.2.0
 Apache-2.0
 https://airflow.apache.org/
-/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_core-3.1.6.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_core-3.2.0.dist-info/licenses/LICENSE
                               Apache License
                         Version 2.0, January 2004
                      http://www.apache.org/licenses/
@@ -2517,7 +2301,7 @@ The text of each license is also included at 3rd-party-licenses/LICENSE-[project
 See 3rd-party-licenses/LICENSES-ui.txt for packages used in `/airflow/www`
 
 Apache Airflow
-Copyright 2016-2025 The Apache Software Foundation
+Copyright 2016-2026 The Apache Software Foundation
 
 This product includes software developed at The Apache Software
 Foundation (http://www.apache.org/).
@@ -2539,13 +2323,13 @@ This product contains a modified portion of 'Chakra UI' developed by Segun Adeba
 
 * Copyright 2019, Segun Adebayo
 
-/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_core-3.1.6.dist-info/licenses/NOTICE
+/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_core-3.2.0.dist-info/licenses/NOTICE
 
 apache-airflow-providers-amazon
-9.19.0
+9.23.0
 Apache-2.0
-https://airflow.apache.org/docs/apache-airflow-providers-amazon/9.19.0/changelog.html
-/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_providers_amazon-9.19.0.dist-info/licenses/LICENSE
+https://airflow.apache.org/docs/apache-airflow-providers-amazon/9.23.0/changelog.html
+/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_providers_amazon-9.23.0.dist-info/licenses/LICENSE
                               Apache License
                         Version 2.0, January 2004
                      http://www.apache.org/licenses/
@@ -2749,18 +2533,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 Apache Airflow
-Copyright 2016-2025 The Apache Software Foundation
+Copyright 2016-2026 The Apache Software Foundation
 
 This product includes software developed at
 The Apache Software Foundation (http://www.apache.org/).
 
-/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_providers_amazon-9.19.0.dist-info/licenses/NOTICE
+/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_providers_amazon-9.23.0.dist-info/licenses/NOTICE
 
 apache-airflow-providers-celery
-3.15.0
+3.17.1
 Apache-2.0
-https://airflow.apache.org/docs/apache-airflow-providers-celery/3.15.0/changelog.html
-/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_providers_celery-3.15.0.dist-info/licenses/LICENSE
+https://airflow.apache.org/docs/apache-airflow-providers-celery/3.17.1/changelog.html
+/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_providers_celery-3.17.1.dist-info/licenses/LICENSE
                               Apache License
                         Version 2.0, January 2004
                      http://www.apache.org/licenses/
@@ -2964,18 +2748,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 Apache Airflow
-Copyright 2016-2025 The Apache Software Foundation
+Copyright 2016-2026 The Apache Software Foundation
 
 This product includes software developed at
 The Apache Software Foundation (http://www.apache.org/).
 
-/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_providers_celery-3.15.0.dist-info/licenses/NOTICE
+/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_providers_celery-3.17.1.dist-info/licenses/NOTICE
 
 apache-airflow-providers-common-compat
-1.11.0
+1.14.1
 Apache-2.0
-https://airflow.apache.org/docs/apache-airflow-providers-common-compat/1.11.0/changelog.html
-/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_providers_common_compat-1.11.0.dist-info/licenses/LICENSE
+https://airflow.apache.org/docs/apache-airflow-providers-common-compat/1.14.1/changelog.html
+/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_providers_common_compat-1.14.1.dist-info/licenses/LICENSE
                               Apache License
                         Version 2.0, January 2004
                      http://www.apache.org/licenses/
@@ -3179,18 +2963,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 Apache Airflow
-Copyright 2016-2025 The Apache Software Foundation
+Copyright 2016-2026 The Apache Software Foundation
 
 This product includes software developed at
 The Apache Software Foundation (http://www.apache.org/).
 
-/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_providers_common_compat-1.11.0.dist-info/licenses/NOTICE
+/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_providers_common_compat-1.14.1.dist-info/licenses/NOTICE
 
 apache-airflow-providers-common-io
-1.7.0
+1.7.1
 Apache-2.0
-https://airflow.apache.org/docs/apache-airflow-providers-common-io/1.7.0/changelog.html
-/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_providers_common_io-1.7.0.dist-info/licenses/LICENSE
+https://airflow.apache.org/docs/apache-airflow-providers-common-io/1.7.1/changelog.html
+/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_providers_common_io-1.7.1.dist-info/licenses/LICENSE
                               Apache License
                         Version 2.0, January 2004
                      http://www.apache.org/licenses/
@@ -3394,18 +3178,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 Apache Airflow
-Copyright 2016-2025 The Apache Software Foundation
+Copyright 2016-2026 The Apache Software Foundation
 
 This product includes software developed at
 The Apache Software Foundation (http://www.apache.org/).
 
-/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_providers_common_io-1.7.0.dist-info/licenses/NOTICE
+/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_providers_common_io-1.7.1.dist-info/licenses/NOTICE
 
 apache-airflow-providers-common-sql
-1.30.2
+1.33.0
 Apache-2.0
-https://airflow.apache.org/docs/apache-airflow-providers-common-sql/1.30.2/changelog.html
-/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_providers_common_sql-1.30.2.dist-info/licenses/LICENSE
+https://airflow.apache.org/docs/apache-airflow-providers-common-sql/1.33.0/changelog.html
+/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_providers_common_sql-1.33.0.dist-info/licenses/LICENSE
                               Apache License
                         Version 2.0, January 2004
                      http://www.apache.org/licenses/
@@ -3609,52 +3393,25 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 Apache Airflow
-Copyright 2016-2025 The Apache Software Foundation
+Copyright 2016-2026 The Apache Software Foundation
 
 This product includes software developed at
 The Apache Software Foundation (http://www.apache.org/).
 
-/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_providers_common_sql-1.30.2.dist-info/licenses/NOTICE
+/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_providers_common_sql-1.33.0.dist-info/licenses/NOTICE
 
 apache-airflow-providers-fab
-3.1.1
+3.5.0
 Apache-2.0
-https://airflow.apache.org/docs/apache-airflow-providers-fab/3.1.1/changelog.html
-/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_providers_fab-3.1.1.dist-info/licenses/3rd-party-licenses/LICENSES-ui.txt
+https://airflow.apache.org/docs/apache-airflow-providers-fab/3.5.0/changelog.html
+/usr/local/airflow/.local/lib/python3.12/site-packages/airflow/providers/3rd-party-licenses/LICENSES-ui.txt
 Apache Airflow
-Copyright 2016-2025 The Apache Software Foundation
+Copyright 2016-2023 The Apache Software Foundation
 
 This product includes software developed at The Apache Software
 Foundation (http://www.apache.org/).
 
 =======================================================================
-css-loader|5.2.7:
------
-MIT
-Copyright JS Foundation and other contributors
-
-Permission is hereby granted, free of charge, to any person obtaining
-a copy of this software and associated documentation files (the
-'Software'), to deal in the Software without restriction, including
-without limitation the rights to use, copy, modify, merge, publish,
-distribute, sublicense, and/or sell copies of the Software, and to
-permit persons to whom the Software is furnished to do so, subject to
-the following conditions:
-
-The above copyright notice and this permission notice shall be
-included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
-EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-webpack-contrib/css-loader
-
-
 moment|2.30.1:
 -----
 MIT
@@ -3684,7 +3441,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 https://github.com/moment/moment.git
 
 
-moment-timezone|0.5.46:
+moment-timezone|0.6.0:
 -----
 MIT
 The MIT License (MIT)
@@ -3709,8 +3466,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 https://github.com/moment/moment-timezone.git
 
+
+
 Apache Airflow
-Copyright 2016-2025 The Apache Software Foundation
+Copyright 2016-2026 The Apache Software Foundation
 
 This product includes software developed at The Apache Software
 Foundation (http://www.apache.org/).
@@ -3724,13 +3483,13 @@ This product contains a modified portion of 'Flask App Builder' developed by Dan
 
 * Copyright 2013, Daniel Vaz Gaspar
 
-/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_providers_fab-3.1.1.dist-info/licenses/NOTICE
+/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_providers_fab-3.5.0.dist-info/licenses/NOTICE
 
 apache-airflow-providers-http
-5.6.2
+6.0.0
 Apache-2.0
-https://airflow.apache.org/docs/apache-airflow-providers-http/5.6.2/changelog.html
-/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_providers_http-5.6.2.dist-info/licenses/LICENSE
+https://airflow.apache.org/docs/apache-airflow-providers-http/6.0.0/changelog.html
+/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_providers_http-6.0.0.dist-info/licenses/LICENSE
                               Apache License
                         Version 2.0, January 2004
                      http://www.apache.org/licenses/
@@ -3934,18 +3693,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 Apache Airflow
-Copyright 2016-2025 The Apache Software Foundation
+Copyright 2016-2026 The Apache Software Foundation
 
 This product includes software developed at
 The Apache Software Foundation (http://www.apache.org/).
 
-/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_providers_http-5.6.2.dist-info/licenses/NOTICE
+/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_providers_http-6.0.0.dist-info/licenses/NOTICE
 
 apache-airflow-providers-postgres
-6.5.1
+6.6.1
 Apache-2.0
-https://airflow.apache.org/docs/apache-airflow-providers-postgres/6.5.1/changelog.html
-/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_providers_postgres-6.5.1.dist-info/licenses/LICENSE
+https://airflow.apache.org/docs/apache-airflow-providers-postgres/6.6.1/changelog.html
+/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_providers_postgres-6.6.1.dist-info/licenses/LICENSE
                               Apache License
                         Version 2.0, January 2004
                      http://www.apache.org/licenses/
@@ -4149,18 +3908,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 Apache Airflow
-Copyright 2016-2025 The Apache Software Foundation
+Copyright 2016-2026 The Apache Software Foundation
 
 This product includes software developed at
 The Apache Software Foundation (http://www.apache.org/).
 
-/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_providers_postgres-6.5.1.dist-info/licenses/NOTICE
+/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_providers_postgres-6.6.1.dist-info/licenses/NOTICE
 
 apache-airflow-providers-smtp
-2.4.1
+2.4.3
 Apache-2.0
-https://airflow.apache.org/docs/apache-airflow-providers-smtp/2.4.1/changelog.html
-/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_providers_smtp-2.4.1.dist-info/licenses/LICENSE
+https://airflow.apache.org/docs/apache-airflow-providers-smtp/2.4.3/changelog.html
+/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_providers_smtp-2.4.3.dist-info/licenses/LICENSE
                               Apache License
                         Version 2.0, January 2004
                      http://www.apache.org/licenses/
@@ -4364,18 +4123,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 Apache Airflow
-Copyright 2016-2025 The Apache Software Foundation
+Copyright 2016-2026 The Apache Software Foundation
 
 This product includes software developed at
 The Apache Software Foundation (http://www.apache.org/).
 
-/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_providers_smtp-2.4.1.dist-info/licenses/NOTICE
+/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_providers_smtp-2.4.3.dist-info/licenses/NOTICE
 
 apache-airflow-providers-standard
-1.10.2
+1.12.1
 Apache-2.0
-https://airflow.apache.org/docs/apache-airflow-providers-standard/1.10.2/changelog.html
-/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_providers_standard-1.10.2.dist-info/licenses/LICENSE
+https://airflow.apache.org/docs/apache-airflow-providers-standard/1.12.1/changelog.html
+/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_providers_standard-1.12.1.dist-info/licenses/LICENSE
                               Apache License
                         Version 2.0, January 2004
                      http://www.apache.org/licenses/
@@ -4579,18 +4338,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 Apache Airflow
-Copyright 2016-2025 The Apache Software Foundation
+Copyright 2016-2026 The Apache Software Foundation
 
 This product includes software developed at
 The Apache Software Foundation (http://www.apache.org/).
 
-/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_providers_standard-1.10.2.dist-info/licenses/NOTICE
+/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_providers_standard-1.12.1.dist-info/licenses/NOTICE
 
 apache-airflow-task-sdk
-1.1.6
+1.2.0
 Apache-2.0
 https://airflow.apache.org/
-/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_task_sdk-1.1.6.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_task_sdk-1.2.0.dist-info/licenses/LICENSE
                               Apache License
                         Version 2.0, January 2004
                      http://www.apache.org/licenses/
@@ -4794,18 +4553,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 Apache Airflow
-Copyright 2016-2025 The Apache Software Foundation
+Copyright 2016-2026 The Apache Software Foundation
 
 This product includes software developed at
 The Apache Software Foundation (http://www.apache.org/).
 
-/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_task_sdk-1.1.6.dist-info/licenses/NOTICE
+/usr/local/airflow/.local/lib/python3.12/site-packages/apache_airflow_task_sdk-1.2.0.dist-info/licenses/NOTICE
 
 apispec
-6.9.0
+6.10.0
 MIT License
 https://github.com/marshmallow-code/apispec
-/usr/local/airflow/.local/lib/python3.12/site-packages/apispec-6.9.0.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/apispec-6.10.0.dist-info/licenses/LICENSE
 Copyright Steven Loria, Jérôme Lafréchoux, and contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -5020,10 +4779,10 @@ https://github.com/kislyuk/argcomplete.
 /usr/local/airflow/.local/lib/python3.12/site-packages/argcomplete-3.6.3.dist-info/licenses/NOTICE
 
 asgiref
-3.11.0
+3.11.1
 BSD License
 https://github.com/django/asgiref/
-/usr/local/airflow/.local/lib/python3.12/site-packages/asgiref-3.11.0.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/asgiref-3.11.1.dist-info/licenses/LICENSE
 Copyright (c) Django Software Foundation and individual contributors.
 All rights reserved.
 
@@ -5297,10 +5056,10 @@ UNKNOWN
 UNKNOWN
 
 attrs
-25.4.0
+26.1.0
 MIT
 https://www.attrs.org/en/stable/changelog.html
-/usr/local/airflow/.local/lib/python3.12/site-packages/attrs-25.4.0.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/attrs-26.1.0.dist-info/licenses/LICENSE
 The MIT License (MIT)
 
 Copyright (c) 2015 Hynek Schlawack and the attrs contributors
@@ -5327,11 +5086,11 @@ UNKNOWN
 UNKNOWN
 
 babel
-2.17.0
+2.18.0
 BSD License
 https://babel.pocoo.org/
-/usr/local/airflow/.local/lib/python3.12/site-packages/babel-2.17.0.dist-info/LICENSE
-Copyright (c) 2013-2025 by the Babel Team, see AUTHORS for more information.
+/usr/local/airflow/.local/lib/python3.12/site-packages/babel-2.18.0.dist-info/licenses/LICENSE
+Copyright (c) 2013-2026 by the Babel Team, see AUTHORS for more information.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions
@@ -5470,10 +5229,10 @@ UNKNOWN
 UNKNOWN
 
 boto3
-1.41.5
+1.42.70
 Apache-2.0
 https://github.com/boto/boto3
-/usr/local/airflow/.local/lib/python3.12/site-packages/boto3-1.41.5.dist-info/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/boto3-1.42.70.dist-info/LICENSE
 
                                  Apache License
                            Version 2.0, January 2004
@@ -5655,13 +5414,13 @@ https://github.com/boto/boto3
 boto3
 Copyright 2013-2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 
-/usr/local/airflow/.local/lib/python3.12/site-packages/boto3-1.41.5.dist-info/NOTICE
+/usr/local/airflow/.local/lib/python3.12/site-packages/boto3-1.42.70.dist-info/NOTICE
 
 boto3-stubs
-1.42.73
+1.42.85
 MIT
 https://github.com/youtype/mypy_boto3_builder
-/usr/local/airflow/.local/lib/python3.12/site-packages/boto3_stubs-1.42.73.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/boto3_stubs-1.42.85.dist-info/licenses/LICENSE
 MIT License
 
 Copyright (c) 2026 Vlad Emelianov
@@ -5687,10 +5446,10 @@ UNKNOWN
 UNKNOWN
 
 botocore
-1.41.5
+1.42.70
 Apache-2.0
 https://github.com/boto/botocore
-/usr/local/airflow/.local/lib/python3.12/site-packages/botocore-1.41.5.dist-info/LICENSE.txt
+/usr/local/airflow/.local/lib/python3.12/site-packages/botocore-1.42.70.dist-info/LICENSE.txt
 
                                  Apache License
                            Version 2.0, January 2004
@@ -5930,7 +5689,7 @@ one at http://mozilla.org/MPL/2.0/.
 
 ***** END LICENSE BLOCK *****
 
-/usr/local/airflow/.local/lib/python3.12/site-packages/botocore-1.41.5.dist-info/NOTICE
+/usr/local/airflow/.local/lib/python3.12/site-packages/botocore-1.42.70.dist-info/NOTICE
 
 botocore-stubs
 1.42.41
@@ -5999,11 +5758,40 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 UNKNOWN
 UNKNOWN
 
-cadwyn
-5.4.6
+cachetools
+6.2.6
 MIT
+https://github.com/tkem/cachetools/
+/usr/local/airflow/.local/lib/python3.12/site-packages/cachetools-6.2.6.dist-info/licenses/LICENSE
+The MIT License (MIT)
+
+Copyright (c) 2014-2026 Thomas Kemmer
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
 UNKNOWN
-/usr/local/airflow/.local/lib/python3.12/site-packages/cadwyn-5.4.6.dist-info/licenses/LICENSE
+UNKNOWN
+
+cadwyn
+6.1.1
+MIT
+https://docs.cadwyn.dev
+/usr/local/airflow/.local/lib/python3.12/site-packages/cadwyn-6.1.1.dist-info/licenses/LICENSE
 MIT License
 
 Copyright (c) 2023 Stanislav Zmiev
@@ -6030,10 +5818,10 @@ UNKNOWN
 UNKNOWN
 
 celery
-5.6.2
+5.6.3
 BSD-3-Clause
 https://docs.celeryq.dev/
-/usr/local/airflow/.local/lib/python3.12/site-packages/celery-5.6.2.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/celery-5.6.3.dist-info/licenses/LICENSE
 Copyright (c) 2017-2026 Asif Saif Uddin, core team & contributors. All rights reserved.
 Copyright (c) 2015-2016 Ask Solem & contributors. All rights reserved.
 Copyright (c) 2012-2014 GoPivotal, Inc.  All rights reserved.
@@ -6094,10 +5882,10 @@ UNKNOWN
 UNKNOWN
 
 certifi
-2026.1.4
+2026.2.25
 Mozilla Public License 2.0 (MPL 2.0)
 https://github.com/certifi/python-certifi
-/usr/local/airflow/.local/lib/python3.12/site-packages/certifi-2026.1.4.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/certifi-2026.2.25.dist-info/licenses/LICENSE
 This package contains a modified version of ca-bundle.crt:
 
 ca-bundle.crt -- Bundle of CA Root Certificates
@@ -6155,10 +5943,10 @@ UNKNOWN
 UNKNOWN
 
 charset-normalizer
-3.4.4
+3.4.6
 MIT
 https://github.com/jawah/charset_normalizer/blob/master/CHANGELOG.md
-/usr/local/airflow/.local/lib/python3.12/site-packages/charset_normalizer-3.4.4.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/charset_normalizer-3.4.6.dist-info/licenses/LICENSE
 MIT License
 
 Copyright (c) 2025 TAHRI Ahmed R.
@@ -6315,28 +6103,6 @@ SOFTWARE.
 UNKNOWN
 UNKNOWN
 
-clickclick
-20.10.2
-Apache Software License
-https://codeberg.org/hjacobs/python-clickclick
-/usr/local/airflow/.local/lib/python3.12/site-packages/clickclick-20.10.2.dist-info/LICENSE
-Copyright 2015 Zalando SE
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-  http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
-UNKNOWN
-UNKNOWN
-
 colorama
 0.4.6
 BSD License
@@ -6402,29 +6168,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 UNKNOWN
 UNKNOWN
 
-connexion
-2.14.2
-Apache License Version 2.0
-https://github.com/zalando/connexion
-/usr/local/airflow/.local/lib/python3.12/site-packages/connexion-2.14.2.dist-info/LICENSE.txt
-License
-
-Copyright 2015 Zalando SE
-
-Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
-
-UNKNOWN
-UNKNOWN
-
 cron_descriptor
-2.0.6
+2.0.8
 MIT
 https://github.com/Salamek/cron-descriptor
-/usr/local/airflow/.local/lib/python3.12/site-packages/cron_descriptor-2.0.6.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/cron_descriptor-2.0.8.dist-info/licenses/LICENSE
 The MIT License (MIT)
 
 Copyright (c) 2016 Adam Schubert
@@ -6451,10 +6199,10 @@ UNKNOWN
 UNKNOWN
 
 croniter
-6.0.0
-MIT License
-http://github.com/kiorky/croniter
-/usr/local/airflow/.local/lib/python3.12/site-packages/croniter-6.0.0.dist-info/LICENSE
+6.2.2
+MIT
+https://github.com/pallets-eco/croniter
+/usr/local/airflow/.local/lib/python3.12/site-packages/croniter-6.2.2.dist-info/licenses/LICENSE
 Copyright (C) 2010-2012 Matsumoto Taichi
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
@@ -6466,10 +6214,10 @@ UNKNOWN
 UNKNOWN
 
 cryptography
-42.0.8
-Apache Software License; BSD License
+46.0.6
+Apache-2.0 OR BSD-3-Clause
 https://github.com/pyca/cryptography
-/usr/local/airflow/.local/lib/python3.12/site-packages/cryptography-42.0.8.dist-info/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/cryptography-46.0.6.dist-info/licenses/LICENSE
 This software is made available under the terms of *either* of the licenses
 found in LICENSE.APACHE or LICENSE.BSD. Contributions to cryptography are made
 under the terms of *both* these licenses.
@@ -6478,12 +6226,12 @@ UNKNOWN
 UNKNOWN
 
 dill
-0.4.0
+0.4.1
 BSD License
 https://github.com/uqfoundation/dill
-/usr/local/airflow/.local/lib/python3.12/site-packages/dill-0.4.0.dist-info/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/dill-0.4.1.dist-info/LICENSE
 Copyright (c) 2004-2016 California Institute of Technology.
-Copyright (c) 2016-2025 The Uncertainty Quantification Foundation.
+Copyright (c) 2016-2026 The Uncertainty Quantification Foundation.
 All rights reserved.
 
 This software is available subject to the conditions and terms laid
@@ -6895,10 +6643,10 @@ UNKNOWN
 UNKNOWN
 
 fastapi
-0.117.1
-MIT License
+0.135.2
+MIT
 https://github.com/fastapi/fastapi
-/usr/local/airflow/.local/lib/python3.12/site-packages/fastapi-0.117.1.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/fastapi-0.135.2.dist-info/licenses/LICENSE
 The MIT License (MIT)
 
 Copyright (c) 2018 Sebastián Ramírez
@@ -6925,10 +6673,10 @@ UNKNOWN
 UNKNOWN
 
 fastapi-cli
-0.0.20
+0.0.24
 MIT
 https://github.com/fastapi/fastapi-cli
-/usr/local/airflow/.local/lib/python3.12/site-packages/fastapi_cli-0.0.20.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/fastapi_cli-0.0.24.dist-info/licenses/LICENSE
 The MIT License (MIT)
 
 Copyright (c) 2024 Sebastián Ramírez
@@ -6955,34 +6703,67 @@ UNKNOWN
 UNKNOWN
 
 filelock
-3.20.2
-Unlicense
+3.25.2
+MIT
 https://github.com/tox-dev/py-filelock
-/usr/local/airflow/.local/lib/python3.12/site-packages/filelock-3.20.2.dist-info/licenses/LICENSE
-This is free and unencumbered software released into the public domain.
+/usr/local/airflow/.local/lib/python3.12/site-packages/filelock-3.25.2.dist-info/licenses/LICENSE
+MIT License
 
-Anyone is free to copy, modify, publish, use, compile, sell, or
-distribute this software, either in source code form or as a compiled
-binary, for any purpose, commercial or non-commercial, and by any
-means.
+Copyright (c) 2025 Bernát Gábor and contributors
 
-In jurisdictions that recognize copyright laws, the author or authors
-of this software dedicate any and all copyright interest in the
-software to the public domain. We make this dedication for the benefit
-of the public at large and to the detriment of our heirs and
-successors. We intend this dedication to be an overt act of
-relinquishment in perpetuity of all present and future rights to this
-software under copyright law.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR
-OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
-ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
-OTHER DEALINGS IN THE SOFTWARE.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-For more information, please refer to <http://unlicense.org>
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+UNKNOWN
+UNKNOWN
+
+flask-appbuilder
+5.2.0
+BSD License
+https://github.com/dpgaspar/flask-appbuilder/
+/usr/local/airflow/.local/lib/python3.12/site-packages/flask_appbuilder-5.2.0.dist-info/LICENSE
+Copyright (c) 2013, Daniel Vaz Gaspar
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
+
+* Redistributions of source code must retain the above copyright notice, this
+  list of conditions and the following disclaimer.
+
+* Redistributions in binary form must reproduce the above copyright notice, this
+  list of conditions and the following disclaimer in the documentation and/or
+  other materials provided with the distribution.
+
+* Neither the name of the {organization} nor the names of its
+  contributors may be used to endorse or promote products derived from
+  this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 UNKNOWN
 UNKNOWN
@@ -7311,10 +7092,10 @@ UNKNOWN
 UNKNOWN
 
 fsspec
-2025.12.0
+2026.2.0
 BSD-3-Clause
 https://github.com/fsspec/filesystem_spec
-/usr/local/airflow/.local/lib/python3.12/site-packages/fsspec-2025.12.0.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/fsspec-2026.2.0.dist-info/licenses/LICENSE
 BSD 3-Clause License
 
 Copyright (c) 2018, Martin Durant
@@ -7349,10 +7130,10 @@ UNKNOWN
 UNKNOWN
 
 googleapis-common-protos
-1.72.0
+1.73.1
 Apache Software License
 https://github.com/googleapis/google-cloud-python/tree/main/packages/googleapis-common-protos
-/usr/local/airflow/.local/lib/python3.12/site-packages/googleapis_common_protos-1.72.0.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/googleapis_common_protos-1.73.1.dist-info/licenses/LICENSE
 
                                  Apache License
                            Version 2.0, January 2004
@@ -7572,10 +7353,10 @@ UNKNOWN
 UNKNOWN
 
 greenlet
-3.3.0
-MIT AND Python-2.0
-https://greenlet.readthedocs.io/
-/usr/local/airflow/.local/lib/python3.12/site-packages/greenlet-3.3.0.dist-info/licenses/LICENSE
+3.3.2
+MIT AND PSF-2.0
+https://greenlet.readthedocs.io
+/usr/local/airflow/.local/lib/python3.12/site-packages/greenlet-3.3.2.dist-info/licenses/LICENSE
 The following files are derived from Stackless Python and are subject to the
 same license as Stackless Python:
 
@@ -7611,10 +7392,10 @@ UNKNOWN
 UNKNOWN
 
 grpcio
-1.65.5
-Apache Software License
+1.78.0
+Apache-2.0
 https://grpc.io
-/usr/local/airflow/.local/lib/python3.12/site-packages/grpcio-1.65.5.dist-info/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/grpcio-1.78.0.dist-info/licenses/LICENSE
 
                                  Apache License
                            Version 2.0, January 2004
@@ -8417,212 +8198,83 @@ UNKNOWN
 UNKNOWN
 
 importlib_metadata
-8.4.0
-Apache Software License
+8.7.1
+Apache-2.0
 https://github.com/python/importlib_metadata
-/usr/local/airflow/.local/lib/python3.12/site-packages/importlib_metadata-8.4.0.dist-info/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/importlib_metadata-8.7.1.dist-info/licenses/LICENSE
+Apache License
+Version 2.0, January 2004
+http://www.apache.org/licenses/
 
-                                 Apache License
-                           Version 2.0, January 2004
-                        http://www.apache.org/licenses/
+TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
 
-   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+1. Definitions.
 
-   1. Definitions.
+"License" shall mean the terms and conditions for use, reproduction, and distribution as defined by Sections 1 through 9 of this document.
 
-      "License" shall mean the terms and conditions for use, reproduction,
-      and distribution as defined by Sections 1 through 9 of this document.
+"Licensor" shall mean the copyright owner or entity authorized by the copyright owner that is granting the License.
 
-      "Licensor" shall mean the copyright owner or entity authorized by
-      the copyright owner that is granting the License.
+"Legal Entity" shall mean the union of the acting entity and all other entities that control, are controlled by, or are under common control with that entity. For the purposes of this definition, "control" means (i) the power, direct or indirect, to cause the direction or management of such entity, whether by contract or otherwise, or (ii) ownership of fifty percent (50%) or more of the outstanding shares, or (iii) beneficial ownership of such entity.
 
-      "Legal Entity" shall mean the union of the acting entity and all
-      other entities that control, are controlled by, or are under common
-      control with that entity. For the purposes of this definition,
-      "control" means (i) the power, direct or indirect, to cause the
-      direction or management of such entity, whether by contract or
-      otherwise, or (ii) ownership of fifty percent (50%) or more of the
-      outstanding shares, or (iii) beneficial ownership of such entity.
+"You" (or "Your") shall mean an individual or Legal Entity exercising permissions granted by this License.
 
-      "You" (or "Your") shall mean an individual or Legal Entity
-      exercising permissions granted by this License.
+"Source" form shall mean the preferred form for making modifications, including but not limited to software source code, documentation source, and configuration files.
 
-      "Source" form shall mean the preferred form for making modifications,
-      including but not limited to software source code, documentation
-      source, and configuration files.
+"Object" form shall mean any form resulting from mechanical transformation or translation of a Source form, including but not limited to compiled object code, generated documentation, and conversions to other media types.
 
-      "Object" form shall mean any form resulting from mechanical
-      transformation or translation of a Source form, including but
-      not limited to compiled object code, generated documentation,
-      and conversions to other media types.
+"Work" shall mean the work of authorship, whether in Source or Object form, made available under the License, as indicated by a copyright notice that is included in or attached to the work (an example is provided in the Appendix below).
 
-      "Work" shall mean the work of authorship, whether in Source or
-      Object form, made available under the License, as indicated by a
-      copyright notice that is included in or attached to the work
-      (an example is provided in the Appendix below).
+"Derivative Works" shall mean any work, whether in Source or Object form, that is based on (or derived from) the Work and for which the editorial revisions, annotations, elaborations, or other modifications represent, as a whole, an original work of authorship. For the purposes of this License, Derivative Works shall not include works that remain separable from, or merely link (or bind by name) to the interfaces of, the Work and Derivative Works thereof.
 
-      "Derivative Works" shall mean any work, whether in Source or Object
-      form, that is based on (or derived from) the Work and for which the
-      editorial revisions, annotations, elaborations, or other modifications
-      represent, as a whole, an original work of authorship. For the purposes
-      of this License, Derivative Works shall not include works that remain
-      separable from, or merely link (or bind by name) to the interfaces of,
-      the Work and Derivative Works thereof.
+"Contribution" shall mean any work of authorship, including the original version of the Work and any modifications or additions to that Work or Derivative Works thereof, that is intentionally submitted to Licensor for inclusion in the Work by the copyright owner or by an individual or Legal Entity authorized to submit on behalf of the copyright owner. For the purposes of this definition, "submitted" means any form of electronic, verbal, or written communication sent to the Licensor or its representatives, including but not limited to communication on electronic mailing lists, source code control systems, and issue tracking systems that are managed by, or on behalf of, the Licensor for the purpose of discussing and improving the Work, but excluding communication that is conspicuously marked or otherwise designated in writing by the copyright owner as "Not a Contribution."
 
-      "Contribution" shall mean any work of authorship, including
-      the original version of the Work and any modifications or additions
-      to that Work or Derivative Works thereof, that is intentionally
-      submitted to Licensor for inclusion in the Work by the copyright owner
-      or by an individual or Legal Entity authorized to submit on behalf of
-      the copyright owner. For the purposes of this definition, "submitted"
-      means any form of electronic, verbal, or written communication sent
-      to the Licensor or its representatives, including but not limited to
-      communication on electronic mailing lists, source code control systems,
-      and issue tracking systems that are managed by, or on behalf of, the
-      Licensor for the purpose of discussing and improving the Work, but
-      excluding communication that is conspicuously marked or otherwise
-      designated in writing by the copyright owner as "Not a Contribution."
+"Contributor" shall mean Licensor and any individual or Legal Entity on behalf of whom a Contribution has been received by Licensor and subsequently incorporated within the Work.
 
-      "Contributor" shall mean Licensor and any individual or Legal Entity
-      on behalf of whom a Contribution has been received by Licensor and
-      subsequently incorporated within the Work.
+2. Grant of Copyright License. Subject to the terms and conditions of this License, each Contributor hereby grants to You a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable copyright license to reproduce, prepare Derivative Works of, publicly display, publicly perform, sublicense, and distribute the Work and such Derivative Works in Source or Object form.
 
-   2. Grant of Copyright License. Subject to the terms and conditions of
-      this License, each Contributor hereby grants to You a perpetual,
-      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
-      copyright license to reproduce, prepare Derivative Works of,
-      publicly display, publicly perform, sublicense, and distribute the
-      Work and such Derivative Works in Source or Object form.
+3. Grant of Patent License. Subject to the terms and conditions of this License, each Contributor hereby grants to You a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable (except as stated in this section) patent license to make, have made, use, offer to sell, sell, import, and otherwise transfer the Work, where such license applies only to those patent claims licensable by such Contributor that are necessarily infringed by their Contribution(s) alone or by combination of their Contribution(s) with the Work to which such Contribution(s) was submitted. If You institute patent litigation against any entity (including a cross-claim or counterclaim in a lawsuit) alleging that the Work or a Contribution incorporated within the Work constitutes direct or contributory patent infringement, then any patent licenses granted to You under this License for that Work shall terminate as of the date such litigation is filed.
 
-   3. Grant of Patent License. Subject to the terms and conditions of
-      this License, each Contributor hereby grants to You a perpetual,
-      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
-      (except as stated in this section) patent license to make, have made,
-      use, offer to sell, sell, import, and otherwise transfer the Work,
-      where such license applies only to those patent claims licensable
-      by such Contributor that are necessarily infringed by their
-      Contribution(s) alone or by combination of their Contribution(s)
-      with the Work to which such Contribution(s) was submitted. If You
-      institute patent litigation against any entity (including a
-      cross-claim or counterclaim in a lawsuit) alleging that the Work
-      or a Contribution incorporated within the Work constitutes direct
-      or contributory patent infringement, then any patent licenses
-      granted to You under this License for that Work shall terminate
-      as of the date such litigation is filed.
+4. Redistribution. You may reproduce and distribute copies of the Work or Derivative Works thereof in any medium, with or without modifications, and in Source or Object form, provided that You meet the following conditions:
 
-   4. Redistribution. You may reproduce and distribute copies of the
-      Work or Derivative Works thereof in any medium, with or without
-      modifications, and in Source or Object form, provided that You
-      meet the following conditions:
+     (a) You must give any other recipients of the Work or Derivative Works a copy of this License; and
 
-      (a) You must give any other recipients of the Work or
-          Derivative Works a copy of this License; and
+     (b) You must cause any modified files to carry prominent notices stating that You changed the files; and
 
-      (b) You must cause any modified files to carry prominent notices
-          stating that You changed the files; and
+     (c) You must retain, in the Source form of any Derivative Works that You distribute, all copyright, patent, trademark, and attribution notices from the Source form of the Work, excluding those notices that do not pertain to any part of the Derivative Works; and
 
-      (c) You must retain, in the Source form of any Derivative Works
-          that You distribute, all copyright, patent, trademark, and
-          attribution notices from the Source form of the Work,
-          excluding those notices that do not pertain to any part of
-          the Derivative Works; and
+     (d) If the Work includes a "NOTICE" text file as part of its distribution, then any Derivative Works that You distribute must include a readable copy of the attribution notices contained within such NOTICE file, excluding those notices that do not pertain to any part of the Derivative Works, in at least one of the following places: within a NOTICE text file distributed as part of the Derivative Works; within the Source form or documentation, if provided along with the Derivative Works; or, within a display generated by the Derivative Works, if and wherever such third-party notices normally appear. The contents of the NOTICE file are for informational purposes only and do not modify the License. You may add Your own attribution notices within Derivative Works that You distribute, alongside or as an addendum to the NOTICE text from the Work, provided that such additional attribution notices cannot be construed as modifying the License.
 
-      (d) If the Work includes a "NOTICE" text file as part of its
-          distribution, then any Derivative Works that You distribute must
-          include a readable copy of the attribution notices contained
-          within such NOTICE file, excluding those notices that do not
-          pertain to any part of the Derivative Works, in at least one
-          of the following places: within a NOTICE text file distributed
-          as part of the Derivative Works; within the Source form or
-          documentation, if provided along with the Derivative Works; or,
-          within a display generated by the Derivative Works, if and
-          wherever such third-party notices normally appear. The contents
-          of the NOTICE file are for informational purposes only and
-          do not modify the License. You may add Your own attribution
-          notices within Derivative Works that You distribute, alongside
-          or as an addendum to the NOTICE text from the Work, provided
-          that such additional attribution notices cannot be construed
-          as modifying the License.
+     You may add Your own copyright statement to Your modifications and may provide additional or different license terms and conditions for use, reproduction, or distribution of Your modifications, or for any such Derivative Works as a whole, provided Your use, reproduction, and distribution of the Work otherwise complies with the conditions stated in this License.
 
-      You may add Your own copyright statement to Your modifications and
-      may provide additional or different license terms and conditions
-      for use, reproduction, or distribution of Your modifications, or
-      for any such Derivative Works as a whole, provided Your use,
-      reproduction, and distribution of the Work otherwise complies with
-      the conditions stated in this License.
+5. Submission of Contributions. Unless You explicitly state otherwise, any Contribution intentionally submitted for inclusion in the Work by You to the Licensor shall be under the terms and conditions of this License, without any additional terms or conditions. Notwithstanding the above, nothing herein shall supersede or modify the terms of any separate license agreement you may have executed with Licensor regarding such Contributions.
 
-   5. Submission of Contributions. Unless You explicitly state otherwise,
-      any Contribution intentionally submitted for inclusion in the Work
-      by You to the Licensor shall be under the terms and conditions of
-      this License, without any additional terms or conditions.
-      Notwithstanding the above, nothing herein shall supersede or modify
-      the terms of any separate license agreement you may have executed
-      with Licensor regarding such Contributions.
+6. Trademarks. This License does not grant permission to use the trade names, trademarks, service marks, or product names of the Licensor, except as required for reasonable and customary use in describing the origin of the Work and reproducing the content of the NOTICE file.
 
-   6. Trademarks. This License does not grant permission to use the trade
-      names, trademarks, service marks, or product names of the Licensor,
-      except as required for reasonable and customary use in describing the
-      origin of the Work and reproducing the content of the NOTICE file.
+7. Disclaimer of Warranty. Unless required by applicable law or agreed to in writing, Licensor provides the Work (and each Contributor provides its Contributions) on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied, including, without limitation, any warranties or conditions of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A PARTICULAR PURPOSE. You are solely responsible for determining the appropriateness of using or redistributing the Work and assume any risks associated with Your exercise of permissions under this License.
 
-   7. Disclaimer of Warranty. Unless required by applicable law or
-      agreed to in writing, Licensor provides the Work (and each
-      Contributor provides its Contributions) on an "AS IS" BASIS,
-      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-      implied, including, without limitation, any warranties or conditions
-      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
-      PARTICULAR PURPOSE. You are solely responsible for determining the
-      appropriateness of using or redistributing the Work and assume any
-      risks associated with Your exercise of permissions under this License.
+8. Limitation of Liability. In no event and under no legal theory, whether in tort (including negligence), contract, or otherwise, unless required by applicable law (such as deliberate and grossly negligent acts) or agreed to in writing, shall any Contributor be liable to You for damages, including any direct, indirect, special, incidental, or consequential damages of any character arising as a result of this License or out of the use or inability to use the Work (including but not limited to damages for loss of goodwill, work stoppage, computer failure or malfunction, or any and all other commercial damages or losses), even if such Contributor has been advised of the possibility of such damages.
 
-   8. Limitation of Liability. In no event and under no legal theory,
-      whether in tort (including negligence), contract, or otherwise,
-      unless required by applicable law (such as deliberate and grossly
-      negligent acts) or agreed to in writing, shall any Contributor be
-      liable to You for damages, including any direct, indirect, special,
-      incidental, or consequential damages of any character arising as a
-      result of this License or out of the use or inability to use the
-      Work (including but not limited to damages for loss of goodwill,
-      work stoppage, computer failure or malfunction, or any and all
-      other commercial damages or losses), even if such Contributor
-      has been advised of the possibility of such damages.
+9. Accepting Warranty or Additional Liability. While redistributing the Work or Derivative Works thereof, You may choose to offer, and charge a fee for, acceptance of support, warranty, indemnity, or other liability obligations and/or rights consistent with this License. However, in accepting such obligations, You may act only on Your own behalf and on Your sole responsibility, not on behalf of any other Contributor, and only if You agree to indemnify, defend, and hold each Contributor harmless for any liability incurred by, or claims asserted against, such Contributor by reason of your accepting any such warranty or additional liability.
 
-   9. Accepting Warranty or Additional Liability. While redistributing
-      the Work or Derivative Works thereof, You may choose to offer,
-      and charge a fee for, acceptance of support, warranty, indemnity,
-      or other liability obligations and/or rights consistent with this
-      License. However, in accepting such obligations, You may act only
-      on Your own behalf and on Your sole responsibility, not on behalf
-      of any other Contributor, and only if You agree to indemnify,
-      defend, and hold each Contributor harmless for any liability
-      incurred by, or claims asserted against, such Contributor by reason
-      of your accepting any such warranty or additional liability.
+END OF TERMS AND CONDITIONS
 
-   END OF TERMS AND CONDITIONS
+APPENDIX: How to apply the Apache License to your work.
 
-   APPENDIX: How to apply the Apache License to your work.
+To apply the Apache License to your work, attach the following boilerplate notice, with the fields enclosed by brackets "[]" replaced with your own identifying information. (Don't include the brackets!)  The text should be enclosed in the appropriate comment syntax for the file format. We also recommend that a file or class name and description of purpose be included on the same "printed page" as the copyright notice for easier identification within third-party archives.
 
-      To apply the Apache License to your work, attach the following
-      boilerplate notice, with the fields enclosed by brackets "[]"
-      replaced with your own identifying information. (Don't include
-      the brackets!)  The text should be enclosed in the appropriate
-      comment syntax for the file format. We also recommend that a
-      file or class name and description of purpose be included on the
-      same "printed page" as the copyright notice for easier
-      identification within third-party archives.
+Copyright 2025 [name of copyright owner]
 
-   Copyright [yyyy] [name of copyright owner]
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+http://www.apache.org/licenses/LICENSE-2.0
 
-       http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 
 UNKNOWN
 UNKNOWN
@@ -8722,10 +8374,10 @@ UNKNOWN
 UNKNOWN
 
 jsonpath-ng
-1.7.0
+1.8.0
 Apache Software License
 https://github.com/h2non/jsonpath-ng
-/usr/local/airflow/.local/lib/python3.12/site-packages/jsonpath_ng-1.7.0.dist-info/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/jsonpath_ng-1.8.0.dist-info/licenses/LICENSE
 
                                  Apache License
                            Version 2.0, January 2004
@@ -9164,10 +8816,10 @@ UNKNOWN
 UNKNOWN
 
 limits
-5.6.0
+5.8.0
 MIT
 https://limits.readthedocs.org
-/usr/local/airflow/.local/lib/python3.12/site-packages/limits-5.6.0.dist-info/licenses/LICENSE.txt
+/usr/local/airflow/.local/lib/python3.12/site-packages/limits-5.8.0.dist-info/licenses/LICENSE.txt
 Copyright (c) 2023 Ali-Akber Saifee
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -9193,10 +8845,10 @@ UNKNOWN
 UNKNOWN
 
 linkify-it-py
-2.0.3
+2.1.0
 MIT License
 https://github.com/tsutsu3/linkify-it-py
-/usr/local/airflow/.local/lib/python3.12/site-packages/linkify_it_py-2.0.3.dist-info/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/linkify_it_py-2.1.0.dist-info/licenses/LICENSE
 MIT License
 
 Copyright (c) 2020 tsutsu3
@@ -9562,10 +9214,10 @@ UNKNOWN
 UNKNOWN
 
 multidict
-6.7.0
+6.7.1
 Apache License 2.0
 https://github.com/aio-libs/multidict
-/usr/local/airflow/.local/lib/python3.12/site-packages/multidict-6.7.0.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/multidict-6.7.1.dist-info/licenses/LICENSE
    Copyright 2016 Andrew Svetlov and aio-libs contributors
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -9584,10 +9236,10 @@ UNKNOWN
 UNKNOWN
 
 mypy-boto3-logs
-1.42.60
+1.42.83
 MIT
 https://github.com/youtype/mypy_boto3_builder
-/usr/local/airflow/.local/lib/python3.12/site-packages/mypy_boto3_logs-1.42.60.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/mypy_boto3_logs-1.42.83.dist-info/licenses/LICENSE
 MIT License
 
 Copyright (c) 2026 Vlad Emelianov
@@ -9670,10 +9322,10 @@ UNKNOWN
 UNKNOWN
 
 opentelemetry-api
-1.27.0
-Apache Software License
+1.40.0
+Apache-2.0
 https://github.com/open-telemetry/opentelemetry-python/tree/main/opentelemetry-api
-/usr/local/airflow/.local/lib/python3.12/site-packages/opentelemetry_api-1.27.0.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/opentelemetry_api-1.40.0.dist-info/licenses/LICENSE
                                  Apache License
                            Version 2.0, January 2004
                         http://www.apache.org/licenses/
@@ -9880,10 +9532,10 @@ UNKNOWN
 UNKNOWN
 
 opentelemetry-exporter-otlp
-1.27.0
-Apache Software License
+1.40.0
+Apache-2.0
 https://github.com/open-telemetry/opentelemetry-python/tree/main/exporter/opentelemetry-exporter-otlp
-/usr/local/airflow/.local/lib/python3.12/site-packages/opentelemetry_exporter_otlp-1.27.0.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/opentelemetry_exporter_otlp-1.40.0.dist-info/licenses/LICENSE
                                  Apache License
                            Version 2.0, January 2004
                         http://www.apache.org/licenses/
@@ -10090,10 +9742,10 @@ UNKNOWN
 UNKNOWN
 
 opentelemetry-exporter-otlp-proto-common
-1.27.0
-Apache Software License
+1.40.0
+Apache-2.0
 https://github.com/open-telemetry/opentelemetry-python/tree/main/exporter/opentelemetry-exporter-otlp-proto-common
-/usr/local/airflow/.local/lib/python3.12/site-packages/opentelemetry_exporter_otlp_proto_common-1.27.0.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/opentelemetry_exporter_otlp_proto_common-1.40.0.dist-info/licenses/LICENSE
                                  Apache License
                            Version 2.0, January 2004
                         http://www.apache.org/licenses/
@@ -10300,10 +9952,10 @@ UNKNOWN
 UNKNOWN
 
 opentelemetry-exporter-otlp-proto-grpc
-1.27.0
-Apache Software License
+1.40.0
+Apache-2.0
 https://github.com/open-telemetry/opentelemetry-python/tree/main/exporter/opentelemetry-exporter-otlp-proto-grpc
-/usr/local/airflow/.local/lib/python3.12/site-packages/opentelemetry_exporter_otlp_proto_grpc-1.27.0.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/opentelemetry_exporter_otlp_proto_grpc-1.40.0.dist-info/licenses/LICENSE
                                  Apache License
                            Version 2.0, January 2004
                         http://www.apache.org/licenses/
@@ -10510,10 +10162,10 @@ UNKNOWN
 UNKNOWN
 
 opentelemetry-exporter-otlp-proto-http
-1.27.0
-Apache Software License
+1.40.0
+Apache-2.0
 https://github.com/open-telemetry/opentelemetry-python/tree/main/exporter/opentelemetry-exporter-otlp-proto-http
-/usr/local/airflow/.local/lib/python3.12/site-packages/opentelemetry_exporter_otlp_proto_http-1.27.0.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/opentelemetry_exporter_otlp_proto_http-1.40.0.dist-info/licenses/LICENSE
                                  Apache License
                            Version 2.0, January 2004
                         http://www.apache.org/licenses/
@@ -10720,10 +10372,10 @@ UNKNOWN
 UNKNOWN
 
 opentelemetry-proto
-1.27.0
-Apache Software License
+1.40.0
+Apache-2.0
 https://github.com/open-telemetry/opentelemetry-python/tree/main/opentelemetry-proto
-/usr/local/airflow/.local/lib/python3.12/site-packages/opentelemetry_proto-1.27.0.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/opentelemetry_proto-1.40.0.dist-info/licenses/LICENSE
                                  Apache License
                            Version 2.0, January 2004
                         http://www.apache.org/licenses/
@@ -10930,10 +10582,10 @@ UNKNOWN
 UNKNOWN
 
 opentelemetry-sdk
-1.27.0
-Apache Software License
+1.40.0
+Apache-2.0
 https://github.com/open-telemetry/opentelemetry-python/tree/main/opentelemetry-sdk
-/usr/local/airflow/.local/lib/python3.12/site-packages/opentelemetry_sdk-1.27.0.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/opentelemetry_sdk-1.40.0.dist-info/licenses/LICENSE
                                  Apache License
                            Version 2.0, January 2004
                         http://www.apache.org/licenses/
@@ -11140,10 +10792,10 @@ UNKNOWN
 UNKNOWN
 
 opentelemetry-semantic-conventions
-0.48b0
-Apache Software License
+0.61b0
+Apache-2.0
 https://github.com/open-telemetry/opentelemetry-python/tree/main/opentelemetry-semantic-conventions
-/usr/local/airflow/.local/lib/python3.12/site-packages/opentelemetry_semantic_conventions-0.48b0.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/opentelemetry_semantic_conventions-0.61b0.dist-info/licenses/LICENSE
                                  Apache License
                            Version 2.0, January 2004
                         http://www.apache.org/licenses/
@@ -11371,10 +11023,10 @@ UNKNOWN
 UNKNOWN
 
 packaging
-25.0
-Apache Software License; BSD License
+26.0
+Apache-2.0 OR BSD-2-Clause
 https://github.com/pypa/packaging
-/usr/local/airflow/.local/lib/python3.12/site-packages/packaging-25.0.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/packaging-26.0.dist-info/licenses/LICENSE
 This software is made available under the terms of *either* of the licenses
 found in LICENSE.APACHE or LICENSE.BSD. Contributions to this software is made
 under the terms of *both* these licenses.
@@ -11382,11 +11034,64 @@ under the terms of *both* these licenses.
 UNKNOWN
 UNKNOWN
 
-pathspec
-1.0.1
-Mozilla Public License 2.0 (MPL 2.0)
+pathlib_abc
+0.5.2
+Python Software Foundation License
+https://github.com/barneygale/pathlib-abc
+/usr/local/airflow/.local/lib/python3.12/site-packages/pathlib_abc-0.5.2.dist-info/licenses/LICENSE.txt
+1. This LICENSE AGREEMENT is between the Python Software Foundation
+("PSF"), and the Individual or Organization ("Licensee") accessing and
+otherwise using this software ("Python") in source or binary form and
+its associated documentation.
+
+2. Subject to the terms and conditions of this License Agreement, PSF hereby
+grants Licensee a nonexclusive, royalty-free, world-wide license to reproduce,
+analyze, test, perform and/or display publicly, prepare derivative works,
+distribute, and otherwise use Python alone or in any derivative version,
+provided, however, that PSF's License Agreement and PSF's notice of copyright,
+i.e., "Copyright (c) 2001-2024 Python Software Foundation; All Rights Reserved"
+are retained in Python alone or in any derivative version prepared by Licensee.
+
+3. In the event Licensee prepares a derivative work that is based on
+or incorporates Python or any part thereof, and wants to make
+the derivative work available to others as provided herein, then
+Licensee hereby agrees to include in any such work a brief summary of
+the changes made to Python.
+
+4. PSF is making Python available to Licensee on an "AS IS"
+basis.  PSF MAKES NO REPRESENTATIONS OR WARRANTIES, EXPRESS OR
+IMPLIED.  BY WAY OF EXAMPLE, BUT NOT LIMITATION, PSF MAKES NO AND
+DISCLAIMS ANY REPRESENTATION OR WARRANTY OF MERCHANTABILITY OR FITNESS
+FOR ANY PARTICULAR PURPOSE OR THAT THE USE OF PYTHON WILL NOT
+INFRINGE ANY THIRD PARTY RIGHTS.
+
+5. PSF SHALL NOT BE LIABLE TO LICENSEE OR ANY OTHER USERS OF PYTHON
+FOR ANY INCIDENTAL, SPECIAL, OR CONSEQUENTIAL DAMAGES OR LOSS AS
+A RESULT OF MODIFYING, DISTRIBUTING, OR OTHERWISE USING PYTHON,
+OR ANY DERIVATIVE THEREOF, EVEN IF ADVISED OF THE POSSIBILITY THEREOF.
+
+6. This License Agreement will automatically terminate upon a material
+breach of its terms and conditions.
+
+7. Nothing in this License Agreement shall be deemed to create any
+relationship of agency, partnership, or joint venture between PSF and
+Licensee.  This License Agreement does not grant permission to use PSF
+trademarks or trade name in a trademark sense to endorse or promote
+products or services of Licensee, or any third party.
+
+8. By copying, installing or otherwise using Python, Licensee
+agrees to be bound by the terms and conditions of this License
+Agreement.
+
+
 UNKNOWN
-/usr/local/airflow/.local/lib/python3.12/site-packages/pathspec-1.0.1.dist-info/licenses/LICENSE
+UNKNOWN
+
+pathspec
+1.0.4
+Mozilla Public License 2.0 (MPL 2.0)
+https://python-path-specification.readthedocs.io/en/latest/index.html
+/usr/local/airflow/.local/lib/python3.12/site-packages/pathspec-1.0.4.dist-info/licenses/LICENSE
 Mozilla Public License Version 2.0
 ==================================
 
@@ -11765,10 +11470,10 @@ UNKNOWN
 UNKNOWN
 
 pendulum
-3.1.0
+3.2.0
 MIT License
 https://pendulum.eustace.io
-/usr/local/airflow/.local/lib/python3.12/site-packages/pendulum-3.1.0.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/pendulum-3.2.0.dist-info/licenses/LICENSE
 Copyright (c) 2015 Sébastien Eustace
 
 Permission is hereby granted, free of charge, to any person obtaining
@@ -11794,10 +11499,10 @@ UNKNOWN
 UNKNOWN
 
 platformdirs
-4.5.1
+4.9.4
 MIT
 https://github.com/tox-dev/platformdirs
-/usr/local/airflow/.local/lib/python3.12/site-packages/platformdirs-4.5.1.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/platformdirs-4.9.4.dist-info/licenses/LICENSE
 MIT License
 
 Copyright (c) 2010-202x The platformdirs developers
@@ -11853,15 +11558,6 @@ SOFTWARE.
 UNKNOWN
 UNKNOWN
 
-ply
-3.11
-BSD
-http://www.dabeaz.com/ply/
-UNKNOWN
-UNKNOWN
-UNKNOWN
-UNKNOWN
-
 prison
 0.2.1
 MIT License
@@ -11891,10 +11587,10 @@ UNKNOWN
 UNKNOWN
 
 prometheus_client
-0.23.1
+0.24.1
 Apache-2.0 AND BSD-2-Clause
 https://github.com/prometheus/client_python
-/usr/local/airflow/.local/lib/python3.12/site-packages/prometheus_client-0.23.1.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/prometheus_client-0.24.1.dist-info/licenses/LICENSE
                                  Apache License
                            Version 2.0, January 2004
                         http://www.apache.org/licenses/
@@ -12103,7 +11799,7 @@ Copyright 2015 The Prometheus Authors
 This product bundles decorator 4.0.10 which is available under a "2-clause BSD"
 license. For details, see prometheus_client/decorator.py.
 
-/usr/local/airflow/.local/lib/python3.12/site-packages/prometheus_client-0.23.1.dist-info/licenses/NOTICE
+/usr/local/airflow/.local/lib/python3.12/site-packages/prometheus_client-0.24.1.dist-info/licenses/NOTICE
 
 prompt_toolkit
 3.0.52
@@ -12366,10 +12062,10 @@ https://github.com/aio-libs/propcache
 /usr/local/airflow/.local/lib/python3.12/site-packages/propcache-0.4.1.dist-info/licenses/NOTICE
 
 protobuf
-4.25.8
+6.33.6
 3-Clause BSD License
 https://developers.google.com/protocol-buffers/
-/usr/local/airflow/.local/lib/python3.12/site-packages/protobuf-4.25.8.dist-info/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/protobuf-6.33.6.dist-info/LICENSE
 Copyright 2008 Google Inc.  All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -12407,10 +12103,10 @@ UNKNOWN
 UNKNOWN
 
 psutil
-7.2.1
+7.2.2
 BSD-3-Clause
 https://github.com/giampaolo/psutil
-/usr/local/airflow/.local/lib/python3.12/site-packages/psutil-7.2.1.dist-info/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/psutil-7.2.2.dist-info/LICENSE
 BSD 3-Clause License
 
 Copyright (c) 2009, Jay Loden, Dave Daeschler, Giampaolo Rodola
@@ -12561,10 +12257,10 @@ UNKNOWN
 UNKNOWN
 
 pycparser
-2.23
-BSD License
+3.0
+BSD-3-Clause
 https://github.com/eliben/pycparser
-/usr/local/airflow/.local/lib/python3.12/site-packages/pycparser-2.23.dist-info/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/pycparser-3.0.dist-info/licenses/LICENSE
 pycparser -- A C parser in Python
 
 Copyright (c) 2008-2022, Eli Bendersky
@@ -13137,6 +12833,66 @@ SOFTWARE.
 UNKNOWN
 UNKNOWN
 
+pydantic-extra-types
+2.11.1
+MIT
+https://github.com/pydantic/pydantic-extra-types
+/usr/local/airflow/.local/lib/python3.12/site-packages/pydantic_extra_types-2.11.1.dist-info/licenses/LICENSE
+The MIT License (MIT)
+
+Copyright (c) 2023 Samuel Colvin and other contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+UNKNOWN
+UNKNOWN
+
+pydantic-settings
+2.13.1
+MIT
+https://github.com/pydantic/pydantic-settings
+/usr/local/airflow/.local/lib/python3.12/site-packages/pydantic_settings-2.13.1.dist-info/licenses/LICENSE
+The MIT License (MIT)
+
+Copyright (c) 2022 Samuel Colvin and other contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+UNKNOWN
+UNKNOWN
+
 pydantic_core
 2.41.5
 MIT
@@ -13651,11 +13407,38 @@ The above BSD License Applies to all code, even that also covered by Apache 2.0.
 UNKNOWN
 UNKNOWN
 
-python-dotenv
+python-discovery
 1.2.1
+MIT License
+https://github.com/tox-dev/python-discovery
+/usr/local/airflow/.local/lib/python3.12/site-packages/python_discovery-1.2.1.dist-info/licenses/LICENSE
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+UNKNOWN
+UNKNOWN
+
+python-dotenv
+1.2.2
 BSD-3-Clause
 https://github.com/theskumar/python-dotenv
-/usr/local/airflow/.local/lib/python3.12/site-packages/python_dotenv-1.2.1.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/python_dotenv-1.2.2.dist-info/licenses/LICENSE
 Copyright (c) 2014, Saurabh Kumar (python-dotenv), 2013, Ted Tieken (django-dotenv-rw), 2013, Jacob Kaplan-Moss (django-dotenv)
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -13688,10 +13471,10 @@ UNKNOWN
 UNKNOWN
 
 python-multipart
-0.0.21
+0.0.22
 Apache-2.0
 https://github.com/Kludex/python-multipart
-/usr/local/airflow/.local/lib/python3.12/site-packages/python_multipart-0.0.21.dist-info/licenses/LICENSE.txt
+/usr/local/airflow/.local/lib/python3.12/site-packages/python_multipart-0.0.22.dist-info/licenses/LICENSE.txt
 Copyright 2012, Andrew Dunham
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -13741,10 +13524,10 @@ UNKNOWN
 UNKNOWN
 
 pytz
-2025.2
+2026.1.post1
 MIT License
 http://pythonhosted.org/pytz
-/usr/local/airflow/.local/lib/python3.12/site-packages/pytz-2025.2.dist-info/LICENSE.txt
+/usr/local/airflow/.local/lib/python3.12/site-packages/pytz-2026.1.post1.dist-info/LICENSE.txt
 Copyright (c) 2003-2019 Stuart Bishop <stuart@stuartbishop.net>
 
 Permission is hereby granted, free of charge, to any person obtaining a
@@ -14012,10 +13795,10 @@ UNKNOWN
 UNKNOWN
 
 requests
-2.32.5
+2.33.0
 Apache Software License
-https://requests.readthedocs.io
-/usr/local/airflow/.local/lib/python3.12/site-packages/requests-2.32.5.dist-info/licenses/LICENSE
+https://github.com/psf/requests
+/usr/local/airflow/.local/lib/python3.12/site-packages/requests-2.33.0.dist-info/licenses/LICENSE
 
                                  Apache License
                            Version 2.0, January 2004
@@ -14192,8 +13975,10 @@ https://requests.readthedocs.io
       incurred by, or claims asserted against, such Contributor by reason
       of your accepting any such warranty or additional liability.
 
-UNKNOWN
-UNKNOWN
+Requests
+Copyright 2019 Kenneth Reitz
+
+/usr/local/airflow/.local/lib/python3.12/site-packages/requests-2.33.0.dist-info/licenses/NOTICE
 
 requests-toolbelt
 1.0.0
@@ -14276,10 +14061,10 @@ UNKNOWN
 UNKNOWN
 
 rich-toolkit
-0.17.1
+0.19.7
 MIT
 UNKNOWN
-/usr/local/airflow/.local/lib/python3.12/site-packages/rich_toolkit-0.17.1.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/rich_toolkit-0.19.7.dist-info/licenses/LICENSE
 MIT License
 
 Copyright (c) 2024 Patrick Arminio
@@ -14334,10 +14119,10 @@ UNKNOWN
 UNKNOWN
 
 s3transfer
-0.15.0
+0.16.0
 Apache Software License
 https://github.com/boto/s3transfer
-/usr/local/airflow/.local/lib/python3.12/site-packages/s3transfer-0.15.0.dist-info/LICENSE.txt
+/usr/local/airflow/.local/lib/python3.12/site-packages/s3transfer-0.16.0.dist-info/LICENSE.txt
 
                                  Apache License
                            Version 2.0, January 2004
@@ -14544,13 +14329,13 @@ https://github.com/boto/s3transfer
 s3transfer
 Copyright 2016 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 
-/usr/local/airflow/.local/lib/python3.12/site-packages/s3transfer-0.15.0.dist-info/NOTICE.txt
+/usr/local/airflow/.local/lib/python3.12/site-packages/s3transfer-0.16.0.dist-info/NOTICE.txt
 
 sagemaker_studio
-1.0.23
+1.0.25
 Apache Software License
 https://aws.amazon.com/sagemaker/
-/usr/local/airflow/.local/lib/python3.12/site-packages/sagemaker_studio-1.0.23.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/sagemaker_studio-1.0.25.dist-info/licenses/LICENSE
 
                                  Apache License
                            Version 2.0, January 2004
@@ -14745,7 +14530,7 @@ https://aws.amazon.com/sagemaker/
 
 SageMaker Studio
 Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-/usr/local/airflow/.local/lib/python3.12/site-packages/sagemaker_studio-1.0.23.dist-info/licenses/NOTICE
+/usr/local/airflow/.local/lib/python3.12/site-packages/sagemaker_studio-1.0.25.dist-info/licenses/NOTICE
 
 scramp
 1.4.8
@@ -14872,13 +14657,13 @@ UNKNOWN
 UNKNOWN
 
 soupsieve
-2.8.1
+2.8.3
 MIT
 https://github.com/facelessuser/soupsieve
-/usr/local/airflow/.local/lib/python3.12/site-packages/soupsieve-2.8.1.dist-info/licenses/LICENSE.md
+/usr/local/airflow/.local/lib/python3.12/site-packages/soupsieve-2.8.3.dist-info/licenses/LICENSE.md
 MIT License
 
-Copyright (c) 2018 - 2025 Isaac Muse <isaacmuse@gmail.com>
+Copyright (c) 2018 - 2026 Isaac Muse <isaacmuse@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -14936,10 +14721,10 @@ UNKNOWN
 UNKNOWN
 
 starlette
-0.48.0
+0.52.1
 BSD-3-Clause
 https://github.com/Kludex/starlette
-/usr/local/airflow/.local/lib/python3.12/site-packages/starlette-0.48.0.dist-info/licenses/LICENSE.md
+/usr/local/airflow/.local/lib/python3.12/site-packages/starlette-0.52.1.dist-info/licenses/LICENSE.md
 Copyright © 2018, [Encode OSS Ltd](https://www.encode.io/).
 All rights reserved.
 
@@ -15219,10 +15004,10 @@ UNKNOWN
 UNKNOWN
 
 tabulate
-0.9.0
-MIT License
+0.10.0
+MIT
 https://github.com/astanin/python-tabulate
-/usr/local/airflow/.local/lib/python3.12/site-packages/tabulate-0.9.0.dist-info/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/tabulate-0.10.0.dist-info/licenses/LICENSE
 Copyright (c) 2011-2020 Sergey Astanin and contributors
 
 Permission is hereby granted, free of charge, to any person obtaining
@@ -15248,10 +15033,10 @@ UNKNOWN
 UNKNOWN
 
 tenacity
-9.1.2
+9.1.4
 Apache Software License
 https://github.com/jd/tenacity
-/usr/local/airflow/.local/lib/python3.12/site-packages/tenacity-9.1.2.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/tenacity-9.1.4.dist-info/licenses/LICENSE
 
                                  Apache License
                            Version 2.0, January 2004
@@ -15629,10 +15414,10 @@ UNKNOWN
 UNKNOWN
 
 tornado
-6.5.4
+6.5.5
 Apache Software License
 http://www.tornadoweb.org/
-/usr/local/airflow/.local/lib/python3.12/site-packages/tornado-6.5.4.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/tornado-6.5.5.dist-info/licenses/LICENSE
 
                                  Apache License
                            Version 2.0, January 2004
@@ -15840,10 +15625,10 @@ UNKNOWN
 UNKNOWN
 
 typer
-0.21.1
+0.24.1
 MIT
 https://github.com/fastapi/typer
-/usr/local/airflow/.local/lib/python3.12/site-packages/typer-0.21.1.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/typer-0.24.1.dist-info/licenses/LICENSE
 The MIT License (MIT)
 
 Copyright (c) 2019 Sebastián Ramírez
@@ -16300,10 +16085,10 @@ UNKNOWN
 UNKNOWN
 
 uc-micro-py
-1.0.3
+2.0.0
 MIT License
 https://github.com/tsutsu3/uc.micro-py
-/usr/local/airflow/.local/lib/python3.12/site-packages/uc_micro_py-1.0.3.dist-info/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/uc_micro_py-2.0.0.dist-info/licenses/LICENSE
 MIT License
 
 Copyright (c) 2020 tsutsu3
@@ -16355,10 +16140,10 @@ UNKNOWN
 UNKNOWN
 
 universal_pathlib
-0.2.6
-MIT License
+0.3.10
+MIT
 https://github.com/fsspec/universal_pathlib
-/usr/local/airflow/.local/lib/python3.12/site-packages/universal_pathlib-0.2.6.dist-info/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/universal_pathlib-0.3.10.dist-info/licenses/LICENSE
 MIT License
 
 Copyright (c) 2022, Andrew Fulton
@@ -16445,10 +16230,10 @@ UNKNOWN
 UNKNOWN
 
 uvicorn
-0.40.0
+0.42.0
 BSD-3-Clause
 https://uvicorn.dev/
-/usr/local/airflow/.local/lib/python3.12/site-packages/uvicorn-0.40.0.dist-info/licenses/LICENSE.md
+/usr/local/airflow/.local/lib/python3.12/site-packages/uvicorn-0.42.0.dist-info/licenses/LICENSE.md
 Copyright © 2017-present, [Encode OSS Ltd](https://www.encode.io/).
 All rights reserved.
 
@@ -16754,10 +16539,10 @@ UNKNOWN
 UNKNOWN
 
 virtualenv
-20.36.0
+21.2.0
 MIT
 https://github.com/pypa/virtualenv
-/usr/local/airflow/.local/lib/python3.12/site-packages/virtualenv-20.36.0.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/virtualenv-21.2.0.dist-info/licenses/LICENSE
 Copyright (c) 2020-202x The virtualenv developers
 
 Permission is hereby granted, free of charge, to any person obtaining
@@ -17024,10 +16809,10 @@ UNKNOWN
 UNKNOWN
 
 websockets
-15.0.1
-BSD License
+16.0
+BSD-3-Clause
 https://github.com/python-websockets/websockets
-/usr/local/airflow/.local/lib/python3.12/site-packages/websockets-15.0.1.dist-info/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/websockets-16.0.dist-info/licenses/LICENSE
 Copyright (c) Aymeric Augustin and contributors
 
 Redistribution and use in source and binary forms, with or without
@@ -17092,11 +16877,11 @@ UNKNOWN
 UNKNOWN
 
 wrapt
-1.17.3
-BSD License
+2.1.2
+BSD-2-Clause
 https://github.com/GrahamDumpleton/wrapt
-/usr/local/airflow/.local/lib/python3.12/site-packages/wrapt-1.17.3.dist-info/licenses/LICENSE
-Copyright (c) 2013-2023, Graham Dumpleton
+/usr/local/airflow/.local/lib/python3.12/site-packages/wrapt-2.1.2.dist-info/licenses/LICENSE
+Copyright (c) 2013-2026, Graham Dumpleton
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -17125,10 +16910,10 @@ UNKNOWN
 UNKNOWN
 
 yarl
-1.22.0
-Apache Software License
+1.23.0
+Apache-2.0
 https://github.com/aio-libs/yarl
-/usr/local/airflow/.local/lib/python3.12/site-packages/yarl-1.22.0.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/yarl-1.23.0.dist-info/licenses/LICENSE
 
                                  Apache License
                            Version 2.0, January 2004
@@ -17346,7 +17131,7 @@ https://github.com/aio-libs/yarl
    See the License for the specific language governing permissions and
    limitations under the License.
 
-/usr/local/airflow/.local/lib/python3.12/site-packages/yarl-1.22.0.dist-info/licenses/NOTICE
+/usr/local/airflow/.local/lib/python3.12/site-packages/yarl-1.23.0.dist-info/licenses/NOTICE
 
 zipp
 3.23.0

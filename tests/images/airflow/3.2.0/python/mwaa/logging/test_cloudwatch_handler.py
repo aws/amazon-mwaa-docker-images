@@ -349,7 +349,7 @@ def test_cloudwatch_remote_task_logger_read(mock_boto3_client):
 def test_read_returns_end_of_log_true_in_metadata(mock_boto3_client):
     """Test that read() always sets end_of_log=True in metadata.
 
-    This is critical for Airflow 3.1.6 where the UI sends Accept: application/x-ndjson,
+    This is critical for Airflow 3.2.0 where the UI sends Accept: application/x-ndjson,
     causing the server to use read_log_stream() which loops until end_of_log is True.
     Without this, the stream loops forever.
     """

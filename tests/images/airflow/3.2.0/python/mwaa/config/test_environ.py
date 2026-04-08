@@ -6,14 +6,14 @@ from mwaa.config.environ import get_essential_environ, get_opinionated_environ
 
 def test_get_essential_environ_sets_correct_vars(env_helper):
     # Set the AIRFLOW_VERSION env var
-    env_helper.set({"AIRFLOW_VERSION": "3.1.6"})
+    env_helper.set({"AIRFLOW_VERSION": "3.2.0"})
 
     command = "webserver"
     result = get_essential_environ(command)
 
     assert result["MWAA_AIRFLOW_COMPONENT"] == command
     assert result["MWAA_COMMAND"] == command
-    assert result["AWS_EXECUTION_ENV"] == "Amazon_MWAA_316"
+    assert result["AWS_EXECUTION_ENV"] == "Amazon_MWAA_320"
 
 
 def test_get_opinionated_environ_includes_logging_args():
