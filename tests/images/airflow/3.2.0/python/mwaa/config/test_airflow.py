@@ -20,7 +20,8 @@ from mwaa.config.airflow import (
     _get_opinionated_airflow_scheduler_config,
     _get_opinionated_airflow_secrets_config,
     _get_opinionated_airflow_usage_data_config,
-    _get_essential_airflow_webserver_config
+    _get_essential_airflow_webserver_config,
+    _get_essential_airflow_triggerer_config
 )
 
 # ---------------------------
@@ -252,6 +253,17 @@ def test_get_essential_airflow_logging_config():
         "AIRFLOW__LOGGING__COLORED_CONSOLE_LOG": "False"
     }
     result = _get_essential_airflow_logging_config()
+
+    assert result == expected_logging_config
+
+# --------------------------------------------
+# Essential Airflow Triggerer Config Tests 
+# --------------------------------------------
+def test_get_essential_airflow_logging_config():
+    expected_logging_config = {
+        "AIRFLOW__TRIGGERER__QUEUES_ENABLED": "False"
+    }
+    result = _get_essential_airflow_triggerer_config()
 
     assert result == expected_logging_config
 
@@ -505,6 +517,12 @@ def test_get_essential_airflow_config_merges_all(monkeypatch):
         lambda: {"EXEC_API": "1"},
     )
 
+    monkeypatch.setattr(
+        airflow,
+        "_get_essential_airflow_triggerer_config",
+        lambda: {"TRIGGERER": "1"},
+    )
+
     result = airflow.get_essential_airflow_config("CeleryExecutor")
 
     assert result == {
@@ -518,6 +536,7 @@ def test_get_essential_airflow_config_merges_all(monkeypatch):
         "AUTH": "1",
         "API_AUTH": "1",
         "EXEC_API": "1",
+        "TRIGGERER": "1",
     }
 
 def test_get_opinionated_airflow_config_merges(monkeypatch):

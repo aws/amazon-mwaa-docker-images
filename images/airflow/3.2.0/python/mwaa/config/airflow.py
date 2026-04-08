@@ -197,6 +197,18 @@ def _get_essential_aiflow_execution_api_config() -> Dict[str, str]:
         "AIRFLOW__EXECUTION_API__JWT_EXPIRATION_TIME": "86400"
     }
 
+def _get_essential_airflow_triggerer_config() -> Dict[str, str]:
+    """
+    Retrieve the environment variables for Airflow's "triggerer" configuration section.
+
+    We force-disable triggerer queues because MWAA runs a single triggerer
+    without --queues CLI support. Enabling queues_enabled would cause all
+    deferrable tasks to hang indefinitely.
+    """
+    return {
+        "AIRFLOW__TRIGGERER__QUEUES_ENABLED": "False",
+    }
+
 def _get_essential_airflow_logging_config() -> Dict[str, str]:
     """
     Retrieve the environment variables for Airflow's "logging" configuration section.
@@ -377,6 +389,7 @@ def get_essential_airflow_config(executor_type: str) -> Dict[str, str]:
         **_get_essential_airflow_auth_config(),
         **_get_essential_airflow_api_auth_config(),
         **_get_essential_aiflow_execution_api_config(),
+        **_get_essential_airflow_triggerer_config(),
     }
 
 
