@@ -361,6 +361,12 @@ class CloudWatchRemoteTaskLogger(BaseLogHandler, LoggingMixin):
                 record.created = ct
                 record.msecs = int((ct - int(ct)) * 1000) + 0.0  # Copied from stdlib logging
             try:
+                # In Airflow 3.1+, triggerer_job_runner's _process_log_messages_from_subprocess
+                # calls configure_logging() -> dictConfig() which shuts down all existing
+                # handlers, setting watchtower's shutting_down=True and silently dropping
+                # all subsequent log records. Reset it to keep sending.
+                if getattr(_handler, 'shutting_down', False):
+                    _handler.shutting_down = False
                 _handler.handle(record)
             except Exception as e:
                 self.stats.incr(f"mwaa.logging.{CloudWatchRemoteTaskLogger.LOG_SOURCE}.emit_error", 1)
