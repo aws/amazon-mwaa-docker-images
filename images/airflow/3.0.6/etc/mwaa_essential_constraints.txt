@@ -7,7 +7,7 @@
 # and, thus, do not allow the customer to override them.
 #
 
-apache-airflow==3.0.6
+apache-airflow==3.2.0
 # Webserver-related packages
 Flask-AppBuilder==4.6.3
 Flask-Babel==2.0.0
