@@ -6,7 +6,7 @@
 --constraint https://raw.githubusercontent.com/apache/airflow/constraints-3.0.6/constraints-3.12.txt
 # Main Airflow packages.
 # NOTE: We always specify the version here.
-apache-airflow[celery,statsd]==3.0.6
+apache-airflow[celery,statsd]==3.2.0
 # Additional packages for MWAA Airflow.
 # NOTE: We don't specify the version here since the constraints file take care
 # of this, making it easier to port the code to other versions.
