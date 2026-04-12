@@ -152,7 +152,7 @@ create_log_group_if_not_exists "Task" "$MWAA__LOGGING__AIRFLOW_TASK_LOGS_ENABLED
 create_log_group_if_not_exists "WebServer" "$MWAA__LOGGING__AIRFLOW_WEBSERVER_LOGS_ENABLED"
 create_log_group_if_not_exists "Worker" "$MWAA__LOGGING__AIRFLOW_WORKER_LOGS_ENABLED"
 
-if [ "$COMMAND" == "test-requirements" ] || [ "$COMMAND" == "test-startup-script" ]; then
+if [ "$COMMAND" == "test-requirements" ] || [ "$COMMAND" == "test-startup-script" ] || [ "$COMMAND" == "package-requirements" ]; then
     $CONTAINER_RUNTIME compose -f docker-compose-test-commands.yaml up "$COMMAND" --abort-on-container-exit
 else
     $CONTAINER_RUNTIME compose up
