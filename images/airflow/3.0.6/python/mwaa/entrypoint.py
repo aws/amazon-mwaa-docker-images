@@ -223,6 +223,7 @@ def create_queue() -> None:
 
 async def main() -> None:
     """Start execution of the script."""
+    _fix_shared_log_volume_permissions()
     try:
         (
             _,
