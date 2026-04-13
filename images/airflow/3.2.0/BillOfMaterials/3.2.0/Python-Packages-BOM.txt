@@ -5417,10 +5417,10 @@ Copyright 2013-2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 /usr/local/airflow/.local/lib/python3.12/site-packages/boto3-1.42.70.dist-info/NOTICE
 
 boto3-stubs
-1.42.85
+1.42.88
 MIT
 https://github.com/youtype/mypy_boto3_builder
-/usr/local/airflow/.local/lib/python3.12/site-packages/boto3_stubs-1.42.85.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/boto3_stubs-1.42.88.dist-info/licenses/LICENSE
 MIT License
 
 Copyright (c) 2026 Vlad Emelianov
