@@ -288,6 +288,8 @@ class CloudWatchRemoteTaskLogger(BaseLogHandler, LoggingMixin):
         # Dag processor log (from loading DagBag) with stream name dag_processor/2025-01-01/dags-folder/dag.py.log
         re.compile(r"^dag_processor/")
     ]
+    # Pattern to match triggerer log streams: {base_stream}.trigger.{numeric_id}.log
+    TRIGGERER_STREAM_PATTERN = re.compile(r"\.trigger\.\d+\.log$")
 
     def __init__(
         self,
@@ -391,6 +393,71 @@ class CloudWatchRemoteTaskLogger(BaseLogHandler, LoggingMixin):
         self.flush()
         return
 
+    def _discover_triggerer_streams(self, base_stream_name: str) -> list[str]:
+        """
+        Discover triggerer log streams associated with a task instance.
+
+        Uses describe_log_streams with a prefix filter to find streams matching
+        the pattern: {base_stream_name}.trigger.{numeric_id}.log
+
+        :param base_stream_name: The primary task log stream name.
+        :returns: List of triggerer stream names, or empty list if none found.
+        """
+        try:
+            log_group = self.log_group_arn.rsplit(":", 1)[1]
+            prefix = base_stream_name + ".trigger."
+            streams: list[str] = []
+            kwargs = {
+                "logGroupName": log_group,
+                "logStreamNamePrefix": prefix,
+            }
+            while True:
+                response = self.hook.conn.describe_log_streams(**kwargs)
+                for stream in response.get("logStreams", []):
+                    name = stream.get("logStreamName", "")
+                    if self.TRIGGERER_STREAM_PATTERN.search(name):
+                        streams.append(name)
+                next_token = response.get("nextToken")
+                if not next_token:
+                    break
+                kwargs["nextToken"] = next_token
+            return streams
+        except Exception:
+            return []
+
+    def _read_triggerer_logs(
+        self, triggerer_streams: list[str], task_instance
+    ) -> list[StructuredLogMessage]:
+        """
+        Read log events from all discovered triggerer streams.
+
+        For each stream, prepends a header indicating the source stream,
+        reads events via get_cloudwatch_logs, and converts them to
+        StructuredLogMessage objects.
+
+        :param triggerer_streams: List of triggerer log stream names.
+        :param task_instance: The task instance to get logs about.
+        :returns: Flat list of StructuredLogMessage objects from all streams.
+        """
+        all_logs: list[StructuredLogMessage] = []
+        for stream_name in triggerer_streams:
+            all_logs.append(
+                StructuredLogMessage(
+                    event=f"*** Reading triggerer logs from: {stream_name}"
+                )
+            )
+            try:
+                events = self.get_cloudwatch_logs(stream_name, task_instance)
+                for log in events:
+                    all_logs.append(StructuredLogMessage.model_validate(log))
+            except Exception as e:
+                all_logs.append(
+                    StructuredLogMessage(
+                        event=f"*** Failed to read triggerer logs from: {stream_name}: {e}"
+                    )
+                )
+        return all_logs
+
     def read(
         self, task_instance, try_number, metadata=None
     ) -> tuple[list[StructuredLogMessage], LogMetadata]:
@@ -403,9 +470,24 @@ class CloudWatchRemoteTaskLogger(BaseLogHandler, LoggingMixin):
         """
         stream_name = self._render_filename(task_instance, try_number).replace(":", "_")
         messages, logs = self._read_remote_logs(stream_name, task_instance)
+
+        try:
+            triggerer_streams = self._discover_triggerer_streams(stream_name)
+            triggerer_logs = self._read_triggerer_logs(triggerer_streams, task_instance)
+        except Exception as e:
+            triggerer_logs = [
+                StructuredLogMessage(
+                    event=f"*** Failed to read triggerer logs: {e}"
+                )
+            ]
+
+        # TODO: Add ::group::/::endgroup:: markers to enable collapsible log sections in the UI.
+        # Airflow's FileTaskHandler._read() wraps log source details and sections with these markers,
+        # but our CloudWatch-based read() currently returns flat log lists without them.
+        # Details: https://app.asana.com/1/8442528107068/project/1212634437759616/task/1214036597979786?focus=true
         out_metadata = dict(metadata) if metadata else {}
         out_metadata["end_of_log"] = True
-        return messages + logs, out_metadata
+        return messages + logs + triggerer_logs, out_metadata
 
     def _read_remote_logs(self, relative_path, ti: RuntimeTI) -> tuple[list[StructuredLogMessage], list[StructuredLogMessage]]:
         try:
