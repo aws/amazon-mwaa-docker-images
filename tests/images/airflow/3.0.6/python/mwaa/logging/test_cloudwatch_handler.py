@@ -585,7 +585,7 @@ def test_read_with_one_triggerer_stream(mock_boto3_client):
         messages, metadata = logger.read(ti, 1)
 
         events_text = [_get_event_text(msg) for msg in messages]
-        assert any(f"*** Reading triggerer logs from: {triggerer_stream}" in e for e in events_text)
+        assert any(f"Reading triggerer logs from: {triggerer_stream}" in e for e in events_text)
         assert any("triggerer log line" in e for e in events_text)
 
 
@@ -699,7 +699,7 @@ def test_read_excludes_non_matching_triggerer_streams(mock_boto3_client):
         messages, metadata = logger.read(ti, 1)
 
         events_text = [_get_event_text(msg) for msg in messages]
-        assert not any("*** Reading triggerer logs from:" in e for e in events_text)
+        assert not any("Reading triggerer logs from:" in e for e in events_text)
 
 
 @pytest.mark.parametrize("stream_suffix", [

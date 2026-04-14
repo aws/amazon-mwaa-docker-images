@@ -641,7 +641,7 @@ def test_read_with_one_triggerer_stream(mock_boto3_client):
             )
         # Check header is present
         header_found = any(
-            f"*** Reading triggerer logs from: {triggerer_stream}" in msg.event
+            f"Reading triggerer logs from: {triggerer_stream}" in msg.event
             for msg in messages
         )
         assert header_found, "Expected triggerer header not found in output"
@@ -860,7 +860,7 @@ def test_read_excludes_non_matching_triggerer_streams(mock_boto3_client):
             "Events from non-matching streams should not appear in output"
         )
         # No triggerer header should appear since all streams were filtered out
-        assert not any("*** Reading triggerer logs from:" in e for e in events_text), (
+        assert not any("Reading triggerer logs from:" in e for e in events_text), (
             "No triggerer header should appear when all streams are filtered out"
         )
 

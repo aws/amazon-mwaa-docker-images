@@ -443,7 +443,7 @@ class CloudWatchRemoteTaskLogger(BaseLogHandler, LoggingMixin):
         for stream_name in triggerer_streams:
             all_logs.append(
                 StructuredLogMessage(
-                    event=f"*** Reading triggerer logs from: {stream_name}"
+                    event=f"Reading triggerer logs from: {stream_name}"
                 )
             )
             try:
@@ -453,7 +453,7 @@ class CloudWatchRemoteTaskLogger(BaseLogHandler, LoggingMixin):
             except Exception as e:
                 all_logs.append(
                     StructuredLogMessage(
-                        event=f"*** Failed to read triggerer logs from: {stream_name}: {e}"
+                        event=f"Failed to read triggerer logs from: {stream_name}: {e}"
                     )
                 )
         return all_logs
@@ -477,7 +477,7 @@ class CloudWatchRemoteTaskLogger(BaseLogHandler, LoggingMixin):
         except Exception as e:
             triggerer_logs = [
                 StructuredLogMessage(
-                    event=f"*** Failed to read triggerer logs: {e}"
+                    event=f"Failed to read triggerer logs: {e}"
                 )
             ]
 
