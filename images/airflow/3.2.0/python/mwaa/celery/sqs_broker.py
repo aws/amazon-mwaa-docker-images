@@ -560,19 +560,26 @@ class Channel(virtual.Channel):
 
     def _get_task_command_from_sqs_message(self, encoded_sqs_message_body: str) -> str:
         """
-        Decode the SQS message and return the task_instance_id (UUID).
+        Decode the SQS message and return a unique workload identifier (UUID).
+
+        Supports both ExecuteTask workloads (which contain a 'ti' field) and
+        ExecuteCallback workloads (which contain a 'callback' field, used by
+        SyncCallback deadline alerts introduced in Airflow 3.2.0).
         """
-        # Decode
         outer_body = json.loads(base64.b64decode(encoded_sqs_message_body))
         inner_body = json.loads(base64.b64decode(outer_body["body"]))
-
-        # Extract args → first element → JSON string
         task_payload_str = inner_body[0][0]
         task_payload = json.loads(task_payload_str)
 
-        # Extract task_instance_id from ti.id
-        task_instance_id = task_payload["ti"]["id"]
-        return task_instance_id
+        if "ti" in task_payload:
+            return task_payload["ti"]["id"]           # ExecuteTask workload
+        elif "callback" in task_payload:
+            return task_payload["callback"]["id"]     # ExecuteCallback workload
+        else:
+            raise ValueError(
+                f"Unknown workload type in SQS message: {task_payload.get('type', 'unknown')}. "
+                f"Expected 'ti' (ExecuteTask) or 'callback' (ExecuteCallback) field."
+            )
 
     def _validate_predifined_queues(self):
         """Check that standard and FIFO queues are named properly.
