@@ -566,3 +566,352 @@ def test_cloudwatch_remote_task_logger_always_uses_watchtower_not_fluent(mock_bo
             use_queues=True,
             create_log_group=False,
         )
+
+
+def test_read_with_no_triggerer_streams(mock_boto3_client):
+    """Test read() with no triggerer streams returns only task logs (no error, no header)."""
+    from airflow.utils.log.file_task_handler import StructuredLogMessage
+
+    with patch('mwaa.logging.cloudwatch_handlers.AwsLogsHook') as mock_hook_class:
+        task_events = [
+            {
+                'timestamp': int(datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc).timestamp() * 1000),
+                'message': '{"event": "task log line", "level": "info"}'
+            }
+        ]
+        logger = _make_logger_with_hook(mock_hook_class, task_events)
+        # Mock describe_log_streams to return no triggerer streams
+        logger.hook.conn.describe_log_streams.return_value = {
+            'logStreams': []
+        }
+        ti = _make_task_instance_mock()
+
+        messages, metadata = logger.read(ti, 1)
+
+        # All items must be StructuredLogMessage
+        for msg in messages:
+            assert isinstance(msg, StructuredLogMessage), (
+                f"Expected StructuredLogMessage, got {type(msg).__name__}: {msg}"
+            )
+        # No triggerer text should appear
+        for msg in messages:
+            assert "triggerer" not in msg.event.lower(), (
+                f"Unexpected triggerer text in output: {msg.event}"
+            )
+
+
+def test_read_with_one_triggerer_stream(mock_boto3_client):
+    """Test read() with one triggerer stream returns task logs + header + triggerer logs."""
+    from airflow.utils.log.file_task_handler import StructuredLogMessage
+
+    with patch('mwaa.logging.cloudwatch_handlers.AwsLogsHook') as mock_hook_class:
+        task_events = [
+            {
+                'timestamp': int(datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc).timestamp() * 1000),
+                'message': '{"event": "task log line", "level": "info"}'
+            }
+        ]
+        triggerer_events = [
+            {
+                'timestamp': int(datetime(2024, 1, 1, 12, 1, 0, tzinfo=timezone.utc).timestamp() * 1000),
+                'message': '{"event": "triggerer log line", "level": "info"}'
+            }
+        ]
+        logger = _make_logger_with_hook(mock_hook_class, task_events)
+
+        triggerer_stream = 'dag_id=test_dag/run_id=test_run/task_id=test_task/attempt=1.log.trigger.42.log'
+        logger.hook.conn.describe_log_streams.return_value = {
+            'logStreams': [{'logStreamName': triggerer_stream}]
+        }
+        # Return different events for task stream vs triggerer stream
+        mock_hook = mock_hook_class.return_value
+        def get_log_events_side_effect(**kwargs):
+            if '.trigger.' in kwargs.get('log_stream_name', ''):
+                return triggerer_events
+            return task_events
+        mock_hook.get_log_events.side_effect = get_log_events_side_effect
+
+        ti = _make_task_instance_mock()
+        messages, metadata = logger.read(ti, 1)
+
+        # All items must be StructuredLogMessage
+        for msg in messages:
+            assert isinstance(msg, StructuredLogMessage), (
+                f"Expected StructuredLogMessage, got {type(msg).__name__}: {msg}"
+            )
+        # Check header is present
+        header_found = any(
+            f"Reading triggerer logs from: {triggerer_stream}" in msg.event
+            for msg in messages
+        )
+        assert header_found, "Expected triggerer header not found in output"
+        # Check triggerer event is present
+        triggerer_event_found = any(
+            "triggerer log line" in msg.event for msg in messages
+        )
+        assert triggerer_event_found, "Expected triggerer log event not found in output"
+
+
+def test_read_with_multiple_triggerer_streams(mock_boto3_client):
+    """Test read() with multiple triggerer streams returns all streams' events."""
+    from airflow.utils.log.file_task_handler import StructuredLogMessage
+
+    with patch('mwaa.logging.cloudwatch_handlers.AwsLogsHook') as mock_hook_class:
+        task_events = [
+            {
+                'timestamp': int(datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc).timestamp() * 1000),
+                'message': '{"event": "task log line", "level": "info"}'
+            }
+        ]
+        stream1 = 'dag_id=test_dag/run_id=test_run/task_id=test_task/attempt=1.log.trigger.1.log'
+        stream2 = 'dag_id=test_dag/run_id=test_run/task_id=test_task/attempt=1.log.trigger.2.log'
+        stream3 = 'dag_id=test_dag/run_id=test_run/task_id=test_task/attempt=1.log.trigger.3.log'
+
+        triggerer_events_1 = [
+            {
+                'timestamp': int(datetime(2024, 1, 1, 12, 1, 0, tzinfo=timezone.utc).timestamp() * 1000),
+                'message': '{"event": "triggerer_stream_1_event", "level": "info"}'
+            }
+        ]
+        triggerer_events_2 = [
+            {
+                'timestamp': int(datetime(2024, 1, 1, 12, 2, 0, tzinfo=timezone.utc).timestamp() * 1000),
+                'message': '{"event": "triggerer_stream_2_event", "level": "info"}'
+            }
+        ]
+        triggerer_events_3 = [
+            {
+                'timestamp': int(datetime(2024, 1, 1, 12, 3, 0, tzinfo=timezone.utc).timestamp() * 1000),
+                'message': '{"event": "triggerer_stream_3_event", "level": "info"}'
+            }
+        ]
+
+        logger = _make_logger_with_hook(mock_hook_class, task_events)
+        logger.hook.conn.describe_log_streams.return_value = {
+            'logStreams': [
+                {'logStreamName': stream1},
+                {'logStreamName': stream2},
+                {'logStreamName': stream3},
+            ]
+        }
+
+        mock_hook = mock_hook_class.return_value
+        def get_log_events_side_effect(**kwargs):
+            stream = kwargs.get('log_stream_name', '')
+            if stream == stream1:
+                return triggerer_events_1
+            elif stream == stream2:
+                return triggerer_events_2
+            elif stream == stream3:
+                return triggerer_events_3
+            return task_events
+        mock_hook.get_log_events.side_effect = get_log_events_side_effect
+
+        ti = _make_task_instance_mock()
+        messages, metadata = logger.read(ti, 1)
+
+        # All items must be StructuredLogMessage
+        for msg in messages:
+            assert isinstance(msg, StructuredLogMessage), (
+                f"Expected StructuredLogMessage, got {type(msg).__name__}: {msg}"
+            )
+        # All three streams' events must appear
+        events_text = [msg.event for msg in messages]
+        assert any("triggerer_stream_1_event" in e for e in events_text), "Stream 1 events missing"
+        assert any("triggerer_stream_2_event" in e for e in events_text), "Stream 2 events missing"
+        assert any("triggerer_stream_3_event" in e for e in events_text), "Stream 3 events missing"
+
+
+def test_read_describe_log_streams_failure(mock_boto3_client):
+    """Test describe_log_streams failure still returns task logs + error message."""
+    from airflow.utils.log.file_task_handler import StructuredLogMessage
+
+    with patch('mwaa.logging.cloudwatch_handlers.AwsLogsHook') as mock_hook_class:
+        task_events = [
+            {
+                'timestamp': int(datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc).timestamp() * 1000),
+                'message': '{"event": "task log line", "level": "info"}'
+            }
+        ]
+        logger = _make_logger_with_hook(mock_hook_class, task_events)
+        # Make describe_log_streams raise an exception
+        logger.hook.conn.describe_log_streams.side_effect = Exception("CloudWatch API error")
+
+        ti = _make_task_instance_mock()
+        messages, metadata = logger.read(ti, 1)
+
+        # All items must be StructuredLogMessage
+        for msg in messages:
+            assert isinstance(msg, StructuredLogMessage), (
+                f"Expected StructuredLogMessage, got {type(msg).__name__}: {msg}"
+            )
+        # Task logs should still be present
+        task_log_found = any("task log line" in msg.event for msg in messages)
+        assert task_log_found, "Task logs should still be returned on describe_log_streams failure"
+
+
+def test_read_get_log_events_failure_for_triggerer_stream(mock_boto3_client):
+    """Test get_log_events failure for one triggerer stream skips it and continues with others."""
+    from airflow.utils.log.file_task_handler import StructuredLogMessage
+
+    with patch('mwaa.logging.cloudwatch_handlers.AwsLogsHook') as mock_hook_class:
+        task_events = [
+            {
+                'timestamp': int(datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc).timestamp() * 1000),
+                'message': '{"event": "task log line", "level": "info"}'
+            }
+        ]
+        stream_fail = 'dag_id=test_dag/run_id=test_run/task_id=test_task/attempt=1.log.trigger.10.log'
+        stream_ok = 'dag_id=test_dag/run_id=test_run/task_id=test_task/attempt=1.log.trigger.20.log'
+
+        triggerer_ok_events = [
+            {
+                'timestamp': int(datetime(2024, 1, 1, 12, 2, 0, tzinfo=timezone.utc).timestamp() * 1000),
+                'message': '{"event": "ok_triggerer_event", "level": "info"}'
+            }
+        ]
+
+        logger = _make_logger_with_hook(mock_hook_class, task_events)
+        logger.hook.conn.describe_log_streams.return_value = {
+            'logStreams': [
+                {'logStreamName': stream_fail},
+                {'logStreamName': stream_ok},
+            ]
+        }
+
+        mock_hook = mock_hook_class.return_value
+        def get_log_events_side_effect(**kwargs):
+            stream = kwargs.get('log_stream_name', '')
+            if stream == stream_fail:
+                raise Exception("Stream read error")
+            elif stream == stream_ok:
+                return triggerer_ok_events
+            return task_events
+        mock_hook.get_log_events.side_effect = get_log_events_side_effect
+
+        ti = _make_task_instance_mock()
+        messages, metadata = logger.read(ti, 1)
+
+        # All items must be StructuredLogMessage
+        for msg in messages:
+            assert isinstance(msg, StructuredLogMessage), (
+                f"Expected StructuredLogMessage, got {type(msg).__name__}: {msg}"
+            )
+        events_text = [msg.event for msg in messages]
+        # The second stream's events should be present
+        assert any("ok_triggerer_event" in e for e in events_text), (
+            "Second triggerer stream events should be present"
+        )
+        # An error message for the failed stream should be present
+        assert any("Failed to read triggerer logs from" in e and stream_fail in e for e in events_text), (
+            "Error message for failed triggerer stream should be present"
+        )
+
+
+def test_read_excludes_non_matching_triggerer_streams(mock_boto3_client):
+    """Test streams not matching regex pattern are excluded."""
+    from airflow.utils.log.file_task_handler import StructuredLogMessage
+
+    with patch('mwaa.logging.cloudwatch_handlers.AwsLogsHook') as mock_hook_class:
+        task_events = [
+            {
+                'timestamp': int(datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc).timestamp() * 1000),
+                'message': '{"event": "task log line", "level": "info"}'
+            }
+        ]
+        # These streams do NOT match the .trigger.{digits}.log pattern
+        bad_stream_1 = 'dag_id=test_dag/run_id=test_run/task_id=test_task/attempt=1.log.trigger.abc.log'
+        bad_stream_2 = 'dag_id=test_dag/run_id=test_run/task_id=test_task/attempt=1.log.trigger..log'
+
+        bad_events = [
+            {
+                'timestamp': int(datetime(2024, 1, 1, 12, 1, 0, tzinfo=timezone.utc).timestamp() * 1000),
+                'message': '{"event": "bad_stream_event", "level": "info"}'
+            }
+        ]
+
+        logger = _make_logger_with_hook(mock_hook_class, task_events)
+        logger.hook.conn.describe_log_streams.return_value = {
+            'logStreams': [
+                {'logStreamName': bad_stream_1},
+                {'logStreamName': bad_stream_2},
+            ]
+        }
+
+        mock_hook = mock_hook_class.return_value
+        def get_log_events_side_effect(**kwargs):
+            stream = kwargs.get('log_stream_name', '')
+            if stream in (bad_stream_1, bad_stream_2):
+                return bad_events
+            return task_events
+        mock_hook.get_log_events.side_effect = get_log_events_side_effect
+
+        ti = _make_task_instance_mock()
+        messages, metadata = logger.read(ti, 1)
+
+        # All items must be StructuredLogMessage
+        for msg in messages:
+            assert isinstance(msg, StructuredLogMessage), (
+                f"Expected StructuredLogMessage, got {type(msg).__name__}: {msg}"
+            )
+        # Non-matching stream events should NOT appear
+        events_text = [msg.event for msg in messages]
+        assert not any("bad_stream_event" in e for e in events_text), (
+            "Events from non-matching streams should not appear in output"
+        )
+        # No triggerer header should appear since all streams were filtered out
+        assert not any("Reading triggerer logs from:" in e for e in events_text), (
+            "No triggerer header should appear when all streams are filtered out"
+        )
+
+@pytest.mark.parametrize("stream_suffix", [
+    ".trigger.1.log",
+    ".trigger.123.log",
+    ".trigger.999999.log",
+])
+def test_triggerer_pattern_matches_valid_streams(stream_suffix):
+    """Valid triggerer stream suffixes must be matched by TRIGGERER_STREAM_PATTERN."""
+    assert CloudWatchRemoteTaskLogger.TRIGGERER_STREAM_PATTERN.search(stream_suffix) is not None, (
+        f"Expected pattern to match '{stream_suffix}'"
+    )
+
+
+@pytest.mark.parametrize("stream_suffix", [
+    ".trigger.abc.log",
+    ".trigger..log",
+    ".triggerX.1.log",
+    ".trigger.1.txt",
+    ".trigger.log",
+])
+def test_triggerer_pattern_rejects_invalid_streams(stream_suffix):
+    """Invalid triggerer stream suffixes must NOT be matched by TRIGGERER_STREAM_PATTERN."""
+    assert CloudWatchRemoteTaskLogger.TRIGGERER_STREAM_PATTERN.search(stream_suffix) is None, (
+        f"Expected pattern to NOT match '{stream_suffix}'"
+    )
+
+
+def test_discover_triggerer_streams_follows_pagination(mock_boto3_client):
+    """_discover_triggerer_streams must follow nextToken pagination to collect all streams."""
+    with patch('mwaa.logging.cloudwatch_handlers.AwsLogsHook') as mock_hook_class:
+        logger = _make_logger_with_hook(mock_hook_class, [])
+
+        stream_page1 = 'dag_id=test_dag/run_id=test_run/task_id=test_task/attempt=1.log.trigger.1.log'
+        stream_page2 = 'dag_id=test_dag/run_id=test_run/task_id=test_task/attempt=1.log.trigger.2.log'
+
+        logger.hook.conn.describe_log_streams.side_effect = [
+            {
+                'logStreams': [{'logStreamName': stream_page1}],
+                'nextToken': 'token123',
+            },
+            {
+                'logStreams': [{'logStreamName': stream_page2}],
+            },
+        ]
+
+        base_stream = 'dag_id=test_dag/run_id=test_run/task_id=test_task/attempt=1.log'
+        streams = logger._discover_triggerer_streams(base_stream)
+
+        assert stream_page1 in streams
+        assert stream_page2 in streams
+        assert len(streams) == 2
+        assert logger.hook.conn.describe_log_streams.call_count == 2
