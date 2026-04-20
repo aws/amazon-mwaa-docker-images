@@ -1,3 +1,6 @@
+import base64
+import json
+
 import pytest
 from unittest.mock import patch, MagicMock
 from mwaa.celery.sqs_broker import Channel
@@ -202,3 +205,73 @@ class TestChannelBasicPublish:
             else:
                 assert not any(call[0][0] == "mwaa.celery.sqs.consumption_paused"
                                for call in mock_stats.gauge.call_args_list)
+
+
+class TestGetTaskCommandFromSqsMessage:
+    """Tests for _get_task_command_from_sqs_message supporting multiple workload types."""
+
+    @staticmethod
+    def _encode_sqs_message_body(task_payload: dict) -> str:
+        """Helper to encode a task payload into the nested base64 SQS message format."""
+        task_payload_str = json.dumps(task_payload)
+        inner_body = [[task_payload_str], {}, {}]
+        inner_encoded = base64.b64encode(json.dumps(inner_body).encode()).decode()
+        outer_body = {"body": inner_encoded}
+        outer_encoded = base64.b64encode(json.dumps(outer_body).encode()).decode()
+        return outer_encoded
+
+    @pytest.fixture
+    def channel(self):
+        mock_connection = MagicMock()
+        mock_connection.channel_max = 65535
+        mock_connection._used_channel_ids = []
+        mock_connection.channels = []
+        mock_connection.state = MagicMock()
+        mock_connection.client.transport_options = {
+            'predefined_queues': {},
+            'queue_name_prefix': '',
+            'visibility_timeout': 1800,
+            'wait_time_seconds': 10,
+            'region': 'us-east-1'
+        }
+        mock_connection.client.virtual_host = '/'
+
+        with patch('mwaa.celery.sqs_broker.boto3'), \
+             patch('mwaa.celery.sqs_broker.shared_memory.SharedMemory') as mock_shared_mem, \
+             patch('mwaa.celery.sqs_broker.os.environ.get') as mock_env, \
+             patch('mwaa.celery.sqs_broker.get_event_loop'):
+            mock_env.side_effect = lambda key, default=None: {
+                'MWAA__CORE__TASK_MONITORING_ENABLED': 'false',
+                'AIRFLOW_ENV_ID': 'test',
+                'AIRFLOW__CELERY__WORKER_AUTOSCALE': '20,20',
+                'AIRFLOW__MWAA__TEST_ABANDONED_SQS_MESSAGE_SCENARIOS': 'false',
+                'AIRFLOW__MWAA__TEST_UNDEAD_PROCESS_SCENARIOS': 'false'
+            }.get(key, default)
+            mock_shared_mem.return_value = MagicMock()
+            yield Channel(connection=mock_connection)
+
+    def test_execute_task_workload_returns_ti_id(self, channel):
+        """ExecuteTask messages with a 'ti' field should return ti.id."""
+        task_payload = {"ti": {"id": "abc-123-task-instance"}, "type": "ExecuteTask"}
+        encoded = self._encode_sqs_message_body(task_payload)
+
+        result = channel._get_task_command_from_sqs_message(encoded)
+
+        assert result == "abc-123-task-instance"
+
+    def test_execute_callback_workload_returns_callback_id(self, channel):
+        """ExecuteCallback messages with a 'callback' field should return callback.id."""
+        task_payload = {"callback": {"id": "def-456-callback"}, "type": "ExecuteCallback"}
+        encoded = self._encode_sqs_message_body(task_payload)
+
+        result = channel._get_task_command_from_sqs_message(encoded)
+
+        assert result == "def-456-callback"
+
+    def test_unknown_workload_type_raises_value_error(self, channel):
+        """Messages without 'ti' or 'callback' should raise ValueError."""
+        task_payload = {"type": "UnknownWorkload", "data": "something"}
+        encoded = self._encode_sqs_message_body(task_payload)
+
+        with pytest.raises(ValueError, match="Unknown workload type"):
+            channel._get_task_command_from_sqs_message(encoded)
