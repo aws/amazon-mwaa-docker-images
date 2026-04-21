@@ -1,0 +1,4 @@
+# Enforce LF line endings for all text files on all platforms.
+# This ensures shell scripts and other files work correctly inside Linux containers
+# regardless of the host OS (Windows, macOS, Linux).
+* text=auto eol=lf
