@@ -287,13 +287,17 @@ def test_mark_as_unhealthy_error(mock_environ):
 def test_fix_shared_log_volume_permissions_on_mount(mock_environ):
     """Test _fix_shared_log_volume_permissions runs chown when path is a mount point."""
     with patch('os.path.ismount', return_value=True) as mock_ismount, \
-         patch('subprocess.run') as mock_run:
+         patch('subprocess.run') as mock_run, \
+         patch('os.makedirs') as mock_makedirs:
         entrypoint._fix_shared_log_volume_permissions()
 
         mock_ismount.assert_called_once_with('/usr/local/airflow/logs')
         mock_run.assert_called_once_with(
             ['sudo', 'chown', '-R', 'airflow:', '/usr/local/airflow/logs'],
             check=True,
+        )
+        mock_makedirs.assert_called_once_with(
+            '/usr/local/airflow/logs/dag_processor', exist_ok=True
         )
 
 
@@ -310,7 +314,21 @@ def test_fix_shared_log_volume_permissions_not_mount(mock_environ):
 def test_fix_shared_log_volume_permissions_chown_failure(mock_environ):
     """Test _fix_shared_log_volume_permissions handles chown failure gracefully."""
     with patch('os.path.ismount', return_value=True), \
-         patch('subprocess.run', side_effect=Exception('Permission denied')):
+         patch('subprocess.run', side_effect=Exception('Permission denied')), \
+         patch('os.makedirs') as mock_makedirs:
+        # Should not raise — just logs a warning
+        entrypoint._fix_shared_log_volume_permissions()
+        # dag_processor dir creation should still be attempted after chown failure
+        mock_makedirs.assert_called_once_with(
+            '/usr/local/airflow/logs/dag_processor', exist_ok=True
+        )
+
+
+def test_fix_shared_log_volume_permissions_dag_processor_dir_failure(mock_environ):
+    """Test _fix_shared_log_volume_permissions handles dag_processor mkdir failure gracefully."""
+    with patch('os.path.ismount', return_value=True), \
+         patch('subprocess.run'), \
+         patch('os.makedirs', side_effect=OSError('Read-only file system')):
         # Should not raise — just logs a warning
         entrypoint._fix_shared_log_volume_permissions()
 

@@ -34,7 +34,10 @@ def _fix_shared_log_volume_permissions():
         # input does not error when scanning the glob. The directory is not
         # guaranteed to exist at container start.
         dag_processor_dir = os.path.join(log_dir, "dag_processor")
-        os.makedirs(dag_processor_dir, exist_ok=True)
+        try:
+            os.makedirs(dag_processor_dir, exist_ok=True)
+        except Exception as e:
+            print(f"WARNING: Could not create {dag_processor_dir}: {e}")
 
 _fix_shared_log_volume_permissions()
 
