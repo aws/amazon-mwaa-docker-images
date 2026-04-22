@@ -50,7 +50,7 @@ Airflow should be up and running now. You can access the web server on your loca
 
 ---
 
-### Windows (PowerShell 5.1)
+### Windows (PowerShell 5.1) [Not supported by AWS MWAA Service Team]
 
 #### Prerequisites
 
