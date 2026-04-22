@@ -137,6 +137,7 @@ AVAILABLE_COMMANDS = [
     "spy",
     "test-requirements",
     "test-startup-script",
+    "package-requirements",
 ]
 
 # Save the start time of the container. This is used later to with the sidecar
@@ -285,6 +286,12 @@ async def main() -> None:
         await airflow_db_migrate(environ)
         print("Finished running db validations")
         await increase_pool_size_if_insufficient(environ)
+        return
+
+    if command == "package-requirements":
+        from mwaa.utils.user_requirements import package_user_requirements
+        package_user_requirements(environ)
+        print("Finished packaging requirements")
         return
 
     await install_user_requirements(command, environ)

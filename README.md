@@ -110,6 +110,17 @@ For details on installing Python depedencies, and optionally bundling wheel file
 ./run.sh test-requirements
 ```
 
+#### Package requirements
+
+- To download all packages from your `requirements.txt` as wheel (`.whl`) and source distribution (`.tar.gz`) files and bundle them into a `plugins.zip` for offline installation on MWAA, run:
+```bash
+./run.sh package-requirements
+```
+- This produces two artifacts in the `requirements/` directory:
+  - `plugins.zip` — all downloaded packages bundled into a single ZIP.
+  - `packaged_requirements.txt` — your original requirements prefixed with `--no-index` and `--find-links` flags for offline installation.
+- Upload `plugins.zip` to your MWAA S3 bucket and use `packaged_requirements.txt` as your requirements file. For more details, see [Installing Python dependencies using wheel files](https://docs.aws.amazon.com/mwaa/latest/userguide/best-practices-dependencies.html#best-practices-dependencies-different-ways) in the Amazon MWAA user guide.
+
 #### Startup script
 
 - There is a folder in each airflow version called `startup_script`. Add your script there as `startup.sh`

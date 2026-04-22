@@ -7,9 +7,12 @@ file parsing, validation, and package installation procedures.
 """
 # Python imports
 from datetime import timedelta
+from pathlib import Path
 import logging
 import os
 import re
+import subprocess as sp
+import zipfile
 
 # Our imports
 from mwaa.logging.config import MWAA_LOGGERS
@@ -110,3 +113,60 @@ async def install_user_requirements(cmd: str, environ: dict[str, str]):
             )
     else:
         logger.info("No user requirements to install.")
+
+
+def package_user_requirements(environ: dict[str, str]):
+    """
+    Download requirement packages (wheels and sdists) and bundle them into a
+    ZIP suitable for upload to MWAA as a plugins.zip.
+
+    Produces two artifacts under ``requirements/``:
+      - ``plugins.zip`` -- all downloaded packages (whl, tar.gz, zip, etc.)
+      - ``packaged_requirements.txt`` -- the original requirements prefixed
+        with ``--no-index`` and ``--find-links`` so MWAA installs offline
+        from the bundled packages.
+
+    :param environ: A dictionary containing the environment variables.
+    """
+    requirements_file = environ.get("MWAA__CORE__REQUIREMENTS_PATH")
+    logger.info(f"MWAA__CORE__REQUIREMENTS_PATH = {requirements_file}")
+    if not requirements_file or not os.path.isfile(requirements_file):
+        logger.info("No user requirements file found. Nothing to package.")
+        return
+
+    airflow_home = os.environ.get("AIRFLOW_HOME", "/usr/local/airflow")
+    plugins_dir = Path(airflow_home) / "plugins"
+    requirements_dir = Path(airflow_home) / "requirements"
+    plugins_dir.mkdir(parents=True, exist_ok=True)
+    requirements_dir.mkdir(parents=True, exist_ok=True)
+
+    logger.info(f"Downloading packages from {requirements_file} into {plugins_dir}")
+    result = sp.run(
+        ["pip3", "download", "-r", requirements_file, "-d", str(plugins_dir)],
+        env=environ,
+    )
+    if result.returncode != 0:
+        logger.error("pip3 download failed with exit code %d", result.returncode)
+        return
+
+    zip_path = requirements_dir / "plugins.zip"
+    logger.info(f"Creating {zip_path}")
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        for f in plugins_dir.iterdir():
+            if f.is_file():
+                zf.write(f, f.name)
+
+    packaged_req_path = requirements_dir / "packaged_requirements.txt"
+    original_content = _read_requirements_file(requirements_file)
+    packaged_req_path.write_text(
+        f"--no-index\n"
+        f"--find-links /usr/local/airflow/plugins\n"
+        f"{original_content}\n"
+    )
+    logger.info(
+        "Packaged requirements written to %s. Upload %s as your plugins.zip "
+        "and use %s as your requirements.txt on MWAA.",
+        packaged_req_path,
+        zip_path,
+        packaged_req_path,
+    )
