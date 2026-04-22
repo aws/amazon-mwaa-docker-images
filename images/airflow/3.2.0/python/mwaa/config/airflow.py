@@ -92,6 +92,11 @@ def _get_essential_airflow_core_config() -> Dict[str, str]:
 
     return {
         "AIRFLOW__CORE__LOAD_EXAMPLES": "False",
+        # MWAA does not support Multi-Team Deployments (introduced in Airflow 3.2.0).
+        # Enabling this would break IAM-based auth, CeleryExecutor management, and
+        # environment-level secrets/connections/pools. Block until MWAA explicitly
+        # supports multi-team.
+        "AIRFLOW__CORE__MULTI_TEAM": "False",
         **api_server_url,
         **fernet_key,
     }
