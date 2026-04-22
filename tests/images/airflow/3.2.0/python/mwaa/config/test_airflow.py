@@ -95,6 +95,12 @@ def test_core_config_with_api_url_and_fernet(env_helper):
     assert result["AIRFLOW__CORE__EXECUTION_API_SERVER_URL"] == \
         "https://api.example.com/execution"
     
+def test_core_config_multi_team_always_false():
+    """MULTI_TEAM must always be False and present in essential config (not overridable)."""
+    result = _get_essential_airflow_core_config()
+    assert result["AIRFLOW__CORE__MULTI_TEAM"] == "False"
+
+
 def test_core_config_invalid_fernet(env_helper):
     env_helper.set({
         "MWAA__CORE__FERNET_KEY": "invalid-json"
