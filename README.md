@@ -13,6 +13,8 @@ well. _Notice, however, that we do not plan to support previous Airflow versions
 
 ## Using the Airflow Image
 
+### Linux / macOS
+
 To experiment with the image using a vanilla Docker setup, follow these steps:
 
 0. _(Prerequisites)_ Ensure you have:
@@ -45,6 +47,84 @@ python3 create_venvs.py --target <development | production> --version 3.0.6
      - `{ENV_NAME}-WebServer`
 
 Airflow should be up and running now. You can access the web server on your localhost on port 8080.
+
+---
+
+### Windows (PowerShell 5.1)
+
+#### Prerequisites
+
+- Windows 10/11 with PowerShell 5.1 (built-in — no installation needed)
+- Python 3.11 or later — install from [python.org](https://www.python.org/downloads/) (check "Add Python to PATH" during install)
+- [Docker Desktop for Windows](https://docs.docker.com/desktop/install/windows-install/) set to **Linux containers** mode
+  - Right-click the Docker Desktop tray icon → "Switch to Linux containers" if needed
+- AWS CLI (optional — only required if you want CloudWatch log group creation)
+
+#### One-time setup
+
+1. Clone this repository.
+
+2. Allow PowerShell to run local scripts (run once as your user):
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+
+3. Create the Python virtual environments from the repo root:
+```powershell
+# Create venvs for all Airflow versions
+python create_venvs.py --target development
+
+# Or for a specific version only
+python create_venvs.py --target development --version <version>
+```
+
+#### Running
+
+4. Navigate to an Airflow version directory and run:
+```powershell
+cd images\airflow\<version>
+.\run.ps1
+```
+
+This will build the Docker images and start the full Airflow stack. On first run, the image build can take 10–20 minutes.
+
+- To test a `requirements.txt` without running Airflow:
+```powershell
+.\run.ps1 -Command test-requirements
+```
+- To test a `startup.sh` without running Airflow:
+```powershell
+.\run.ps1 -Command test-startup-script
+```
+
+#### AWS Credentials
+
+For local development without a real AWS account, `run.ps1` defaults to dummy values — ElasticMQ (the local SQS mock) does not validate credentials. To use real AWS services (e.g. CloudWatch logging), update the `$AccountId`, `$EnvName`, and `$env:AWS_*` values at the top of `run.ps1`.
+
+#### Logging in
+
+Once the stack is up, open `http://localhost:8080`. The default credentials are printed in the webserver container logs on startup.
+
+#### Adding DAGs
+
+Drop DAG files into `images\airflow\<version>\dags\`. They are live-mounted into the container — no restart needed. The scheduler picks them up within a minute or two.
+
+#### Stopping
+
+```powershell
+docker compose down
+```
+
+#### Troubleshooting
+
+| Problem | Fix |
+|---|---|
+| `cannot be loaded because running scripts is disabled` | Run `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser` |
+| `Docker is not in Linux containers mode` | Right-click Docker Desktop tray icon → Switch to Linux containers |
+| `python` not found | Install Python 3.11+ from python.org with "Add to PATH" checked |
+| `Unable to locate credentials` | Ensure `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` are non-empty in `run.ps1` |
+| Login fails at `http://localhost:8080` | Check the webserver container logs for the credentials printed on startup |
+| DAG not appearing | Check the scheduler container logs or verify the file exists in the `dags\` folder |
 
 ### Authentication from version 3.0.1 onward
 For environments created using this repository starting with version 3.0.1, we default to using `SimpleAuthManager`, 

@@ -52,15 +52,19 @@ REGION="us-west-2" # Keeping the region us-west-2 as default.
 export REGION
 
 # AWS Credentials
-AWS_ACCESS_KEY_ID="" # Put your credentials here.
-AWS_SECRET_ACCESS_KEY="" # Put your credentials here.
-AWS_SESSION_TOKEN="" # Put your credentials here.
+# For local running without a real AWS account, dummy values are sufficient —
+# ElasticMQ (local SQS) does not validate credentials, but boto3 requires
+# non-empty values to sign requests. Replace with real credentials if you
+# want CloudWatch logging or other real AWS service access.
+AWS_ACCESS_KEY_ID="local" # Put your credentials here, or leave as "local" for offline use.
+AWS_SECRET_ACCESS_KEY="local" # Put your credentials here, or leave as "local" for offline use.
+AWS_SESSION_TOKEN="" # Put your credentials here (leave empty for offline use).
 export AWS_ACCESS_KEY_ID
 export AWS_SECRET_ACCESS_KEY
 export AWS_SESSION_TOKEN
 
 # Set to http://host_name:8080
-MWAA__CORE__API_SERVER_URL="http://mwaa-316-webserver:8080"
+MWAA__CORE__API_SERVER_URL="http://mwaa-320-webserver:8080"
 
 # BOM Generation
 GENERATE_BILL_OF_MATERIALS="False"
