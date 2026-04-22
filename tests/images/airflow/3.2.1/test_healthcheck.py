@@ -4,7 +4,7 @@ import pytest
 from unittest.mock import patch
 
 # Add the directory containing healthcheck.py to the Python path
-AIRFLOW_VERSION = "3.2.0"
+AIRFLOW_VERSION = "3.2.1"
 HEALTHCHECK_DIR = os.path.abspath(
     os.path.join(
         os.path.dirname(__file__),

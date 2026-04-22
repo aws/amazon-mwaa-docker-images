@@ -8,7 +8,7 @@ import subprocess
 import sys
 
 def pytest_configure(config):
-    airflow_version = "3.2.0"
+    airflow_version = "3.2.1"
     requirements_path = os.path.join(
         os.path.dirname(__file__),
         "requirements.txt"

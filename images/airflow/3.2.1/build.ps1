@@ -1,7 +1,7 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    Builds the Amazon MWAA Airflow 3.2.0 Docker images on Windows.
+    Builds the Amazon MWAA Airflow 3.2.1 Docker images on Windows.
 
 .DESCRIPTION
     PowerShell equivalent of build.sh for Windows (PowerShell 5.1+).
@@ -102,7 +102,7 @@ if ($GenerateBom -eq "True") {
 # ---------------------------------------------------------------------------
 # Build base image
 # ---------------------------------------------------------------------------
-& $ContainerRuntime build -f .\Dockerfiles\Dockerfile.base -t amazon-mwaa-docker-images/airflow:3.2.0-base .\
+& $ContainerRuntime build -f .\Dockerfiles\Dockerfile.base -t amazon-mwaa-docker-images/airflow:3.2.1-base .\
 if ($LASTEXITCODE -ne 0) { throw "Failed to build base image." }
 
 # ---------------------------------------------------------------------------
@@ -111,7 +111,7 @@ if ($LASTEXITCODE -ne 0) { throw "Failed to build base image." }
 foreach ($dev in @("True", "False")) {
     foreach ($buildType in @("standard", "explorer", "explorer-privileged")) {
         $dockerfileName = "Dockerfile"
-        $tagName        = "3.2.0"
+        $tagName        = "3.2.1"
 
         if ($buildType -ne "standard") {
             $dockerfileName = "$dockerfileName-$buildType"
