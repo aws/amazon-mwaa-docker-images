@@ -1,0 +1,39 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres
+    environment:
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
+      - POSTGRES_DB=airflow
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow"]
+      interval: 5s
+      retries: 5
+
+  local-runner:
+    image: amazon-mwaa-docker-images/airflow:2.11.0-local
+    container_name: local-runner-1
+    # Bypasses entrypoint.py "unpacking" bug
+    entrypoint: "/bin/bash -c 'airflow db migrate && airflow standalone'"
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./dags:/usr/local/airflow/dags
+      - ./requirements:/usr/local/airflow/requirements
+    environment:
+      - AWS_ACCOUNT_ID=123456789012
+      - ENV_NAME=mwaa-local
+      - AWS_DEFAULT_REGION=us-east-1
+      - MWAA__DB__POSTGRES_HOST=postgres
+      - MWAA__DB__POSTGRES_PORT=5432
+      - MWAA__DB__POSTGRES_DB=airflow
+      - MWAA__DB__POSTGRES_USER=airflow
+      - MWAA__DB__POSTGRES_PASSWORD=airflow
+      - MWAA__DB__POSTGRES_SSLMODE=disable
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - SIMPLE_AUTH_MANAGER_ALL_ADMINS=True
+    depends_on:
+      postgres:
+        condition: service_healthy

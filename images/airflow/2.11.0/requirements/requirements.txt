@@ -1,56 +1,43 @@
+# --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.11.0/constraints-3.11.txt"
+# apache-airflow-providers-snowflake==6.1.0
+# dbt-core==1.8.6
 
-# =========================================================
-# AIRFLOW CONSTRAINTS 
-# =========================================================
+# # 1. Force the Airflow 2.11 / Python 3.11 Constraint (Crucial)
+# --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.11.0/constraints-3.11.txt"
+
+# # 2. Snowflake Stack (Modern versions for 2.11 compatibility)
+# apache-airflow-providers-snowflake>=6.1.0
+# snowflake-connector-python>=3.12.0
+# snowflake-sqlalchemy>=1.6.0
+
+# # 3. Data Stack (Let constraints pick the exact 2.11-compatible versions)
+# pandas
+# numpy
+
+# # 4. dbt Stack (v1.8 is highly stable for MWAA migrations)
+# dbt-core==1.8.0
+# dbt-snowflake==1.8.0
+# dbt-adapters==1.2.0
+# dbt-common==1.3.0
+
+# # 5. Kubernetes Stack (Matches the 2.11 Provider matrix)
+# apache-airflow-providers-cncf-kubernetes>=10.1.0
+# kubernetes>=30.0.0
+
+# # protobuf==4.25.7
+
+# 1. The Guardrail (MWAA 2.11 / Python 3.11)
 --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.11.0/constraints-3.11.txt"
 
-# =========================================================
-# CORE DATA STACK
-# =========================================================
-pandas==2.1.4
-numpy==1.26.4
-# agate==1.9.1
+# 2. Snowflake & Kubernetes (Let constraints handle these)
+apache-airflow-providers-snowflake
+apache-airflow-providers-cncf-kubernetes
+snowflake-connector-python
+pandas
+numpy
 
-# =========================================================
-# DBT STACK 
-# =========================================================
+# 3. The dbt "Stability" Block (These 4 pins are mandatory)
 dbt-core
 dbt-snowflake
-# dbt-snowflake==1.8.3
-# dbt-databricks==1.8.3
-
-# =========================================================
-# SNOWFLAKE + DATABRICKS CONNECTORS
-# =========================================================
-# snowflake-connector-python==3.12.1
-snowflake-connector-python==3.15.0
-# snowflake-sqlalchemy==1.6.1
-snowflake-sqlalchemy==1.7.3
-databricks-sdk==0.17.0
-# databricks-sql-connector==3.2.0
-# databricks-sql-connector==4.0.3
-
-# =========================================================
-# AIRFLOW PROVIDERS (MATCHED TO 2.11)
-# =========================================================
-# apache-airflow-providers-snowflake==6.1.0
-apache-airflow-providers-snowflake==6.3.1
-# apache-airflow-providers-dbt-cloud==3.11.0
-apache-airflow-providers-dbt-cloud==4.4.0
-# apache-airflow-providers-cncf-kubernetes==9.0.0
-apache-airflow-providers-cncf-kubernetes==10.5.0
-
-# =========================================================
-# FIXED COMPATIBILITY LAYER (CRITICAL)
-# =========================================================
-# pydantic==2.8.2
-# pydantic==2.11.4
-# requests==2.32.3
-# # SQLAlchemy==1.4.53
-# sqlalchemy==1.4.54
-
-# 🔥 KEY FIX: prevents dbt vs Airflow conflict
-# click==8.1.7
-# click==8.2.0
-# protobuf==4.25.3
-# protobuf==4.25.7
+dbt-adapters
+dbt-common
