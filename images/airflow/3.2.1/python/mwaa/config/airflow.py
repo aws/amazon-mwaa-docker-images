@@ -111,7 +111,21 @@ def _get_opinionated_airflow_core_config() -> Dict[str, str]:
 
     return {
         "AIRFLOW__CORE__EXECUTE_TASKS_NEW_PYTHON_INTERPRETER": "True",
-        "AIRFLOW__CORE__SENSITIVE_VAR_CONN_NAMES": "proxy,proxies",
+        "AIRFLOW__CORE__SENSITIVE_VAR_CONN_NAMES": "proxy,proxies"
+    }
+
+def _get_opinionated_airflow_api_config() -> Dict[str, str]:
+    """
+    Retrieve the environment variables for Airflow's "api" configuration section.
+
+    :returns A dictionary containing the environment variables.
+    """
+
+    return {
+        "AIRFLOW__API__WORKERS": "2",
+        "AIRFLOW__API__SERVER_TYPE": "gunicorn",
+        "AIRFLOW__API__WORKER_REFRESH_INTERVAL": "43200",
+        "AIRFLOW__API__WORKER_REFRESH_BATCH_SIZE": "1"
     }
 
 
@@ -408,6 +422,7 @@ def get_opinionated_airflow_config() -> Dict[str, str]:
     """
     return {
         **_get_opinionated_airflow_core_config(),
+        **_get_opinionated_airflow_api_config(),
         **_get_opinionated_airflow_scheduler_config(),
         **_get_opinionated_airflow_secrets_config(),
         **_get_opinionated_airflow_usage_data_config(),
