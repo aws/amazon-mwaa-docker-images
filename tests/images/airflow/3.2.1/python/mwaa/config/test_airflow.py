@@ -69,10 +69,11 @@ def test_essential_airflow_executor_config(monkeypatch, executor_name, expected_
         extra_config = json.loads(result["AIRFLOW__CELERY__EXTRA_CELERY_CONFIG"])
         assert "broker_transport" in extra_config
         assert extra_config["broker_transport"] == "mocked.transport.Transport"
-        assert extra_config["broker_transport_options"]["visibility_timeout"] == 43200
         assert extra_config["broker_transport_options"]["is_secure"] is True
         assert extra_config["broker_transport_options"]["region"] == "us-east-1"
         assert "test-queue" in extra_config["broker_transport_options"]["predefined_queues"]
+        assert extra_config["broker_transport_options"]["visibility_timeout"] == 43200
+        assert result["AIRFLOW__CELERY_BROKER_TRANSPORT_OPTIONS__VISIBILITY_TIMEOUT"] == "43200"
 
 @pytest.mark.parametrize("invalid_executor", ["UnknownExecutor", "unknownexecutor"])
 def test_invalid_executor(invalid_executor):

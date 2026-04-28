@@ -17,9 +17,9 @@ def test_get_broker_transport_config():
         assert result["broker_transport"] == "mocked.transport.Transport"
         assert result["broker_transport_options"]["region"] == "us-east-1"
         assert result["broker_transport_options"]["is_secure"] is True
-        assert result["broker_transport_options"]["visibility_timeout"] == 43200
         assert result["broker_transport_options"]["predefined_queues"]["test-queue"]["url"] == "https://sqs.aws/test-queue"
         assert result["broker_transport_options"]["predefined_queues"]["default"]["url"] == "https://sqs.aws/test-queue"
+        assert result["broker_transport_options"]["visibility_timeout"] == 43200
         # Ensure only broker_transport and broker_transport_options are present
         assert set(result.keys()) == {"broker_transport", "broker_transport_options"}
 

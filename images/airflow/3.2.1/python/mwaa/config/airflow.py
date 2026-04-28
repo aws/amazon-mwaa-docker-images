@@ -55,6 +55,7 @@ def _get_essential_airflow_executor_config(executor_type: str) -> Dict[str, str]
                 "AIRFLOW__CELERY__EXTRA_CELERY_CONFIG": json.dumps(extra_celery_config),
                 "AIRFLOW__CELERY__RESULT_BACKEND": f"db+{get_db_connection_string()}",
                 "AIRFLOW__CELERY__WORKER_ENABLE_REMOTE_CONTROL": "False",
+                "AIRFLOW__CELERY_BROKER_TRANSPORT_OPTIONS__VISIBILITY_TIMEOUT": "43200",
                 "AIRFLOW__CORE__EXECUTOR": "CeleryExecutor",
                 "AIRFLOW__OPERATORS__DEFAULT_QUEUE": sqs_queue_name,
             }
