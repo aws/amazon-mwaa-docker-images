@@ -8,6 +8,7 @@ from mwaa.config.airflow import (
     _get_essential_airflow_executor_config,
     _get_essential_airflow_core_config,
     _get_opinionated_airflow_core_config,
+    _get_opinionated_airflow_api_config,
     get_user_airflow_config,
     _get_essential_airflow_db_config,
     _get_opinionated_airflow_db_config,
@@ -119,6 +120,37 @@ def test_get_opinionated_airflow_core_config():
 
     assert result["AIRFLOW__CORE__EXECUTE_TASKS_NEW_PYTHON_INTERPRETER"] == "True"
     assert result["AIRFLOW__CORE__SENSITIVE_VAR_CONN_NAMES"] == "proxy,proxies"
+
+# ---------------------------------
+# Opinionated Airflow API Config Tests
+# ---------------------------------
+def test_get_opinionated_airflow_api_config():
+    result = _get_opinionated_airflow_api_config()
+
+    expected = {
+        "AIRFLOW__API__SERVER_TYPE": "gunicorn",
+        "AIRFLOW__API__WORKER_REFRESH_INTERVAL": "43200",
+        "AIRFLOW__API__WORKER_REFRESH_BATCH_SIZE": "1",
+    }
+    assert result == expected
+
+
+def test_get_opinionated_airflow_api_config_keys_are_airflow_api_section():
+    """All keys must belong to the AIRFLOW__API__ section."""
+    result = _get_opinionated_airflow_api_config()
+
+    for key in result:
+        assert key.startswith("AIRFLOW__API__"), (
+            f"Key {key} does not belong to the AIRFLOW__API__ section"
+        )
+
+
+def test_get_opinionated_airflow_api_config_values_are_strings():
+    """All values must be strings (Airflow env-var convention)."""
+    result = _get_opinionated_airflow_api_config()
+
+    for key, value in result.items():
+        assert isinstance(value, str), f"Value for {key} is not a string: {type(value)}"
 
 # ---------------------------------
 # User Airflow Config Tests
@@ -556,6 +588,12 @@ def test_get_opinionated_airflow_config_merges(monkeypatch):
 
     monkeypatch.setattr(
         airflow,
+        "_get_opinionated_airflow_api_config",
+        lambda: {"API": "1"},
+    )
+
+    monkeypatch.setattr(
+        airflow,
         "_get_opinionated_airflow_scheduler_config",
         lambda: {"SCHEDULER": "1"},
     )
@@ -582,6 +620,7 @@ def test_get_opinionated_airflow_config_merges(monkeypatch):
 
     assert result == {
         "CORE": "1",
+        "API": "1",
         "SCHEDULER": "1",
         "SECRETS": "1",
         "USAGE": "1",

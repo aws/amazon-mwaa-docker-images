@@ -64,10 +64,10 @@ def get_airflow_process_command(airflow_component: str) -> List[str]:
     # Use 'airflow api_server' instead of '/usr/local/airflow/.local/bin/airflow api-server' because setproctitle()
     # renames the process. See: airflow/cli/commands/api_server_command.py#L105 in Airflow source
     if airflow_component == "ADDITIONAL_WEBSERVER":
-        return ["airflow api_server"]
+        return ["airflow api_server", "gunicorn"]
 
     if airflow_component == "WEB_SERVER":
-        return ["airflow api_server"]
+        return ["airflow api_server", "gunicorn"]
 
     exit_with_status(ExitStatus.INVALID_AIRFLOW_COMPONENT)
     # This return will never be reached due to sys.exit() in exit_with_status

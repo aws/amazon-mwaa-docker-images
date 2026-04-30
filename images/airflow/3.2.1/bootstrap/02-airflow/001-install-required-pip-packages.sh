@@ -8,6 +8,7 @@ source /bootstrap/common.sh
 REQUIRED_PACKAGES=(
     "apache-airflow-providers-amazon[aiobotocore]"
     "apache-airflow[celery,statsd]==${AIRFLOW_VERSION}"
+    "apache-airflow-core[gunicorn]==${AIRFLOW_VERSION}"
     "apache-airflow-providers-postgres"
     "apache-airflow-providers-fab"
     "celery[sqs]"
