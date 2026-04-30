@@ -122,7 +122,6 @@ def _get_opinionated_airflow_api_config() -> Dict[str, str]:
     """
 
     return {
-        "AIRFLOW__API__WORKERS": "2",
         "AIRFLOW__API__SERVER_TYPE": "gunicorn",
         "AIRFLOW__API__WORKER_REFRESH_INTERVAL": "43200",
         "AIRFLOW__API__WORKER_REFRESH_BATCH_SIZE": "1"
