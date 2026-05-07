@@ -16,6 +16,7 @@ import atexit
 import fcntl
 import logging
 import os
+import re
 import signal
 import subprocess
 import sys
@@ -38,6 +39,44 @@ _SUBPROCESS_LOG_POLL_IDLE_SLEEP_INTERVAL = timedelta(milliseconds=100)
 
 
 module_logger = logging.getLogger(__name__)
+
+
+# Patterns to extract log level from subprocess output lines.
+# Airflow standard format: "[2025-01-01 00:00:00 +0000] {module.py:123} INFO - message"
+_STANDARD_LOG_LEVEL_RE = re.compile(
+    r"\}\s*(DEBUG|INFO|WARNING|ERROR|CRITICAL)\s*[-–]"
+)
+# Structlog format: "2026-05-06T01:00:14.610844Z [info     ] message"
+# The level is in brackets with optional trailing spaces after a timestamp.
+_STRUCTLOG_LEVEL_RE = re.compile(
+    r"\[(debug|info|warning|error|critical)\s*\]"
+)
+
+_LEVEL_MAP = {
+    "debug": logging.DEBUG,
+    "info": logging.INFO,
+    "warning": logging.WARNING,
+    "error": logging.ERROR,
+    "critical": logging.CRITICAL,
+}
+
+
+def _parse_log_level(line: str) -> int:
+    """
+    Parse the log level from a subprocess output line.
+
+    Supports both structlog format and standard Airflow log format.
+    Returns logging.INFO if the level cannot be determined.
+    """
+    # Try structlog format first (most common in Airflow 3.1+)
+    m = _STRUCTLOG_LEVEL_RE.search(line)
+    if m:
+        return _LEVEL_MAP.get(m.group(1).lower(), logging.INFO)
+    # Try standard Airflow format (legacy)
+    m = _STANDARD_LOG_LEVEL_RE.search(line)
+    if m:
+        return logging.getLevelName(m.group(1))
+    return logging.INFO
 
 
 _ALL_SUBPROCESSES: List["Subprocess"] = []
@@ -202,8 +241,16 @@ class Subprocess:
         until process has terminated and stream is empty.
         If stream is empty but process is still running then sleep
         for small duration to avoid wasted cpu resources.
+
+        Log lines are parsed to extract their actual severity level and filtered
+        against the configured AIRFLOW_CONSOLE_LOG_LEVEL threshold. This is necessary
+        because Airflow 3.x uses structlog which outputs all levels to stdout
+        regardless of configuration.
         """
         stream = process.stdout
+        configured_level = logging.getLevelName(
+            os.environ.get('AIRFLOW_CONSOLE_LOG_LEVEL', 'INFO')
+        )
         while True:
             if not stream or stream.closed:
                 break
@@ -214,14 +261,14 @@ class Subprocess:
                 else:
                     time.sleep(_SUBPROCESS_LOG_POLL_IDLE_SLEEP_INTERVAL.total_seconds())
             else:
-                log_level = os.environ['AIRFLOW_CONSOLE_LOG_LEVEL']
                 decoded_line = line.decode("utf-8", errors="replace").rstrip()
-                match log_level:
-                    case "ERROR":
+                line_level = _parse_log_level(decoded_line)
+                if line_level >= configured_level:
+                    if line_level >= logging.ERROR:
                         self.process_logger.error(decoded_line)
-                    case "WARNING":
+                    elif line_level >= logging.WARNING:
                         self.process_logger.warning(decoded_line)
-                    case _:
+                    else:
                         self.process_logger.info(decoded_line)
     
     def _get_subprocess_status(self, process: Popen[Any]):
