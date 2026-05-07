@@ -49,7 +49,7 @@ def create_venv(path: Path, development_build: bool, recreate: bool = False):
 
     if not venv_path.exists():
         print(f"> Creating virtualenv in directory: {venv_path}")
-        venv.create(venv_path, with_pip=True, symlinks=True)
+        venv.create(venv_path, with_pip=True, symlinks=(sys.platform != "win32"))
     else:
         print(f"> Virtualenv already exists in {venv_path}")
 
@@ -109,8 +109,14 @@ def pip_install(venv_dir: Path, *args: str):
     :param venv_dir: The path to the venv directory.
     :param venv_dir: The path to the requirements.txt file.
     """
+    # On Windows the venv layout uses Scripts\python.exe; on Unix it uses bin/python
+    if sys.platform == "win32":
+        python_bin = os.path.join(venv_dir, "Scripts", "python.exe")
+    else:
+        python_bin = os.path.join(venv_dir, "bin", "python")
+
     subprocess.run(
-        [os.path.join(venv_dir, "bin", "python"), "-m", "pip", "install", *args],
+        [python_bin, "-m", "pip", "install", *args],
         check=True,
     )
 

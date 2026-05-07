@@ -30,6 +30,15 @@ def _fix_shared_log_volume_permissions():
         except Exception as e:
             print(f"WARNING: Could not fix ownership of {log_dir}: {e}")
 
+        # Ensure the dag_processor log directory exists so Fluent Bit's tail
+        # input does not error when scanning the glob. The directory is not
+        # guaranteed to exist at container start.
+        dag_processor_dir = os.path.join(log_dir, "dag_processor")
+        try:
+            os.makedirs(dag_processor_dir, exist_ok=True)
+        except Exception as e:
+            print(f"WARNING: Could not create {dag_processor_dir}: {e}")
+
 _fix_shared_log_volume_permissions()
 
 # Setup logging first thing to make sure all logs happen under the right setup. The
@@ -223,6 +232,7 @@ def create_queue() -> None:
 
 async def main() -> None:
     """Start execution of the script."""
+    _fix_shared_log_volume_permissions()
     try:
         (
             _,
