@@ -12,7 +12,10 @@ import logging
 import os
 import re
 import sys
+import threading
 import traceback
+import weakref
+from queue import Queue
 
 # 3rd party imports
 from airflow.models.taskinstance import TaskInstance
@@ -26,14 +29,75 @@ import boto3
 import socket
 import time
 import watchtower
+from fluent import asynchandler as fluent_handler
+from fluent import asyncsender
 
 # Our imports
 from mwaa.logging.utils import parse_arn, throttle
 from mwaa.utils.statsd import get_statsd
 
+USE_NON_CRITICAL_LOGGING = os.environ.get('USE_NON_CRITICAL_LOGGING', 'false')
+
 
 LOG_GROUP_INIT_WAIT_SECONDS = 900
 ERROR_REPORTING_WAIT_SECONDS = 60
+
+
+class ForkSafeFluentSender(asyncsender.FluentSender):
+    """
+    A FluentSender subclass that is safe to inherit across fork().
+
+    The base FluentSender uses threading.Lock and Queue (which also uses
+    threading.Lock internally). These locks are not fork-safe: if a thread
+    holds one at fork time, the child inherits it locked with no thread to
+    release it, causing a permanent deadlock on futex.
+
+    This subclass registers an os.register_at_fork() callback that
+    reinitializes these locks in the child process after fork. This follows
+    the same pattern Python's logging.Handler uses to make its RLock
+    fork-safe (see CPython logging/__init__.py _register_at_fork_reinit_lock).
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Use a weakref so this callback doesn't prevent the sender from being
+        # garbage collected. os.register_at_fork callbacks are never unregistered,
+        # so a strong reference would keep the sender alive forever.
+        weak_self = weakref.ref(self)
+        # Register a callback that Python will invoke in the child process
+        # immediately after fork(), before any user code runs. This gives us
+        # a chance to reset inherited thread-unsafe state.
+        os.register_at_fork(
+            after_in_child=lambda: ForkSafeFluentSender._reinit_after_fork(weak_self)
+        )
+
+    @staticmethod
+    def _reinit_after_fork(weak_self):
+        self = weak_self()
+        if self is None:
+            return
+        # 1. Replace self.lock (threading.Lock): The log-emitting thread may
+        #    have held this lock at fork time. The child inherits it locked,
+        #    but the owning thread doesn't exist in the child.
+        self.lock = threading.Lock()
+        # 2. Replace self._queue (Queue): Python's Queue uses threading.Lock
+        #    internally (Queue.mutex). The _send_loop thread holds this during
+        #    get(). Same deadlock risk as self.lock.
+        self._queue = Queue(maxsize=self._queue_maxsize)
+        # 3. Mark closed: The _send_loop thread doesn't survive fork, so this
+        #    sender can never deliver anything. This makes _send() return False
+        #    immediately instead of accumulating data in a queue nothing drains.
+        self._closed = True
+        # 4. Close inherited socket: Prevents the child from sharing a TCP
+        #    connection with the parent, which would corrupt data on the wire.
+        self._close()
+
+
+class ForkSafeFluentHandler(fluent_handler.FluentHandler):
+    """A FluentHandler that uses ForkSafeFluentSender for fork-safety."""
+
+    def getSenderClass(self):
+        return ForkSafeFluentSender
 
 
 # fmt: off
@@ -98,13 +162,15 @@ class BaseLogHandler(logging.Handler):
         self.log_group_name, self.region_name = parse_arn(log_group_arn)
         self.handler = None
         self.logs_source = "Unknown"
+        self.NON_CRITICAL_LOGGING_ENABLED = USE_NON_CRITICAL_LOGGING.lower() == 'true'
+        self.log_stream = None
 
         # TODO Find a nice and unambiguous solution to the craziness of super() and MRO.
         logging.Handler.__init__(self)
 
         self.stats = get_statsd()
 
-    def create_watchtower_handler(
+    def create_cloudwatch_handler(
         self,
         stream_name: str,
         logs_source: str,
@@ -125,7 +191,47 @@ class BaseLogHandler(logging.Handler):
         """
         logs_client: CloudWatchLogsClient = boto3.client("logs")  # type: ignore
 
-        if self.enabled:
+        self.logs_source = logs_source
+        self.log_stream = stream_name
+
+        if self.enabled and self.NON_CRITICAL_LOGGING_ENABLED:
+            self.handler = ForkSafeFluentHandler(
+                'customer.logs',
+                host='localhost',
+                port=24224
+            )
+            if self.formatter:
+                # Wrap the existing formatter to add routing fields
+                original_formatter = self.formatter
+
+                log_group = self.log_group_name
+                log_stream = self.log_stream
+
+                class RoutingFormatter(logging.Formatter):
+                    def format(self, record) -> Dict[str, str]:  # type: ignore[override]
+                        # Get the original formatted message
+                        formatted_msg = original_formatter.format(record)
+                        # Return dict with both the original format and routing fields
+                        return {
+                            'log_group': log_group,
+                            'log_stream': log_stream,
+                            'message': formatted_msg
+                        }
+                self.handler.setFormatter(RoutingFormatter())
+            else:
+                log_group = self.log_group_name
+                log_stream = self.log_stream
+                # If no formatter exists, use a basic one with routing fields
+                class DefaultRoutingFormatter(logging.Formatter):
+                    def format(self, record) -> Dict[str, str]:  # type: ignore[override]
+                        return {
+                            'log_group': log_group,
+                            'log_stream': log_stream,
+                            'message': record.getMessage()
+                        }
+                self.handler.setFormatter(DefaultRoutingFormatter())
+
+        elif self.enabled:
             self.handler = watchtower.CloudWatchLogHandler(
                 log_group_name=self.log_group_name,
                 log_stream_name=stream_name,
@@ -136,7 +242,6 @@ class BaseLogHandler(logging.Handler):
             )
             if self.formatter:
                 self.handler.setFormatter(self.formatter)
-        self.logs_source = logs_source
 
     def close(self):
         """Close the log handler (by closing the underlying log handler)."""
@@ -265,7 +370,33 @@ class TaskLogHandler(BaseLogHandler, CloudwatchTaskHandler):
         # https://github.com/aws/amazon-mwaa-docker-images/issues/57
         logs_client: CloudWatchLogsClient = boto3.client("logs")  # type: ignore
 
-        if self.enabled:
+        if self.enabled and self.NON_CRITICAL_LOGGING_ENABLED:
+            self.handler = ForkSafeFluentHandler(
+                'customer.task.logs',
+                host='localhost',
+                port=24224,
+                queue_maxsize=50000,
+            )
+
+            original_formatter = self.formatter
+            log_group = self.log_group_name
+            stream_name = self._render_filename(ti, ti.try_number)
+
+            class TaskFormatter(logging.Formatter):
+                def format(self, record) -> Dict[str, str]:  # type: ignore[override]
+                    if original_formatter:
+                        formatted_msg = original_formatter.format(record)
+                    else:
+                        formatted_msg = record.getMessage()
+                    return {
+                        'message': formatted_msg,
+                        'log_group': log_group,
+                        'log_stream': stream_name
+                    }
+
+            self.handler.setFormatter(TaskFormatter())
+
+        elif self.enabled:
             # identical to open-source implementation, except create_log_group set to False
             self.handler = watchtower.CloudWatchLogHandler(
                 log_group_name=self.log_group_name,
@@ -274,7 +405,6 @@ class TaskLogHandler(BaseLogHandler, CloudwatchTaskHandler):
                 use_queues=True,
                 create_log_group=False,
             )
-
             if self.formatter:
                 self.handler.setFormatter(self.formatter)
         else:
@@ -326,7 +456,7 @@ class DagProcessorManagerLogHandler(BaseLogHandler):
         [1] https://airflow.apache.org/docs/apache-airflow/2.9.2/configurations-ref.html#config-logging-log-processor-filename-template
         """
         super().__init__(log_group_arn, kms_key_arn, enabled)
-        self.create_watchtower_handler(stream_name, "DAGProcessorManager")
+        self.create_cloudwatch_handler(stream_name, "DAGProcessorManager")
 
     def _print(self, msg: str):
         # The DAG processing loggers are not started in the same way that the Web
@@ -385,7 +515,7 @@ class DagProcessingLogHandler(BaseLogHandler):
         :param filename: The name of the DAG file being processed.
         """
         stream_name = self._render_filename(filename)
-        self.create_watchtower_handler(
+        self.create_cloudwatch_handler(
             stream_name,
             logs_source="DAGProcessing",
             # cannot use queues/batching with DAG processing, since the DAG processor
@@ -469,4 +599,4 @@ class SubprocessLogHandler(BaseLogHandler):
         # not guaranteed unique and may be reused so include an epoch for uniqueness and
         # easy sorting chronologically.
         _stream_name = "%s_%s_%s.log" % (stream_name_prefix, hostname, epoch)
-        self.create_watchtower_handler(_stream_name, logs_source)
+        self.create_cloudwatch_handler(_stream_name, logs_source)
