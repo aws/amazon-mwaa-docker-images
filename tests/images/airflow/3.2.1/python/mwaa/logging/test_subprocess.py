@@ -33,9 +33,10 @@ class TestParseLogLevel:
         ("[2025-01-01 00:00:00 +0000] {scheduler_job_runner.py:123} INFO - msg", logging.INFO),
         ("[2025-01-01 00:00:00 +0000] {scheduler_job_runner.py:123} WARNING - msg", logging.WARNING),
         ("[2025-01-01 00:00:00 +0000] {scheduler_job_runner.py:123} ERROR - msg", logging.ERROR),
-        # Unrecognized defaults to INFO
-        ("Some random output without a level indicator", logging.INFO),
-        ("================================================================================", logging.INFO),
+        # Unrecognized returns None so the caller can inherit the last recognized level.
+        ("Some random output without a level indicator", None),
+        ("================================================================================", None),
+        ("Traceback (most recent call last):", None),
     ])
     def test_parse_log_level(self, line, expected):
         assert _parse_log_level(line) == expected
@@ -56,7 +57,11 @@ class TestReadSubprocessLogStream:
         subprocess_instance.process_logger.info.assert_not_called()
 
     def test_mixed_levels_filtered_at_warning(self, subprocess_instance):
-        """Only WARNING+ lines pass when threshold is WARNING"""
+        """Only WARNING+ lines pass when threshold is WARNING.
+
+        The trailing unrecognized line inherits ERROR from the preceding
+        legacy ERROR line.
+        """
         mock_process = Mock(spec=Popen)
         mock_process.stdout = BytesIO(
             b"2026-05-06T01:00:14Z [info     ] should be filtered\n"
@@ -74,7 +79,8 @@ class TestReadSubprocessLogStream:
 
         subprocess_instance.process_logger.info.assert_not_called()
         assert subprocess_instance.process_logger.warning.call_count == 1
-        assert subprocess_instance.process_logger.error.call_count == 2
+        # 2 explicit ERROR lines + 1 unrecognized line inheriting ERROR.
+        assert subprocess_instance.process_logger.error.call_count == 3
 
     def test_all_lines_pass_at_info_level(self, subprocess_instance):
         """All lines pass when threshold is INFO (including unrecognized)"""
@@ -110,3 +116,57 @@ class TestReadSubprocessLogStream:
 
         assert mock_process.poll.call_count == 3
         subprocess_instance.process_logger.warning.assert_called_once()
+
+    def test_traceback_continuation_after_error_header_at_warning(self, subprocess_instance):
+        """Traceback lines after an [error] header inherit ERROR and survive WARNING."""
+        mock_process = Mock(spec=Popen)
+        mock_process.stdout = BytesIO(
+            b"2026-05-06T01:00:14Z [error    ] boom\n"
+            b"Traceback (most recent call last):\n"
+            b'  File "<test>", line 1, in <module>\n'
+            b'    raise ValueError("simulated failure")\n'
+            b"ValueError: simulated failure\n"
+        )
+        mock_process.poll.return_value = 0
+
+        subprocess_instance.process_logger = Mock()
+        with patch.dict(os.environ, {'AIRFLOW_CONSOLE_LOG_LEVEL': 'WARNING'}):
+            subprocess_instance._read_subprocess_log_stream(mock_process)
+
+        assert subprocess_instance.process_logger.error.call_count == 5
+        subprocess_instance.process_logger.info.assert_not_called()
+        subprocess_instance.process_logger.warning.assert_not_called()
+
+    @pytest.mark.parametrize("threshold,expected_info,expected_warning,expected_error", [
+        # Routing: DEBUG/INFO -> .info(), WARNING -> .warning(), ERROR/CRITICAL -> .error().
+        # Lines below `configured_level` are dropped before routing.
+        ("DEBUG",    2, 1, 2),
+        ("INFO",     1, 1, 2),
+        ("WARNING",  0, 1, 2),
+        ("ERROR",    0, 0, 2),
+        # [critical] passes and is routed via .error() (levelno=40); the
+        # downstream handler configured at CRITICAL=50 will drop it. No
+        # CRITICAL bucket in _read_subprocess_log_stream.
+        ("CRITICAL", 0, 0, 1),
+    ])
+    def test_threshold_sweep(
+        self, subprocess_instance, threshold, expected_info, expected_warning, expected_error
+    ):
+        """Filter behavior across all five AIRFLOW_CONSOLE_LOG_LEVEL values."""
+        mock_process = Mock(spec=Popen)
+        mock_process.stdout = BytesIO(
+            b"2026-05-06T01:00:14Z [debug    ] d\n"
+            b"2026-05-06T01:00:14Z [info     ] i\n"
+            b"2026-05-06T01:00:14Z [warning  ] w\n"
+            b"2026-05-06T01:00:14Z [error    ] e\n"
+            b"2026-05-06T01:00:14Z [critical ] c\n"
+        )
+        mock_process.poll.return_value = 0
+
+        subprocess_instance.process_logger = Mock()
+        with patch.dict(os.environ, {'AIRFLOW_CONSOLE_LOG_LEVEL': threshold}):
+            subprocess_instance._read_subprocess_log_stream(mock_process)
+
+        assert subprocess_instance.process_logger.info.call_count == expected_info
+        assert subprocess_instance.process_logger.warning.call_count == expected_warning
+        assert subprocess_instance.process_logger.error.call_count == expected_error

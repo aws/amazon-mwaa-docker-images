@@ -61,12 +61,14 @@ _LEVEL_MAP = {
 }
 
 
-def _parse_log_level(line: str) -> int:
+def _parse_log_level(line: str) -> Optional[int]:
     """
     Parse the log level from a subprocess output line.
 
-    Supports both structlog format and standard Airflow log format.
-    Returns logging.INFO if the level cannot be determined.
+    Supports both structlog and standard Airflow log formats. Returns ``None``
+    when no level prefix is present so the caller can inherit the last
+    recognized level (for example, a traceback body that follows an ``[error]``
+    header).
     """
     # Try structlog format first (most common in Airflow 3.1+)
     m = _STRUCTLOG_LEVEL_RE.search(line)
@@ -76,7 +78,7 @@ def _parse_log_level(line: str) -> int:
     m = _STANDARD_LOG_LEVEL_RE.search(line)
     if m:
         return logging.getLevelName(m.group(1))
-    return logging.INFO
+    return None
 
 
 _ALL_SUBPROCESSES: List["Subprocess"] = []
@@ -242,15 +244,18 @@ class Subprocess:
         If stream is empty but process is still running then sleep
         for small duration to avoid wasted cpu resources.
 
-        Log lines are parsed to extract their actual severity level and filtered
-        against the configured AIRFLOW_CONSOLE_LOG_LEVEL threshold. This is necessary
-        because Airflow 3.x uses structlog which outputs all levels to stdout
-        regardless of configuration.
+        Log lines are parsed to extract their severity level and filtered
+        against the configured AIRFLOW_CONSOLE_LOG_LEVEL threshold, because
+        Airflow 3.x uses structlog which outputs all levels to stdout
+        regardless of configuration. Lines without a recognizable level
+        prefix inherit the last recognized level so multi-line messages
+        (for example, tracebacks) are not split across thresholds.
         """
         stream = process.stdout
         configured_level = logging.getLevelName(
             os.environ.get('AIRFLOW_CONSOLE_LOG_LEVEL', 'INFO')
         )
+        last_level = logging.INFO
         while True:
             if not stream or stream.closed:
                 break
@@ -262,7 +267,12 @@ class Subprocess:
                     time.sleep(_SUBPROCESS_LOG_POLL_IDLE_SLEEP_INTERVAL.total_seconds())
             else:
                 decoded_line = line.decode("utf-8", errors="replace").rstrip()
-                line_level = _parse_log_level(decoded_line)
+                parsed_level = _parse_log_level(decoded_line)
+                if parsed_level is not None:
+                    last_level = parsed_level
+                    line_level = parsed_level
+                else:
+                    line_level = last_level
                 if line_level >= configured_level:
                     if line_level >= logging.ERROR:
                         self.process_logger.error(decoded_line)
