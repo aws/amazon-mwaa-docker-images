@@ -22,10 +22,7 @@ import os
 import re
 import structlog
 import sys
-import threading
 import traceback
-import weakref
-from queue import Queue
 
 # 3rd party imports
 from airflow.models.taskinstance import TaskInstance
@@ -42,8 +39,6 @@ import boto3
 import socket
 import time
 import watchtower
-from fluent import asynchandler as fluent_handler
-from fluent import asyncsender
 
 # Our imports
 from mwaa.logging.fork_safe_handler import ForkSafeFluentHandler
