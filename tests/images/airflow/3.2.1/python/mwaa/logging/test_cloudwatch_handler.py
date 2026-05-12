@@ -39,7 +39,7 @@ def mock_watchtower():
 
 @pytest.fixture
 def mock_fluent():
-    with patch('mwaa.logging.cloudwatch_handlers.fluent_handler.FluentHandler') as mock:
+    with patch('mwaa.logging.fork_safe_handler.ForkSafeFluentHandler') as mock:
         yield mock
 
 @pytest.fixture(autouse=True)

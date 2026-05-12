@@ -16,15 +16,17 @@ from unittest.mock import Mock
 
 import pytest
 
-from mwaa.logging.cloudwatch_handlers import (
-    ForkSafeFluentHandler,
-    ForkSafeFluentSender,
-)
+# Note: ForkSafeFluentHandler and ForkSafeFluentSender are imported inside
+# fixtures and test methods rather than at module level. This is because the
+# test suite uses an autouse fixture that reloads the cloudwatch_handlers module,
+# which creates new class objects. Top-level imports would hold references to
+# the original (pre-reload) classes, causing `is` and `isinstance` checks to fail.
 
 
 @pytest.fixture
 def sender():
     """Create a ForkSafeFluentSender and ensure cleanup (stops background thread)."""
+    from mwaa.logging.fork_safe_handler import ForkSafeFluentSender
     s = ForkSafeFluentSender('test', host='localhost', port=24224)
     yield s
     s.close()
@@ -33,6 +35,7 @@ def sender():
 @pytest.fixture
 def handler():
     """Create a ForkSafeFluentHandler and ensure cleanup."""
+    from mwaa.logging.fork_safe_handler import ForkSafeFluentHandler
     h = ForkSafeFluentHandler('test', host='localhost', port=24224)
     yield h
     h.close()
@@ -53,6 +56,7 @@ class TestForkSafeFluentSender:
         sender.lock. In the child, _reinit_after_fork replaces it with a
         fresh unlocked Lock so subsequent code won't deadlock.
         """
+        from mwaa.logging.fork_safe_handler import ForkSafeFluentSender
         sender.lock.acquire()
 
         ForkSafeFluentSender._reinit_after_fork(weakref.ref(sender))
@@ -66,6 +70,7 @@ class TestForkSafeFluentSender:
         The _send_loop thread doesn't survive fork, so the sender can never
         deliver anything. _closed=True makes _send() return False immediately.
         """
+        from mwaa.logging.fork_safe_handler import ForkSafeFluentSender
         ForkSafeFluentSender._reinit_after_fork(weakref.ref(sender))
 
         assert sender._closed is True
@@ -77,6 +82,7 @@ class TestForkSafeFluentSender:
         If the _send_loop thread held Queue.mutex at fork time, the child
         inherits it locked. Replacing the Queue avoids this.
         """
+        from mwaa.logging.fork_safe_handler import ForkSafeFluentSender
         sender._queue.put(b'test data', block=False)
 
         ForkSafeFluentSender._reinit_after_fork(weakref.ref(sender))
@@ -89,6 +95,7 @@ class TestForkSafeFluentSender:
         Prevents the child from sharing a TCP connection with the parent,
         which would corrupt data on the wire (interleaved writes).
         """
+        from mwaa.logging.fork_safe_handler import ForkSafeFluentSender
         sender.socket = Mock()
 
         ForkSafeFluentSender._reinit_after_fork(weakref.ref(sender))
@@ -102,6 +109,7 @@ class TestForkSafeFluentSender:
         on the inherited handler before set_context() replaces it, the
         message is silently dropped instead of accumulating in a dead queue.
         """
+        from mwaa.logging.fork_safe_handler import ForkSafeFluentSender
         ForkSafeFluentSender._reinit_after_fork(weakref.ref(sender))
 
         assert sender._send(b'test') is False
@@ -113,6 +121,7 @@ class TestForkSafeFluentSender:
         may fire after the sender is GC'd. Using weakref ensures this case
         is handled gracefully (no crash, no action).
         """
+        from mwaa.logging.fork_safe_handler import ForkSafeFluentSender
         sender = ForkSafeFluentSender('test', host='localhost', port=24224)
         ref = weakref.ref(sender)
         sender.close()
@@ -129,6 +138,7 @@ class TestForkSafeFluentSender:
         in its inherited locked state, this would deadlock. After reinit,
         the lock is fresh and unlocked, so close() completes normally.
         """
+        from mwaa.logging.fork_safe_handler import ForkSafeFluentSender
         ForkSafeFluentSender._reinit_after_fork(weakref.ref(sender))
 
         completed = []
@@ -153,10 +163,12 @@ class TestForkSafeFluentHandler:
         This is the extension point that makes the handler create our
         fork-safe sender instead of the default asyncsender.FluentSender.
         """
+        from mwaa.logging.fork_safe_handler import ForkSafeFluentSender
         assert handler.getSenderClass() is ForkSafeFluentSender
 
     def test_sender_is_fork_safe_instance(self, handler):
         """Verify the lazily-created sender is a ForkSafeFluentSender."""
+        from mwaa.logging.fork_safe_handler import ForkSafeFluentSender
         assert isinstance(handler.sender, ForkSafeFluentSender)
 
 
@@ -171,6 +183,7 @@ class TestForkSafetyIntegration:
         deterministically reproducible). This test verifies the basic machinery:
         os.register_at_fork fires, _reinit_after_fork runs, and close() completes.
         """
+        from mwaa.logging.fork_safe_handler import ForkSafeFluentHandler
         handler = ForkSafeFluentHandler('test', host='localhost', port=24224)
         # Access sender to ensure it is fully initialized (thread + lock + queue)
         _ = handler.sender
