@@ -526,7 +526,7 @@ class WorkerTaskMonitor:
 
         :return: Number of current tasks marked for cleanup.
         """
-        return _get_celery_tasks(self.cleanup_celery_state)
+        return len(_get_celery_tasks(self.cleanup_celery_state))
 
 
     def _get_next_unprocessed_signal(self) -> (str, SignalData):
