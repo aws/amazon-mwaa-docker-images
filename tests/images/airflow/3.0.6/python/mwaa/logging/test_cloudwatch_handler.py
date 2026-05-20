@@ -1,3 +1,4 @@
+import json
 import logging
 import pytest
 import os
@@ -744,3 +745,376 @@ def test_discover_triggerer_streams_follows_pagination(mock_boto3_client):
         assert stream_page2 in streams
         assert len(streams) == 2
         assert logger.hook.conn.describe_log_streams.call_count == 2
+
+
+# =============================================================================
+# Tests for _split_oversize_event
+# =============================================================================
+
+class TestSplitOversizeEvent:
+    """Comprehensive tests for CloudWatchRemoteTaskLogger._split_oversize_event."""
+
+    @pytest.fixture
+    def logger(self):
+        """Create a CloudWatchRemoteTaskLogger instance for testing."""
+        return CloudWatchRemoteTaskLogger(
+            log_group_arn='arn:aws:logs:us-west-2:123456789012:log-group:test-Task',
+            kms_key_arn=None,
+            enabled=True,
+            log_level='INFO'
+        )
+
+    # --- Basic behavior: no split needed ---
+
+    def test_small_message_returns_single_item_list(self, logger):
+        """A message under the size limit should be returned as-is in a single-item list."""
+        msg = {"event": "short log line", "level": "info", "timestamp": "2024-01-01T00:00:00"}
+        result = logger._split_oversize_event(msg)
+        assert result == [msg]
+        assert len(result) == 1
+
+    def test_empty_event_returns_single_item(self, logger):
+        """A message with an empty event field should not be split."""
+        msg = {"event": "", "level": "info", "timestamp": "2024-01-01T00:00:00"}
+        result = logger._split_oversize_event(msg)
+        assert result == [msg]
+
+    def test_message_exactly_at_limit_returns_single_item(self, logger):
+        """A message exactly at _MAX_EVENT_BYTES should not be split."""
+        metadata = {"level": "info", "timestamp": "2024-01-01T00:00:00"}
+        # Calculate how much space we have for the event
+        envelope = json.dumps({**metadata, "event": ""}, default=str).encode("utf-8")
+        available = logger._MAX_EVENT_BYTES - len(envelope)
+        # Create an event that, when JSON-serialized, fills exactly to the limit
+        # Use 'a' chars which don't get escaped in JSON
+        event_str = "a" * (available - 2)  # -2 for the quotes around the string in JSON
+        msg = {**metadata, "event": event_str}
+        serialized_size = len(json.dumps(msg, default=str).encode("utf-8"))
+        # Ensure we're at or under the limit
+        assert serialized_size <= logger._MAX_EVENT_BYTES
+        result = logger._split_oversize_event(msg)
+        assert len(result) == 1
+        assert result[0]["event"] == event_str
+
+    # --- Splitting behavior ---
+
+    def test_oversize_message_is_split_into_multiple_chunks(self, logger):
+        """A message exceeding _MAX_EVENT_BYTES should be split into multiple chunks."""
+        # Create a message well over the limit
+        large_event = "x" * (logger._MAX_EVENT_BYTES * 2)
+        msg = {"event": large_event, "level": "info", "timestamp": "2024-01-01T00:00:00"}
+        result = logger._split_oversize_event(msg)
+        assert len(result) > 1
+
+    def test_split_chunks_concatenate_to_original_event(self, logger):
+        """Concatenating all chunk events should reproduce the original event string."""
+        large_event = "Hello world! " * 30000  # ~390KB, well over 260KB limit
+        msg = {"event": large_event, "level": "info", "timestamp": "2024-01-01T00:00:00"}
+        result = logger._split_oversize_event(msg)
+        reconstructed = "".join(chunk["event"] for chunk in result)
+        assert reconstructed == large_event
+
+    def test_each_chunk_is_within_size_limit(self, logger):
+        """Each chunk, when JSON-serialized, must be within _MAX_EVENT_BYTES."""
+        large_event = "a" * (logger._MAX_EVENT_BYTES * 3)
+        msg = {"event": large_event, "level": "info", "timestamp": "2024-01-01T00:00:00"}
+        result = logger._split_oversize_event(msg)
+        for i, chunk in enumerate(result):
+            chunk_size = len(json.dumps(chunk, default=str).encode("utf-8"))
+            assert chunk_size <= logger._MAX_EVENT_BYTES, (
+                f"Chunk {i} is {chunk_size} bytes, exceeds limit of {logger._MAX_EVENT_BYTES}"
+            )
+
+    def test_metadata_preserved_in_all_chunks(self, logger):
+        """All metadata keys (everything except 'event') must be present in every chunk."""
+        metadata = {
+            "level": "error",
+            "timestamp": "2024-01-01T12:00:00",
+            "logger_name": "airflow.task",
+            "task_id": "my_task",
+        }
+        large_event = "log line " * 50000
+        msg = {**metadata, "event": large_event}
+        result = logger._split_oversize_event(msg)
+        assert len(result) > 1
+        for chunk in result:
+            for key, value in metadata.items():
+                assert chunk[key] == value, f"Metadata key '{key}' missing or wrong in chunk"
+
+    # --- JSON escape handling ---
+
+    def test_newlines_in_event_are_handled_correctly(self, logger):
+        """Events with newline characters (which become \\n in JSON) should split correctly."""
+        # Newlines become 2-char sequences in JSON, so this tests escape-aware splitting
+        large_event = "line\n" * 80000  # lots of newlines
+        msg = {"event": large_event, "level": "info"}
+        result = logger._split_oversize_event(msg)
+        reconstructed = "".join(chunk["event"] for chunk in result)
+        assert reconstructed == large_event
+        for chunk in result:
+            chunk_size = len(json.dumps(chunk, default=str).encode("utf-8"))
+            assert chunk_size <= logger._MAX_EVENT_BYTES
+
+    def test_tabs_in_event_are_handled_correctly(self, logger):
+        """Events with tab characters (which become \\t in JSON) should split correctly."""
+        large_event = "col1\tcol2\tcol3\n" * 30000
+        msg = {"event": large_event, "level": "info"}
+        result = logger._split_oversize_event(msg)
+        reconstructed = "".join(chunk["event"] for chunk in result)
+        assert reconstructed == large_event
+
+    def test_backslashes_in_event_are_handled_correctly(self, logger):
+        """Events with backslashes (which become \\\\ in JSON) should split correctly."""
+        large_event = "path\\to\\file\n" * 30000
+        msg = {"event": large_event, "level": "info"}
+        result = logger._split_oversize_event(msg)
+        reconstructed = "".join(chunk["event"] for chunk in result)
+        assert reconstructed == large_event
+        for chunk in result:
+            chunk_size = len(json.dumps(chunk, default=str).encode("utf-8"))
+            assert chunk_size <= logger._MAX_EVENT_BYTES
+
+    def test_quotes_in_event_are_handled_correctly(self, logger):
+        """Events with double quotes (which become \\" in JSON) should split correctly."""
+        large_event = 'key="value" ' * 30000
+        msg = {"event": large_event, "level": "info"}
+        result = logger._split_oversize_event(msg)
+        reconstructed = "".join(chunk["event"] for chunk in result)
+        assert reconstructed == large_event
+
+    def test_mixed_escape_sequences(self, logger):
+        """Events with a mix of escape-worthy characters should split correctly."""
+        # Mix of \n, \t, \\, " — all become 2-char sequences in JSON
+        line = 'ERROR\t"file\\path"\nstack trace line\r\n'
+        large_event = line * 15000
+        msg = {"event": large_event, "level": "error"}
+        result = logger._split_oversize_event(msg)
+        reconstructed = "".join(chunk["event"] for chunk in result)
+        assert reconstructed == large_event
+        for chunk in result:
+            chunk_size = len(json.dumps(chunk, default=str).encode("utf-8"))
+            assert chunk_size <= logger._MAX_EVENT_BYTES
+
+    # --- Multi-byte UTF-8 / Unicode handling ---
+    # With ensure_ascii=False, non-ASCII characters stay as raw UTF-8 bytes
+    # and the existing multi-byte walk-back logic handles them correctly.
+
+    def test_ascii_only_large_event_splits_correctly(self, logger):
+        """Pure ASCII events should always split and reassemble."""
+        large_event = "ABCDEFGHIJ" * 30000
+        msg = {"event": large_event, "level": "info"}
+        result = logger._split_oversize_event(msg)
+        reconstructed = "".join(chunk["event"] for chunk in result)
+        assert reconstructed == large_event
+
+    def test_multibyte_utf8_characters_not_split_mid_char(self, logger):
+        """Multi-byte UTF-8 characters must not be split in the middle."""
+        # Japanese characters are 3 bytes each in UTF-8
+        large_event = "日本語テスト" * 20000
+        msg = {"event": large_event, "level": "info"}
+        result = logger._split_oversize_event(msg)
+        reconstructed = "".join(chunk["event"] for chunk in result)
+        assert reconstructed == large_event
+        for chunk in result:
+            chunk_size = len(json.dumps(chunk, ensure_ascii=False, default=str).encode("utf-8"))
+            assert chunk_size <= logger._MAX_EVENT_BYTES
+
+    def test_emoji_characters_not_split(self, logger):
+        """4-byte emoji characters must not be split in the middle."""
+        large_event = "🚀🎉🔥" * 25000
+        msg = {"event": large_event, "level": "info"}
+        result = logger._split_oversize_event(msg)
+        reconstructed = "".join(chunk["event"] for chunk in result)
+        assert reconstructed == large_event
+
+    def test_mixed_ascii_and_multibyte(self, logger):
+        """Mix of ASCII and multi-byte characters should split correctly."""
+        large_event = "Hello 世界! " * 30000
+        msg = {"event": large_event, "level": "info"}
+        result = logger._split_oversize_event(msg)
+        reconstructed = "".join(chunk["event"] for chunk in result)
+        assert reconstructed == large_event
+
+    # --- Edge cases ---
+
+    def test_event_field_missing_returns_single_item(self, logger):
+        """If 'event' key is missing, the message should still be handled."""
+        # Create a large message without 'event' key — but it's under the limit
+        msg = {"level": "info", "data": "x" * 100}
+        result = logger._split_oversize_event(msg)
+        # Without 'event', it should just return as-is if under limit
+        assert len(result) == 1
+
+    def test_non_string_event_is_converted(self, logger):
+        """If event is not a string (e.g., dict or int), it should be str()-converted."""
+        large_dict_str = str({"key": "v" * logger._MAX_EVENT_BYTES})
+        msg = {"event": large_dict_str, "level": "info"}
+        result = logger._split_oversize_event(msg)
+        reconstructed = "".join(chunk["event"] for chunk in result)
+        assert reconstructed == large_dict_str
+
+    def test_event_with_only_escape_characters(self, logger):
+        """An event consisting entirely of characters that get escaped in JSON."""
+        # Each \n becomes \\n in JSON (2 bytes), so effective size doubles
+        large_event = "\n" * (logger._MAX_EVENT_BYTES)
+        msg = {"event": large_event, "level": "info"}
+        result = logger._split_oversize_event(msg)
+        reconstructed = "".join(chunk["event"] for chunk in result)
+        assert reconstructed == large_event
+        for chunk in result:
+            chunk_size = len(json.dumps(chunk, default=str).encode("utf-8"))
+            assert chunk_size <= logger._MAX_EVENT_BYTES
+
+    def test_single_character_over_limit(self, logger):
+        """Message just barely over the limit should split into exactly 2 chunks."""
+        metadata = {"level": "info"}
+        envelope = json.dumps({**metadata, "event": ""}, default=str).encode("utf-8")
+        available = logger._MAX_EVENT_BYTES - len(envelope)
+        # Create event that exceeds the limit. The envelope includes "event": "" which
+        # accounts for the key and empty quotes. Each 'a' adds 1 byte to the JSON.
+        # We need the total serialized msg to exceed _MAX_EVENT_BYTES.
+        # available = max - envelope_size, so event of length (available + 1) will exceed.
+        event_str = "a" * (available + 1)
+        msg = {**metadata, "event": event_str}
+        serialized_size = len(json.dumps(msg, default=str).encode("utf-8"))
+        assert serialized_size > logger._MAX_EVENT_BYTES, "Test setup: msg must exceed limit"
+        result = logger._split_oversize_event(msg)
+        assert len(result) == 2
+        reconstructed = "".join(chunk["event"] for chunk in result)
+        assert reconstructed == event_str
+
+    def test_very_large_metadata_reduces_chunk_capacity(self, logger):
+        """Large metadata should reduce the available space for event chunks."""
+        # Large metadata means less room for event per chunk
+        large_metadata = {
+            "level": "info",
+            "logger_name": "a" * 1000,
+            "extra_field": "b" * 1000,
+        }
+        large_event = "x" * (logger._MAX_EVENT_BYTES * 2)
+        msg = {**large_metadata, "event": large_event}
+        result = logger._split_oversize_event(msg)
+        # Should produce more chunks than without large metadata
+        reconstructed = "".join(chunk["event"] for chunk in result)
+        assert reconstructed == large_event
+        for chunk in result:
+            chunk_size = len(json.dumps(chunk, default=str).encode("utf-8"))
+            assert chunk_size <= logger._MAX_EVENT_BYTES
+
+    def test_returns_original_msg_if_empty_chunks(self, logger):
+        """If splitting somehow produces no chunks, should return [msg] as fallback."""
+        # This tests the `return chunks if chunks else [msg]` fallback
+        msg = {"event": "small", "level": "info"}
+        result = logger._split_oversize_event(msg)
+        assert result == [msg]
+
+    # --- Realistic scenarios ---
+
+    def test_realistic_stack_trace(self, logger):
+        """A realistic large Python stack trace should split and reassemble correctly."""
+        frame = (
+            '  File "/usr/local/lib/python3.12/site-packages/airflow/models/taskinstance.py", '
+            'line 1234, in _run_raw_task\n'
+            '    result = execute_callable(context=context)\n'
+        )
+        # Make it large enough to require splitting
+        large_event = "Traceback (most recent call last):\n" + frame * 2000 + "RuntimeError: something broke\n"
+        msg = {"event": large_event, "level": "error", "timestamp": "2024-06-15T10:30:00"}
+        result = logger._split_oversize_event(msg)
+        assert len(result) > 1
+        reconstructed = "".join(chunk["event"] for chunk in result)
+        assert reconstructed == large_event
+
+    def test_realistic_json_log_payload(self, logger):
+        """A large JSON-structured log event should split and reassemble correctly."""
+        import json as json_mod
+        records = [{"id": i, "status": "processed", "data": "x" * 200} for i in range(1000)]
+        large_event = json_mod.dumps(records)
+        msg = {"event": large_event, "level": "info", "timestamp": "2024-06-15T10:30:00"}
+        result = logger._split_oversize_event(msg)
+        reconstructed = "".join(chunk["event"] for chunk in result)
+        assert reconstructed == large_event
+        # Verify the reconstructed JSON is still valid
+        parsed = json_mod.loads(reconstructed)
+        assert len(parsed) == 1000
+
+    # --- Resilience / fallback behavior ---
+
+    def test_split_error_does_not_raise(self, logger):
+        """If the inner split logic throws, the outer method should not propagate the exception."""
+        from unittest.mock import patch
+
+        msg = {"event": "test", "level": "info"}
+        with patch.object(logger, '_split_oversize_event_inner', side_effect=RuntimeError("simulated failure")):
+            # Should not raise — falls back gracefully
+            result = logger._split_oversize_event(msg)
+            assert len(result) == 1
+            assert "event" in result[0]
+
+    def test_split_error_returns_truncated_for_large_event(self, logger):
+        """On split failure with a large event, should return a truncated version."""
+        from unittest.mock import patch
+
+        large_event = "x" * (logger._MAX_EVENT_BYTES * 2)
+        msg = {"event": large_event, "level": "error"}
+        with patch.object(logger, '_split_oversize_event_inner', side_effect=ValueError("bad split")):
+            result = logger._split_oversize_event(msg)
+            assert len(result) == 1
+            assert "TRUNCATED" in result[0]["event"]
+            assert result[0]["level"] == "error"
+
+    def test_split_error_increments_metric(self, logger):
+        """On split failure, a metric should be emitted."""
+        from unittest.mock import patch, Mock
+
+        logger.stats = Mock()
+        msg = {"event": "test", "level": "info"}
+        with patch.object(logger, '_split_oversize_event_inner', side_effect=RuntimeError("fail")):
+            logger._split_oversize_event(msg)
+            logger.stats.incr.assert_called_once_with("mwaa.logging.task.split_error", 1)
+
+    # --- Watchtower compatibility ---
+
+    def test_chunks_fit_watchtower_limit_with_non_ascii(self, logger):
+        """Chunks must not exceed watchtower's max_message_size (262144 bytes) when
+        serialized with ensure_ascii=True (watchtower's default behavior).
+
+        This is a regression test for a bug where the split logic measured chunk sizes
+        using ensure_ascii=False (non-ASCII as raw UTF-8, e.g. 田=3 bytes) but watchtower
+        serializes with ensure_ascii=True (田 becomes \\u7530 = 6 bytes), causing chunks
+        to exceed watchtower's limit and get silently truncated.
+        """
+        WATCHTOWER_MAX_MESSAGE_SIZE = 262144
+        WATCHTOWER_EXTRA_PAYLOAD = 26
+        watchtower_effective_limit = WATCHTOWER_MAX_MESSAGE_SIZE - WATCHTOWER_EXTRA_PAYLOAD
+
+        # Build a message with heavy non-ASCII content (CJK, accented, emojis)
+        pattern = (
+            'ERROR: Failed for customer: \u7530\u4e2d\u592a\u90ce (order_id=98765)\n'
+            'WARNING: Donn\u00e9es invalides pour Jos\u00e9 Garc\u00eda \u2014 r\u00e9essayer\n'
+            'DEBUG: /data/uploads/\u5ba2\u6237\u6570\u636e_2024\u5e746\u6708.csv\n'
+            'INFO: \u2705 batch_1 ok, \u274c batch_2 fail, \U0001f504 batch_3 retry\n'
+        )
+        # Make it ~512KB raw to force splitting
+        event = pattern * (512000 // len(pattern.encode('utf-8')))
+        msg = {"logger": "airflow.task", "level": "info", "event": event}
+
+        result = logger._split_oversize_event(msg)
+
+        # Must produce multiple chunks
+        assert len(result) > 1, "Expected message to be split into multiple chunks"
+
+        # Each chunk, when serialized the way watchtower does it (ensure_ascii=True),
+        # must fit within watchtower's effective limit
+        for i, chunk in enumerate(result):
+            # Watchtower uses json.dumps with default serializer (ensure_ascii=True)
+            watchtower_serialized = json.dumps(chunk, default=str)
+            watchtower_size = len(watchtower_serialized.encode("utf-8"))
+            assert watchtower_size <= watchtower_effective_limit, (
+                f"Chunk {i} exceeds watchtower limit: {watchtower_size} > {watchtower_effective_limit}. "
+                f"This means watchtower will silently truncate the chunk, causing data loss."
+            )
+
+        # Verify no data loss: concatenated events must equal original
+        reassembled = "".join(chunk["event"] for chunk in result)
+        assert reassembled == event, "Data loss detected: reassembled chunks don't match original event"
