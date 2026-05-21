@@ -26,9 +26,9 @@ import boto3
 import socket
 import time
 import watchtower
-from fluent import asynchandler as fluent_handler
 
 # Our imports
+from mwaa.logging.fork_safe_handler import ForkSafeFluentHandler
 from mwaa.logging.utils import parse_arn, throttle
 from mwaa.utils.statsd import get_statsd
 
@@ -133,7 +133,7 @@ class BaseLogHandler(logging.Handler):
         self.log_stream = stream_name
 
         if self.enabled and self.NON_CRITICAL_LOGGING_ENABLED:
-            self.handler = fluent_handler.FluentHandler(
+            self.handler = ForkSafeFluentHandler(
                 'customer.logs',
                 host='localhost',
                 port=24224
@@ -326,7 +326,7 @@ class TaskLogHandler(BaseLogHandler, CloudwatchTaskHandler):
         logs_client: CloudWatchLogsClient = boto3.client("logs")  # type: ignore
 
         if self.enabled and self.NON_CRITICAL_LOGGING_ENABLED:
-            self.handler = fluent_handler.FluentHandler(
+            self.handler = ForkSafeFluentHandler(
                 'customer.task.logs',
                 host='localhost',
                 port=24224,
