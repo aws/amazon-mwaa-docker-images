@@ -181,3 +181,16 @@ def test_get_airflow_process_id_mapping():
         assert 1236 not in result.values()
         assert 1237 not in result.values()
         assert 1238 not in result.values()
+
+
+def test_get_cleanup_task_count_returns_length(task_monitor):
+    """Test get_cleanup_task_count returns the number of tasks marked for cleanup."""
+    tasks = [{"task_id": "task1"}, {"task_id": "task2"}]
+    with patch('mwaa.celery.task_monitor._get_celery_tasks', return_value=tasks):
+        assert task_monitor.get_cleanup_task_count() == 2
+
+
+def test_get_cleanup_task_count_empty(task_monitor):
+    """Test get_cleanup_task_count returns 0 when no cleanup tasks exist."""
+    with patch('mwaa.celery.task_monitor._get_celery_tasks', return_value=[]):
+        assert task_monitor.get_cleanup_task_count() == 0
