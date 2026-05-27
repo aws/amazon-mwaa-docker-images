@@ -146,8 +146,8 @@ class TestChannelBasicPublish:
         (True, 15),  # When monitoring enabled, use actual task count
         (False, 20),  # When monitoring disabled, use CELERY_WORKER_TASK_LIMIT
     ])
-    @patch('mwaa.celery.sqs_broker.Stats')
-    def test_worker_heartbeat_active_tasks_calculation(self, mock_stats, mock_channel, monitoring_enabled,
+    @patch('mwaa.celery.sqs_broker.get_statsd')
+    def test_worker_heartbeat_active_tasks_calculation(self, mock_get_statsd, mock_channel, monitoring_enabled,
                                                        expected_tasks):
         """Test num_active_tasks calculation logic."""
         message = {'test': 'message'}
@@ -164,10 +164,10 @@ class TestChannelBasicPublish:
             mock_channel.basic_publish(message, exchange, routing_key)
 
             if expected_tasks >= 20:  # CELERY_WORKER_TASK_LIMIT
-                mock_stats.gauge.assert_any_call("mwaa.celery.at_max_concurrency", expected_tasks)
+                mock_get_statsd.return_value.gauge.assert_any_call("mwaa.celery.at_max_concurrency", expected_tasks)
             else:
                 assert not any(call[0][0] == "mwaa.celery.at_max_concurrency"
-                               for call in mock_stats.gauge.call_args_list)
+                               for call in mock_get_statsd.return_value.gauge.call_args_list)
 
     @pytest.mark.parametrize("num_tasks,is_paused,expect_max_concurrency,expect_consumption_paused", [
         (25, False, True, False),  # Above limit, not paused
@@ -175,8 +175,8 @@ class TestChannelBasicPublish:
         (20, False, True, False),  # At limit, not paused
         (10, False, False, False),  # Below limit, not paused
     ])
-    @patch('mwaa.celery.sqs_broker.Stats')
-    def test_worker_heartbeat_conditional_metrics(self, mock_stats, mock_channel, num_tasks, is_paused,
+    @patch('mwaa.celery.sqs_broker.get_statsd')
+    def test_worker_heartbeat_conditional_metrics(self, mock_get_statsd, mock_channel, num_tasks, is_paused,
                                                   expect_max_concurrency, expect_consumption_paused):
         """Test conditional metric emission logic."""
         message = {'test': 'message'}
@@ -192,19 +192,19 @@ class TestChannelBasicPublish:
 
             mock_channel.basic_publish(message, exchange, routing_key)
 
-            mock_stats.gauge.assert_any_call("mwaa.celery.process.heartbeat", 1)
+            mock_get_statsd.return_value.gauge.assert_any_call("mwaa.celery.process.heartbeat", 1)
 
             if expect_max_concurrency:
-                mock_stats.gauge.assert_any_call("mwaa.celery.at_max_concurrency", num_tasks)
+                mock_get_statsd.return_value.gauge.assert_any_call("mwaa.celery.at_max_concurrency", num_tasks)
             else:
                 assert not any(call[0][0] == "mwaa.celery.at_max_concurrency"
-                               for call in mock_stats.gauge.call_args_list)
+                               for call in mock_get_statsd.return_value.gauge.call_args_list)
 
             if expect_consumption_paused:
-                mock_stats.gauge.assert_any_call("mwaa.celery.sqs.consumption_paused", 1)
+                mock_get_statsd.return_value.gauge.assert_any_call("mwaa.celery.sqs.consumption_paused", 1)
             else:
                 assert not any(call[0][0] == "mwaa.celery.sqs.consumption_paused"
-                               for call in mock_stats.gauge.call_args_list)
+                               for call in mock_get_statsd.return_value.gauge.call_args_list)
 
 
 class TestGetTaskCommandFromSqsMessage:

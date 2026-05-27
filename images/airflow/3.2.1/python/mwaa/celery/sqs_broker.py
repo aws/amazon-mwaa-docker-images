@@ -176,7 +176,7 @@ from kombu.transport import virtual
 
 # 2022-11-25: Amazon addition.
 # Airflow Stats object.
-from airflow.stats import Stats
+from mwaa.utils.statsd import get_statsd
 from enum import Enum
 from multiprocessing import shared_memory
 from threading import Lock
@@ -494,7 +494,7 @@ class Channel(virtual.Channel):
         # This method is used to report a zero value for the celery_state_update_failure
         # metric. It is throttled with an interval of 60 seconds, to avoid spamming
         # the metric with lots of values.
-        Stats.incr("mwaa.celery.celery_state_update_failure", 0)
+        get_statsd().incr("mwaa.celery.celery_state_update_failure", 0)
 
     def _update_state_with_tasks(
         self, celery_task_tuples, update_action: CeleryStateUpdateAction
@@ -543,7 +543,7 @@ class Channel(virtual.Channel):
                 )
                 self._report_celery_status_update_no_failure()
             except Exception:
-                Stats.incr("mwaa.celery.celery_state_update_failure", 1)
+                get_statsd().incr("mwaa.celery.celery_state_update_failure", 1)
             finally:
                 self.celery_lock.release()
 
@@ -620,12 +620,12 @@ class Channel(virtual.Channel):
         if os.environ.get('MWAA__HEALTH_MONITORING_ENABLE_REVAMPED_HEALTHCHECK', 'false') == 'true' and exchange == 'celeryev':
             # This branch catches all celery task events and generates process heartbeat metrics
             if routing_key == 'worker.heartbeat':
-                Stats.gauge("mwaa.celery.process.heartbeat", 1)
+                get_statsd().gauge("mwaa.celery.process.heartbeat", 1)
                 num_active_tasks = len(self._get_tasks_from_state(self.celery_state)) if self.idle_worker_monitoring_enabled else CELERY_WORKER_TASK_LIMIT
                 if num_active_tasks >= CELERY_WORKER_TASK_LIMIT:
-                    Stats.gauge("mwaa.celery.at_max_concurrency", num_active_tasks)
+                    get_statsd().gauge("mwaa.celery.at_max_concurrency", num_active_tasks)
                 if self._is_task_consumption_paused():
-                    Stats.gauge("mwaa.celery.sqs.consumption_paused", 1)
+                    get_statsd().gauge("mwaa.celery.sqs.consumption_paused", 1)
 
             return
         return super().basic_publish(message, exchange, routing_key, **kwargs)
@@ -766,7 +766,7 @@ class Channel(virtual.Channel):
             # This branch is executed when a task is returned to the queue, e.g.
             # a worker shutdown:
             # https://github.com/celery/kombu/blob/v4.6.11/kombu/transport/virtual/base.py#L732
-            Stats.incr("mwaa.celery.task_returned", 1)
+            get_statsd().incr("mwaa.celery.task_returned", 1)
             self._update_state_with_tasks(
                 [
                     (
@@ -786,7 +786,7 @@ class Channel(virtual.Channel):
             # 2022-11-25: Amazon addition.
             # This branch is executed when the scheduler puts a task in the
             # queue so it can be picked by a Celery worker.
-            Stats.incr("mwaa.celery.task_queued", 1)
+            get_statsd().incr("mwaa.celery.task_queued", 1)
             # End of Amazon addition
             c.send_message(**kwargs)
 
@@ -815,7 +815,7 @@ class Channel(virtual.Channel):
             # worker to finish the task. However, we still report a metric to
             # make sure the code is future-proof, e.g. if Airflow or MWAA decide
             # to disable the task_acks_late configuration.
-            Stats.incr("mwaa.celery.task_pulled", 1)
+            get_statsd().incr("mwaa.celery.task_pulled", 1)
             self._update_state_with_tasks(
                 [
                     (
@@ -905,7 +905,7 @@ class Channel(virtual.Channel):
             # Send a heartbeat metric each time we try to receive messages from SQS.
             # I didn't notice this branch being executed as it seems that async client
             # is used in our case, but adding this nevertheless to be future-proof.
-            Stats.incr("mwaa.celery.heartbeat", 1)
+            get_statsd().incr("mwaa.celery.heartbeat", 1)
             # End of Amazon addition.
 
             resp = self.sqs(queue=queue).receive_message(
@@ -920,7 +920,7 @@ class Channel(virtual.Channel):
                 # I didn't notice this branch being executed as it seems that
                 # async client is used in our case, but adding this nevertheless
                 # to be future-proof.
-                Stats.incr("mwaa.celery.task_pulled", len(resp.get("Messages")))
+                get_statsd().incr("mwaa.celery.task_pulled", len(resp.get("Messages")))
                 celery_task_tuples = []
                 # End of Amazon addition.
 
@@ -948,7 +948,7 @@ class Channel(virtual.Channel):
         # Send a heartbeat metric each time we try to receive messages from SQS.
         # I didn't notice this branch being executed as it seems that async client
         # is used in our case, but adding this nevertheless to be future-proof.
-        Stats.incr("mwaa.celery.heartbeat", 1)
+        get_statsd().incr("mwaa.celery.heartbeat", 1)
 
         # If worker monitoring is enabled and the worker has been told to pause consumption, then we return Empty here to
         # simulate the situation where there are no messages in the celery queue.
@@ -967,7 +967,7 @@ class Channel(virtual.Channel):
             # indicating that.
             # I didn't notice this branch being executed as it seems that async client
             # is used in our case, but adding this nevertheless to be future-proof.
-            Stats.incr("mwaa.celery.task_pulled", 1)
+            get_statsd().incr("mwaa.celery.task_pulled", 1)
             self._update_state_with_tasks(
                 [
                     (
@@ -1040,7 +1040,7 @@ class Channel(virtual.Channel):
             # This code is called after messages are retrieved from SQS via
             # the async client. From our perspective, this indicates tasks
             # pulled from the queue, so we report a metric.
-            Stats.incr("mwaa.celery.task_pulled", len(messages["Messages"]))
+            get_statsd().incr("mwaa.celery.task_pulled", len(messages["Messages"]))
             celery_task_tuples = []
 
             for msg in messages["Messages"]:
@@ -1093,7 +1093,7 @@ class Channel(virtual.Channel):
 
         # 2022-11-25: Amazon addition.
         # Send a heartbeat metric each time we try to receive messages from SQS.
-        Stats.incr("mwaa.celery.heartbeat", 1)
+        get_statsd().incr("mwaa.celery.heartbeat", 1)
         # End of Amazon addition.
 
         return connection.receive_message(
@@ -1126,7 +1126,7 @@ class Channel(virtual.Channel):
                 # This code is executed when a task finishes execution and
                 # thus its message can be removed from the SQS queue. We thus
                 # report a task_executed metric.
-                Stats.incr("mwaa.celery.task_executed", 1)
+                get_statsd().incr("mwaa.celery.task_executed", 1)
                 should_remove_sqs_message = True
                 celery_task_tuple = (
                     self._get_task_command_from_sqs_message(sqs_message["Body"]),
