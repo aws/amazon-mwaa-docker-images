@@ -198,7 +198,6 @@ async def create_airflow_user(environ: dict[str, str]):
     )
 
 
-@with_db_lock(1357)
 def create_queue() -> None:
     """
     Create the SQS required by Celery.
@@ -209,6 +208,12 @@ def create_queue() -> None:
     """
     if not should_create_queue():
         return
+    else:
+        _create_queue_with_db_lock_mutex()
+
+
+@with_db_lock(1357)
+def _create_queue_with_db_lock_mutex():
     queue_name = get_sqs_queue_name()
     endpoint = os.environ.get("MWAA__SQS__CUSTOM_ENDPOINT")
     sqs = boto3.client("sqs", endpoint_url=endpoint)  # type: ignore
