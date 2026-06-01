@@ -214,3 +214,16 @@ class TestForkSafetyIntegration:
                 "Child process exited with error"
 
         handler.close()
+
+
+class TestQueueCircularConfiguration:
+    """Test that queue_circular parameter is correctly wired through the handler."""
+
+    def test_handler_passes_queue_circular_to_sender(self):
+        """Verify queue_circular=True is propagated to the underlying sender."""
+        from mwaa.logging.fork_safe_handler import ForkSafeFluentHandler
+        h = ForkSafeFluentHandler('test', host='localhost', port=24224,
+                                  queue_maxsize=50000, queue_circular=True)
+        assert h.sender.queue_circular is True
+        assert h.sender.queue_maxsize == 50000
+        h.close()
