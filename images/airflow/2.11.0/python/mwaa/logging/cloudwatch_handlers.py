@@ -136,7 +136,9 @@ class BaseLogHandler(logging.Handler):
             self.handler = ForkSafeFluentHandler(
                 'customer.logs',
                 host='localhost',
-                port=24224
+                port=24224,
+                queue_maxsize=50000,
+                queue_circular=True,
             )
             if self.formatter:
                 # Wrap the existing formatter to add routing fields
@@ -331,6 +333,7 @@ class TaskLogHandler(BaseLogHandler, CloudwatchTaskHandler):
                 host='localhost',
                 port=24224,
                 queue_maxsize=50000,
+                queue_circular=True,
             )
 
             original_formatter = self.formatter
