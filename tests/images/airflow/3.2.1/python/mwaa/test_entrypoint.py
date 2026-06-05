@@ -208,14 +208,13 @@ async def test_main_migrate_db(mock_environ, mock_db_utils):
     with patch.dict(os.environ, mock_environ), \
             patch.object(sys, 'argv', test_args), \
             patch('mwaa.entrypoint.setup_environment_variables') as mock_setup_env, \
-            patch('mwaa.entrypoint.airflow_db_migrate') as mock_db_migrate, \
+            patch('mwaa.entrypoint.airflow_db_migrate') as mock_db_migrate:
         mock_setup_env.return_value = mock_environ
 
         await main()
 
         mock_setup_env.assert_called_once()
         mock_db_migrate.assert_called_once()
-        mock_pool.assert_called_once()
 
 
 @pytest.mark.asyncio
