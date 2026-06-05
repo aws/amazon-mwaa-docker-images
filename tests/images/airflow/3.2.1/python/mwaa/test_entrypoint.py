@@ -12,7 +12,6 @@ from mwaa.entrypoint import (
     airflow_db_migrate,
     create_airflow_user,
     create_queue,
-    increase_pool_size_if_insufficient,
     main
 )
 
@@ -209,15 +208,13 @@ async def test_main_migrate_db(mock_environ, mock_db_utils):
     with patch.dict(os.environ, mock_environ), \
             patch.object(sys, 'argv', test_args), \
             patch('mwaa.entrypoint.setup_environment_variables') as mock_setup_env, \
-            patch('mwaa.entrypoint.airflow_db_migrate') as mock_db_migrate, \
-            patch('mwaa.entrypoint.increase_pool_size_if_insufficient') as mock_pool:
+            patch('mwaa.entrypoint.airflow_db_migrate') as mock_db_migrate:
         mock_setup_env.return_value = mock_environ
 
         await main()
 
         mock_setup_env.assert_called_once()
         mock_db_migrate.assert_called_once()
-        mock_pool.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -334,49 +331,3 @@ def test_fix_shared_log_volume_permissions_dag_processor_dir_failure(mock_enviro
          patch('os.makedirs', side_effect=OSError('Read-only file system')):
         # Should not raise — just logs a warning
         entrypoint._fix_shared_log_volume_permissions()
-
-
-
-@pytest.mark.asyncio
-async def test_increase_pool_size_when_small(mock_db_utils):
-    """Test increase_pool_size_if_insufficient increases pool when size <= 5000"""
-    environ = {"PYTHONPATH": os.environ.get("PYTHONPATH", "")}
-    call_count = 0
-
-    async def mock_run_command(cmd, env=None, stdout_logging_method=None):
-        nonlocal call_count
-        call_count += 1
-        if call_count == 1 and stdout_logging_method:
-            # Simulate pool size output of 5000
-            stdout_logging_method("5000")
-        return 0
-
-    with patch('mwaa.entrypoint.run_command', side_effect=mock_run_command) as mock_cmd, \
-         patch('mwaa.entrypoint.get_statsd') as mock_get_statsd:
-        mock_stats = MagicMock()
-        mock_get_statsd.return_value = mock_stats
-
-        await increase_pool_size_if_insufficient(environ)
-
-        assert mock_cmd.call_count == 2
-        # Second call should set pool to 10000
-        assert "airflow pools set default_pool 10000 default" in mock_cmd.call_args_list[1][0][0]
-        mock_stats.incr.assert_called_once()
-
-
-@pytest.mark.asyncio
-async def test_increase_pool_size_when_large(mock_db_utils):
-    """Test increase_pool_size_if_insufficient does nothing when size > 5000"""
-    environ = {"PYTHONPATH": os.environ.get("PYTHONPATH", "")}
-
-    async def mock_run_command(cmd, env=None, stdout_logging_method=None):
-        if stdout_logging_method:
-            # Simulate pool size output of 10000
-            stdout_logging_method("10000")
-        return 0
-
-    with patch('mwaa.entrypoint.run_command', side_effect=mock_run_command) as mock_cmd:
-        await increase_pool_size_if_insufficient(environ)
-
-        # Should only call once (the get command), not the set command
-        assert mock_cmd.call_count == 1
