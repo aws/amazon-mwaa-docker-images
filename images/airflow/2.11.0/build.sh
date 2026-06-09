@@ -23,7 +23,7 @@ if [[ "$GENERATE_BILL_OF_MATERIALS" == "True" ]]; then
 fi
 
 # Build the base image.
-${CONTAINER_RUNTIME} build -f ./Dockerfiles/Dockerfile.base -t amazon-mwaa-docker-images/airflow:2.11.0-base ./
+${CONTAINER_RUNTIME} build -f ./Dockerfiles/Dockerfile.base -t localhost/amazon-mwaa-docker-images/airflow:2.11.0-base ./
 
 # Build the derivatives.
 for dev in "True" "False"; do
