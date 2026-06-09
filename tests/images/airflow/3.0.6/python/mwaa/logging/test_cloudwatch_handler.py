@@ -904,8 +904,8 @@ class TestSplitOversizeEvent:
             assert chunk_size <= logger._MAX_EVENT_BYTES
 
     # --- Multi-byte UTF-8 / Unicode handling ---
-    # With ensure_ascii=False, non-ASCII characters stay as raw UTF-8 bytes
-    # and the existing multi-byte walk-back logic handles them correctly.
+    # Size assertions use ensure_ascii=True (json.dumps default) to match
+    # both the implementation and watchtower's serialization behavior.
 
     def test_ascii_only_large_event_splits_correctly(self, logger):
         """Pure ASCII events should always split and reassemble."""
@@ -924,7 +924,7 @@ class TestSplitOversizeEvent:
         reconstructed = "".join(chunk["event"] for chunk in result)
         assert reconstructed == large_event
         for chunk in result:
-            chunk_size = len(json.dumps(chunk, ensure_ascii=False, default=str).encode("utf-8"))
+            chunk_size = len(json.dumps(chunk, default=str).encode("utf-8"))
             assert chunk_size <= logger._MAX_EVENT_BYTES
 
     def test_emoji_characters_not_split(self, logger):
