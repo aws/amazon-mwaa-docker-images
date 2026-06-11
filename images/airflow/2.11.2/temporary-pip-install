@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# This script is specifically designed for temporarily installing packages needed ONLY before bootstrap steps.
+# It intentionally bypasses constraint checks, since it is intended that the packages will be used for setup/configuration 
+# and then UNINSTALLED before the bootstrap steps, during local setup.
+#
+# NOTE: This script should NOT be used for installing production Airflow/MWAA dependencies.
+# For those, use 'safe-pip-install' which properly handles Airflow/MWAA constraints.
+
+pip3 install "$@"
