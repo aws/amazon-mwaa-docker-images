@@ -1,7 +1,7 @@
 version: "3.8"
 
 x-airflow-common: &airflow-common
-  image: amazon-mwaa-docker-images/airflow:2.11.0-dev
+  image: amazon-mwaa-docker-images/airflow:2.11.2-dev
   restart: always
   init: true
   environment:
@@ -77,7 +77,7 @@ x-airflow-common: &airflow-common
 services:
   postgres:
     image: postgres:13
-    container_name: mwaa-2110-db
+    container_name: mwaa-2112-db
     environment:
       POSTGRES_USER: airflow
       POSTGRES_PASSWORD: airflow
@@ -115,18 +115,18 @@ services:
   migratedb:
     <<: *airflow-common
     command: migrate-db
-    container_name: mwaa-2110-migratedb
+    container_name: mwaa-2112-migratedb
     restart: "no"
 
   spy:
     <<: *airflow-common
     command: spy
-    container_name: mwaa-2110-spy
+    container_name: mwaa-2112-spy
 
   webserver:
     <<: *airflow-common
     command: webserver
-    container_name: mwaa-2110-webserver
+    container_name: mwaa-2112-webserver
     ports:
       - 8080:8080
     expose:
@@ -138,7 +138,7 @@ services:
   scheduler:
     <<: *airflow-common
     command: scheduler
-    container_name: mwaa-2110-scheduler
+    container_name: mwaa-2112-scheduler
     depends_on:
       migratedb:
         condition: service_completed_successfully
@@ -146,11 +146,11 @@ services:
   worker:
     <<: *airflow-common
     command: worker
-    container_name: mwaa-2110-worker
+    container_name: mwaa-2112-worker
     depends_on:
       migratedb:
         condition: service_completed_successfully
 
 volumes:
   postgres-db-volume:
-    name: "mwaa-2110-db-volume"
+    name: "mwaa-2112-db-volume"
