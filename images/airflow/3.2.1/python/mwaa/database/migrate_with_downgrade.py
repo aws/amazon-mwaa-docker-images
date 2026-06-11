@@ -89,6 +89,130 @@ def _migrate_db():
         airflow_db_command.migratedb(args)
         logging.info("The database is now migrated.")
 
+def _downgrade_fab_db():
+    """
+    Downgrade the FAB (Flask-AppBuilder) provider database migrations.
+
+    When downgrading from Airflow 3.2.1 (providers-fab 3.6.1) to Airflow 3.0.6
+    (providers-fab 2.4.1), the FAB provider's own migrations need to be reverted.
+    This is equivalent to running: airflow fab-db downgrade --to-version 1.4.0
+
+    The 3.5.0 migration (0001_3_5_0_fix_fab_db_inconsistencies.py) added NOT NULL
+    constraints on ab_permission_view.permission_id and view_menu_id, among other
+    changes. Reverting this ensures compatibility with providers-fab 2.4.1.
+    """
+    from airflow.providers.fab.auth_manager.cli_commands import db_command as fab_db_command
+
+    try:
+        logging.info("Downgrading FAB provider database to version 1.4.0...")
+        fab_args = Namespace(
+            to_version="1.4.0",
+            to_revision=None,
+            from_revision=None,
+            from_version=None,
+            show_sql_only=None,
+            yes=True,
+        )
+        fab_db_command.downgrade(fab_args)
+        logging.info("FAB provider database downgrade completed successfully.")
+    except Exception as e:
+        logger.error(f"Error while downgrading FAB provider database: {e}")
+        raise
+
+
+def _fix_fab_sequence_defaults():
+    """
+    Fix FAB (Flask-AppBuilder) security tables after downgrading from Airflow 3.2.1
+    (providers-fab 3.6.1 / SQLAlchemy 2.0) to Airflow 3.0.6 (providers-fab 2.4.1 /
+    SQLAlchemy 1.4).
+
+    After the downgrade, the ab_* tables may be left
+    without a DEFAULT on the 'id' column. This causes NOT NULL violations because
+    SQLAlchemy 1.4's ORM omits the 'id' from INSERT statements, relying on the database
+    to auto-generate it via a sequence default.
+
+    This function checks these tables and adds the missing sequence + default
+    if needed.
+    """
+    FAB_TABLES_TO_FIX = [
+        "ab_permission",
+        "ab_view_menu",
+        "ab_permission_view",
+        "ab_permission_view_role",
+        "ab_role",
+        "ab_user",
+        "ab_user_role",
+        "ab_register_user",
+        "ab_group",
+        "ab_user_group",
+        "ab_group_role"
+    ]
+
+    try:
+        db_engine = create_engine(
+            get_db_connection_string(),
+            connect_args={"connect_timeout": 3}
+        )
+        with db_engine.connect() as conn:
+            with conn.begin():
+                for table in FAB_TABLES_TO_FIX:
+                    # Check if the table's id column is missing a default
+                    result = conn.execute(
+                        text(
+                            "SELECT 1 "
+                            "FROM pg_attribute a "
+                            "JOIN pg_class c ON a.attrelid = c.oid "
+                            "JOIN pg_namespace n ON c.relnamespace = n.oid "
+                            "LEFT JOIN pg_attrdef d ON d.adrelid = a.attrelid AND d.adnum = a.attnum "
+                            "WHERE n.nspname = 'public' "
+                            "AND c.relname = :table_name "
+                            "AND a.attname = 'id' "
+                            "AND c.relkind = 'r' "
+                            "AND a.attnum > 0 "
+                            "AND NOT a.attisdropped "
+                            "AND a.attidentity = '' "
+                            "AND d.adbin IS NULL"
+                        ),
+                        {"table_name": table},
+                    )
+                    if not result.fetchone():
+                        logging.info(f"{table}.id already has a default, skipping.")
+                        continue
+
+                    seq_name = f"{table}_id_seq"
+                    logging.info(
+                        f"{table}.id is missing a default. Adding sequence default (seq: {seq_name})..."
+                    )
+
+                    # 1. Create the sequence if it doesn't exist
+                    conn.execute(
+                        text(f"CREATE SEQUENCE IF NOT EXISTS {seq_name} OWNED BY {table}.id")
+                    )
+
+                    # 2. Set the sequence value to max(id) + 1 to avoid conflicts
+                    conn.execute(
+                        text(
+                            f"SELECT setval('{seq_name}', COALESCE(MAX(id), 0) + 1, false) "
+                            f"FROM {table}"
+                        )
+                    )
+
+                    # 3. Set the default on the id column
+                    conn.execute(
+                        text(
+                            f"ALTER TABLE {table} ALTER COLUMN id "
+                            f"SET DEFAULT nextval('{seq_name}')"
+                        )
+                    )
+
+                    logging.info(f"Successfully added default nextval('{seq_name}') to {table}.id.")
+
+        logging.info("FAB sequence defaults fix completed successfully.")
+    except Exception as e:
+        logger.error(f"Error while fixing FAB sequence defaults: {e}")
+        raise
+
+
 def _check_downgrade_db():
     target_version = os.environ.get("MWAA__DB__AIRFLOW_TARGET_VERSION", None)
     current_version = os.environ.get("AIRFLOW_VERSION", None)
@@ -105,6 +229,17 @@ def _check_downgrade_db():
                 yes=True,
             )
         airflow_db_command.downgrade(args)
+
+        if Version(target_version) == Version("3.0.6"):
+            logging.info(
+                "Target version uses an older FAB provider, downgrading FAB provider database..."
+            )
+            _downgrade_fab_db()
+
+            logging.info(
+                "Target version uses FAB 4.x, ensuring ab_* tables have sequence defaults..."
+            )
+            _fix_fab_sequence_defaults()
 
 
 def _main():
