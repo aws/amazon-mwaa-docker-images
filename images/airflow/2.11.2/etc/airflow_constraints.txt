@@ -722,7 +722,7 @@ time-machine==2.19.0
 tokenizers==0.22.2
 tomli_w==1.2.0
 tomlkit==0.14.0
-tornado==6.5.4
+tornado==6.5.7
 towncrier==25.8.0
 tqdm==4.67.3
 traitlets==5.14.3
