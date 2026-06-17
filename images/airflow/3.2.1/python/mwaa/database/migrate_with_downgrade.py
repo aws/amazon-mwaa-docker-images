@@ -230,7 +230,7 @@ def _check_downgrade_db():
             )
         airflow_db_command.downgrade(args)
 
-        if Version(target_version) == Version("3.0.6"):
+        if Version(target_version) in (Version("3.0.6"), Version("2.11.0")):
             logging.info(
                 "Target version uses an older FAB provider, downgrading FAB provider database..."
             )
