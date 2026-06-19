@@ -10,15 +10,16 @@ connect to the meta database, thus all configurations need to be set.
 from argparse import Namespace
 from packaging.version import Version
 from sqlalchemy import create_engine, text
+import logging
 import logging.config
 import os
 import sys
 
 from mwaa.config.database import get_db_connection_string
+from mwaa.utils.db_retry import with_db_retry, MAINTENANCE_ENGINE_KWARGS
 from mwaa.utils.dblock import with_db_lock
-from airflow.cli.commands import db_command as airflow_db_command
-
 from mwaa.utils.get_rds_iam_credentials import RDSIAMCredentialProvider
+from airflow.cli.commands import db_command as airflow_db_command
 
 DB_IAM_USERNAME = "airflow_user"
 DB_ADMIN_USERNAME = "adminuser"
@@ -43,33 +44,37 @@ def _verify_environ():
 
 def _ensure_rds_iam_user():
     try:
-        # Set db_connection_url using RDS IAM credentials
-        try:
-            # On default, try to connect to engine using admin user to create/update airflow_user
+        def _connect_static():
             logger.info("Creating db_connection_url using static credentials")
-            db_connection_url = get_db_connection_string()
-            db_engine = create_engine(
-                db_connection_url,
-                connect_args={"connect_timeout": 3}
+            engine = create_engine(
+                get_db_connection_string(),
+                **MAINTENANCE_ENGINE_KWARGS,
             )
-            with db_engine.connect() as conn:
+            with engine.connect() as conn:
                 conn.execute(text("SELECT 1"))
             logger.info("Engine created using static credentials")
-            
-        except Exception as e:
-            logger.warning(f"Exception type: {type(e).__name__}, message: {e}")
-            # If adminuser connection fails due to RDS IAM set up, then use RDS IAM for connection
+            return engine
+
+        @with_db_retry
+        def _connect_iam():
             logger.info("Creating db_connection_url using RDS IAM credentials")
             token = RDSIAMCredentialProvider.get_token()
             db_connection_url = RDSIAMCredentialProvider.create_db_connection_url(token)
             logger.info("Creating engine using RDS IAM and validating connection")
-            db_engine = create_engine(
+            engine = create_engine(
                 db_connection_url,
-                connect_args={"connect_timeout": 3}
+                **MAINTENANCE_ENGINE_KWARGS,
             )
-            with db_engine.connect() as conn:
+            with engine.connect() as conn:
                 conn.execute(text("SELECT 1"))
             logger.info("Engine created using RDS IAM and connection validated")
+            return engine
+
+        try:
+            db_engine = _connect_static()
+        except Exception as e:
+            logger.warning(f"Static credentials failed: {type(e).__name__}: {e}")
+            db_engine = _connect_iam()
 
         with db_engine.connect() as conn:
             with conn.begin():
@@ -86,7 +91,6 @@ def _ensure_rds_iam_user():
                 ).scalar()
 
                 if current_role == DB_ADMIN_USERNAME:
-                    # Always ensure permissions are up to date
                     logger.info(f"Current role is {DB_ADMIN_USERNAME}, setting up permissions for airflow_user")
                     conn.execute(text(f"GRANT rds_iam TO {DB_IAM_USERNAME}"))
                     conn.execute(text(f'GRANT ALL PRIVILEGES ON DATABASE "{DB_NAME}" TO {DB_IAM_USERNAME}'))
@@ -98,7 +102,6 @@ def _ensure_rds_iam_user():
                     conn.execute(text(f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO {DB_IAM_USERNAME}"))
                     conn.execute(text(f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO {DB_IAM_USERNAME}"))
                     conn.execute(text(f"GRANT {DB_ADMIN_USERNAME} TO {DB_IAM_USERNAME}"))
-
                 elif current_role == "airflow_user":
                     logger.info("Current role is airflow_user")
     except Exception as e:
