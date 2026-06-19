@@ -10,11 +10,13 @@ connect to the meta database, thus all configurations need to be set.
 from argparse import Namespace
 from packaging.version import Version
 from sqlalchemy import create_engine, text
+import logging
 import logging.config
 import os
 import sys
 
 from mwaa.config.database import get_db_connection_string
+from mwaa.utils.db_retry import with_db_retry, MAINTENANCE_ENGINE_KWARGS
 from mwaa.utils.dblock import with_db_lock
 from airflow.cli.commands import db_command as airflow_db_command
 
@@ -40,10 +42,17 @@ def _verify_environ():
 
 def _ensure_rds_iam_user():
     try:
-        db_engine = create_engine(
-            get_db_connection_string(),
-            connect_args={"connect_timeout": 3}
-        )
+        @with_db_retry
+        def _connect_static():
+            engine = create_engine(
+                get_db_connection_string(),
+                **MAINTENANCE_ENGINE_KWARGS,
+            )
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+            return engine
+
+        db_engine = _connect_static()
         with db_engine.connect() as conn:
             with conn.begin():
                 result = conn.execute(text("SELECT 1 FROM pg_roles WHERE rolname = :rolename"), {"rolename": DB_IAM_USERNAME})
