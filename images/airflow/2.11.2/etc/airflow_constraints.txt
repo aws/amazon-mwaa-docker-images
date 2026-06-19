@@ -577,7 +577,7 @@ pybreaker==1.4.1
 pycountry==26.2.16
 pycparser==3.0
 pycryptodome==3.23.0
-pydantic-settings==2.13.1
+pydantic-settings==2.14.2
 pydantic==2.12.5
 pydantic_core==2.41.5
 pydata-google-auth==1.9.1
