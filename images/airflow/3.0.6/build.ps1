@@ -102,7 +102,7 @@ if ($GenerateBom -eq "True") {
 # ---------------------------------------------------------------------------
 # Build base image
 # ---------------------------------------------------------------------------
-& $ContainerRuntime build -f .\Dockerfiles\Dockerfile.base -t amazon-mwaa-docker-images/airflow:3.0.6-base .\
+& $ContainerRuntime build -f .\Dockerfiles\Dockerfile.base -t localhost/amazon-mwaa-docker-images/airflow:3.0.6-base .\
 if ($LASTEXITCODE -ne 0) { throw "Failed to build base image." }
 
 # ---------------------------------------------------------------------------
