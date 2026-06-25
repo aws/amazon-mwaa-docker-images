@@ -30,6 +30,15 @@ def _fix_shared_log_volume_permissions():
         except Exception as e:
             print(f"WARNING: Could not fix ownership of {log_dir}: {e}")
 
+        # Ensure the dag_processor log directory exists so Fluent Bit's tail
+        # input does not error when scanning the glob. The directory is not
+        # guaranteed to exist at container start.
+        dag_processor_dir = os.path.join(log_dir, "dag_processor")
+        try:
+            os.makedirs(dag_processor_dir, exist_ok=True)
+        except Exception as e:
+            print(f"WARNING: Could not create {dag_processor_dir}: {e}")
+
 _fix_shared_log_volume_permissions()
 
 # Setup logging first thing to make sure all logs happen under the right setup. The
@@ -190,7 +199,6 @@ async def create_airflow_user(environ: dict[str, str]):
     )
 
 
-@with_db_lock(1357)
 def create_queue() -> None:
     """
     Create the SQS required by Celery.
@@ -201,6 +209,12 @@ def create_queue() -> None:
     """
     if not should_create_queue():
         return
+    else:
+        _create_queue_with_db_lock_mutex()
+
+
+@with_db_lock(1357)
+def _create_queue_with_db_lock_mutex():
     queue_name = get_sqs_queue_name()
     endpoint = os.environ.get("MWAA__SQS__CUSTOM_ENDPOINT")
     sqs = boto3.client("sqs", endpoint_url=endpoint)  # type: ignore
@@ -224,6 +238,7 @@ def create_queue() -> None:
 
 async def main() -> None:
     """Start execution of the script."""
+    _fix_shared_log_volume_permissions()
     try:
         (
             _,

@@ -37,7 +37,7 @@ def mock_watchtower():
 
 @pytest.fixture
 def mock_fluent():
-    with patch('mwaa.logging.cloudwatch_handlers.fluent_handler.FluentHandler') as mock:
+    with patch('mwaa.logging.fork_safe_handler.ForkSafeFluentHandler') as mock:
         yield mock
 
 @pytest.fixture(autouse=True)
@@ -193,7 +193,9 @@ def test_log_handler_creation(mock_boto3_client, mock_watchtower, mock_fluent, u
             mock_fluent.assert_called_once_with(
                 'customer.logs',
                 host=ANY,
-                port=24224
+                port=24224,
+                queue_maxsize=50000,
+                queue_circular=True,
             )
 
 def test_task_log_handler_with_fluent(mock_boto3_client, mock_fluent):
@@ -218,7 +220,8 @@ def test_task_log_handler_with_fluent(mock_boto3_client, mock_fluent):
         assert mock_fluent.call_args.kwargs == {
             'host': ANY,
             'port': 24224,
-            'queue_maxsize': 50000
+            'queue_maxsize': 50000,
+            'queue_circular': True,
         }
 
 def test_subprocess_log_handler_with_fluent(mock_boto3_client, mock_fluent):
@@ -241,7 +244,9 @@ def test_subprocess_log_handler_with_fluent(mock_boto3_client, mock_fluent):
         assert mock_fluent.call_args.args[0] == 'customer.logs'
         assert mock_fluent.call_args.kwargs == {
             'host': ANY,
-            'port': 24224
+            'port': 24224,
+            'queue_maxsize': 50000,
+            'queue_circular': True,
         }
 
 def test_dag_processor_manager_log_handler(mock_boto3_client, mock_fluent, mock_watchtower):
@@ -262,7 +267,9 @@ def test_dag_processor_manager_log_handler(mock_boto3_client, mock_fluent, mock_
         assert mock_fluent.call_args.args[0] == 'customer.logs'
         assert mock_fluent.call_args.kwargs == {
             'host': ANY,
-            'port': 24224
+            'port': 24224,
+            'queue_maxsize': 50000,
+            'queue_circular': True,
         }
 
 def test_dag_processing_log_handler(mock_boto3_client, mock_fluent, mock_watchtower):
@@ -285,5 +292,7 @@ def test_dag_processing_log_handler(mock_boto3_client, mock_fluent, mock_watchto
         assert mock_fluent.call_args.args[0] == 'customer.logs'
         assert mock_fluent.call_args.kwargs == {
             'host': ANY,
-            'port': 24224
+            'port': 24224,
+            'queue_maxsize': 50000,
+            'queue_circular': True,
         }

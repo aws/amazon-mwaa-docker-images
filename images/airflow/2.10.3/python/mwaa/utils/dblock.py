@@ -13,15 +13,30 @@ from typing import Any, Awaitable, Callable, TypeVar, Union, cast
 
 # 3rd party imports
 from sqlalchemy import create_engine, text
-from sqlalchemy.engine import Engine
+from sqlalchemy.engine import Connection
 
 # Our imports
 from mwaa.config.database import get_db_connection_string
+from mwaa.utils.db_retry import with_db_retry, MAINTENANCE_ENGINE_KWARGS
 
 logger = logging.getLogger(__name__)
 
 
 F = TypeVar("F", bound=Callable[..., Any])
+
+
+@with_db_retry
+def _connect_with_retry() -> Connection:
+    """Establish a DB connection with retry on transient RDS Proxy failures."""
+    from mwaa.config.airflow_rds_iam_patch import use_iam_credentials
+    if use_iam_credentials():
+        from mwaa.utils.get_rds_iam_credentials import RDSIAMCredentialProvider
+        token = RDSIAMCredentialProvider.get_token()
+        conn_url = RDSIAMCredentialProvider.create_db_connection_url(token)
+    else:
+        conn_url = get_db_connection_string()
+    engine = create_engine(conn_url, **MAINTENANCE_ENGINE_KWARGS)
+    return engine.connect()
 
 
 def _obtain_db_lock(conn: Any, lock_id: int, timeout_ms: int, friendly_name: str):
@@ -95,23 +110,27 @@ def with_db_lock(
     ) -> Union[Callable[..., Any], Callable[..., Awaitable[Any]]]:
         async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
             func_name: str = func.__name__
-            db_engine: Engine = create_engine(get_db_connection_string())
-            with db_engine.connect() as conn:  # type: ignore
+            conn = _connect_with_retry()
+            try:
+                _obtain_db_lock(conn, lock_id, timeout_ms, func_name)
+                return await func(*args, **kwargs)
+            finally:
                 try:
-                    _obtain_db_lock(conn, lock_id, timeout_ms, func_name)
-                    return await func(*args, **kwargs)
-                finally:
                     _release_db_lock(conn, lock_id, func_name)
+                finally:
+                    conn.close()
 
         def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
             func_name: str = func.__name__
-            db_engine: Engine = create_engine(get_db_connection_string())
-            with db_engine.connect() as conn:  # type: ignore
+            conn = _connect_with_retry()
+            try:
+                _obtain_db_lock(conn, lock_id, timeout_ms, func_name)
+                return func(*args, **kwargs)
+            finally:
                 try:
-                    _obtain_db_lock(conn, lock_id, timeout_ms, func_name)
-                    return func(*args, **kwargs)
-                finally:
                     _release_db_lock(conn, lock_id, func_name)
+                finally:
+                    conn.close()
 
         if asyncio.iscoroutinefunction(func):
             return cast(Callable[..., Awaitable[Any]], async_wrapper)

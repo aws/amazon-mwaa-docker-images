@@ -39,9 +39,9 @@ import boto3
 import socket
 import time
 import watchtower
-from fluent import asynchandler as fluent_handler
 
 # Our imports
+from mwaa.logging.fork_safe_handler import ForkSafeFluentHandler
 from mwaa.logging.utils import parse_arn, throttle
 from mwaa.utils.statsd import get_statsd
 
@@ -146,10 +146,12 @@ class BaseLogHandler(logging.Handler):
         self.log_stream = stream_name
 
         if self.enabled and self.NON_CRITICAL_LOGGING_ENABLED:
-            self.handler = fluent_handler.FluentHandler(
+            self.handler = ForkSafeFluentHandler(
                 'customer.logs',
                 host='localhost',
-                port=24224
+                port=24224,
+                queue_maxsize=50000,
+                queue_circular=True,
             )
             if self.formatter:
                 # Wrap the existing formatter to add routing fields
@@ -281,6 +283,7 @@ class CloudWatchRemoteTaskLogger(BaseLogHandler, LoggingMixin):
         task-sdk/src/airflow/sdk/log.py#L143
     """
     LOG_SOURCE = "task"
+    _MAX_EVENT_BYTES = 260_000 # ~254 KB, leaving headroom for CW overhead + JSON envelope
     # In Airflow currently there are some logs that "seeps" out of the traditional task log stream. Ideally we should
     # use log_filename_template config to generate a pattern for filtering only task log streams. But that config
     # value is not a regex pattern but instead a Jinja template. As a workaround for now we use a deny list instead.
@@ -288,6 +291,8 @@ class CloudWatchRemoteTaskLogger(BaseLogHandler, LoggingMixin):
         # Dag processor log (from loading DagBag) with stream name dag_processor/2025-01-01/dags-folder/dag.py.log
         re.compile(r"^dag_processor/")
     ]
+    # Pattern to match triggerer log streams: {base_stream}.trigger.{numeric_id}.log
+    TRIGGERER_STREAM_PATTERN = re.compile(r"\.trigger\.\d+\.log$")
 
     def __init__(
         self,
@@ -314,6 +319,156 @@ class CloudWatchRemoteTaskLogger(BaseLogHandler, LoggingMixin):
             use_queues=True,
             create_log_group=False,
         )
+
+    def _split_oversize_event(self, msg: dict) -> list[dict]:
+        """
+        Split an oversized structured log message into multiple CloudWatch-safe chunks.
+
+        Background:
+            In Airflow 2.x, oversized log messages were silently truncated by watchtower
+            with a "Log message size exceeds CWL max payload size, truncated" warning,
+            causing permanent data loss for customers. This method was introduced in
+            Airflow 3.x to preserve all log content by splitting the 'event' field across
+            multiple log events, each within CloudWatch's per-event size limit.
+
+        Behavior:
+            - If the serialized msg fits within _MAX_EVENT_BYTES, returns [msg] unchanged.
+            - Otherwise, splits msg['event'] into N chunks, each returned as a separate
+              dict with all metadata keys preserved.
+            - On any internal error, falls back to truncation rather than killing the task.
+
+        Critical constraint (ensure_ascii):
+            Watchtower's CloudWatchLogFormatter serializes dicts using json.dumps with
+            ensure_ascii=True (the Python default). This means non-ASCII characters are
+            escaped to \\uXXXX sequences (6 bytes each), e.g.:
+                '田' (3 bytes UTF-8) -> '\\u7530' (6 bytes in JSON)
+            All size measurements in this method MUST use ensure_ascii=True to match
+            watchtower's behavior. Using ensure_ascii=False would undercount the final
+            serialized size, causing chunks to exceed watchtower's max_message_size
+            (262,144 bytes) and trigger silent byte-level truncation with data loss.
+
+        Returns:
+            A list of one or more msg dicts, each safe for watchtower to emit without
+            truncation.
+        """
+        try:
+            return self._split_oversize_event_inner(msg)
+        except Exception as e:
+            # Logging must never kill a customer's task. If splitting fails,
+            # fall back to returning the original message truncated to fit.
+            print(f"[_split_oversize_event] ERROR during split, falling back: {e}")
+            self.stats.incr(f"mwaa.logging.{CloudWatchRemoteTaskLogger.LOG_SOURCE}.split_error", 1)
+            try:
+                # Attempt to truncate the event to fit within the limit
+                event_value = msg.get("event", "")
+                if isinstance(event_value, str) and len(event_value.encode("utf-8")) > self._MAX_EVENT_BYTES:
+                    metadata = {k: v for k, v in msg.items() if k != "event"}
+                    # Rough truncation — leave room for metadata + truncation marker
+                    truncated = event_value[:self._MAX_EVENT_BYTES // 4] + "\n... [TRUNCATED due to split error] ..."
+                    return [{**metadata, "event": truncated}]
+            except Exception:
+                pass
+            return [msg]
+
+    def _split_oversize_event_inner(self, msg: dict) -> list[dict]:
+        """
+        Inner implementation of oversize event splitting.
+
+        Design Decision — Character-level binary search:
+            We split the event string by Python characters (Unicode code points), using
+            binary search to find the maximum substring that fits within the byte budget
+            when JSON-serialized. This approach was chosen over two alternatives:
+
+            Alternative 1 — Byte-level splitting (O(N), rejected):
+                Serialize the event to JSON-escaped bytes, then split at byte boundaries.
+                Pros: O(N) time complexity, single pass.
+                Cons: Requires careful handling of multi-byte UTF-8 continuation bytes
+                AND variable-length JSON escape sequences (\\n=2 bytes, \\uXXXX=6 bytes,
+                surrogate pairs=12 bytes, \\\\=2 bytes) at split boundaries. Getting all
+                edge cases correct is fragile and hard to verify.
+
+            Alternative 2 — Fixed character budget (O(N), rejected):
+                Assume worst-case 6 bytes per character (\\uXXXX) and use a fixed
+                chars_per_chunk = max_bytes // 6.
+                Pros: O(N), simple, no binary search.
+                Cons: Extremely wasteful for ASCII-heavy content. A 260KB budget would
+                only allow ~43K chars per chunk even if the content is pure ASCII (1 byte
+                per char in JSON). Real logs are typically 80%+ ASCII, so this would
+                produce 3-4x more chunks than necessary, increasing CloudWatch API calls
+                and costs.
+
+            Chosen approach — Character-level binary search (O(N * log(N/K))):
+                For each chunk, binary search over character count to find the largest
+                substring whose JSON-serialized size fits the budget. Each probe calls
+                json.dumps on a candidate substring to measure its exact escaped size.
+                Pros: Correct by construction (no escape-boundary bugs), produces
+                optimally-filled chunks regardless of character mix.
+                Cons: O(N * log(N/K)) where K = number of chunks. In practice with
+                N ~ 500KB and K ~ 2-3, this means ~18 binary search probes per chunk,
+                each serializing ~200KB. Total work is ~3-4x a single json.dumps call.
+                Acceptable for a code path that only triggers on oversized messages
+                (>260KB), which is rare in normal operation.
+
+        Critical: ensure_ascii=True for size measurement:
+            Watchtower's CloudWatchLogFormatter uses json.dumps with ensure_ascii=True
+            (Python's default). This escapes non-ASCII to \\uXXXX (6 bytes each).
+            We MUST measure sizes the same way. Using ensure_ascii=False would measure
+            '田' as 3 bytes but watchtower would serialize it as 6 bytes (\\u7530),
+            causing the final output to exceed watchtower's 262,144-byte limit and
+            triggering silent truncation.
+        """
+        # Measure total size using ensure_ascii=True to match watchtower's serialization
+        serialized = json.dumps(msg, default=str)
+        serialized_size = len(serialized.encode("utf-8"))
+
+        if serialized_size <= self._MAX_EVENT_BYTES:
+            return [msg]
+
+        event_value = msg.get("event", "")
+        if not isinstance(event_value, str):
+            event_value = str(event_value)
+
+        # Compute the byte budget available for the event content in each chunk.
+        # The "envelope" is the JSON overhead from metadata keys + empty event value.
+        metadata = {k: v for k, v in msg.items() if k != "event"}
+        envelope = json.dumps({**metadata, "event": ""}, default=str).encode("utf-8")
+        max_event_json_bytes = self._MAX_EVENT_BYTES - len(envelope)
+
+        chunks = []
+        pos = 0
+        total_chars = len(event_value)
+
+        while pos < total_chars:
+            # Binary search for the largest substring starting at pos that fits
+            # within max_event_json_bytes when JSON-serialized with ensure_ascii=True.
+            lo = 1
+            hi = min(total_chars - pos, max_event_json_bytes)
+            best = lo  # Guarantee at least 1 char progress to avoid infinite loop
+
+            while lo <= hi:
+                mid = (lo + hi) // 2
+                candidate = event_value[pos:pos + mid]
+                # json.dumps(candidate) wraps in quotes: '"..content.."'
+                # [1:-1] strips the quotes to get just the escaped content
+                escaped_size = len(json.dumps(candidate)[1:-1].encode("utf-8"))
+                if escaped_size <= max_event_json_bytes:
+                    best = mid
+                    lo = mid + 1
+                else:
+                    hi = mid - 1
+
+            chunk_str = event_value[pos:pos + best]
+            chunks.append({**metadata, "event": chunk_str})
+            pos += best
+
+        num_chunks = len(chunks) if chunks else 0
+        print(f"[_split_oversize_event] split oversized log event: "
+              f"original_size={serialized_size}, chunks={num_chunks}, "
+              f"max_per_chunk={self._MAX_EVENT_BYTES}")
+        self.stats.incr(f"mwaa.logging.{CloudWatchRemoteTaskLogger.LOG_SOURCE}.oversize_split", 1)
+
+        return chunks if chunks else [msg]
+
 
     @cached_property
     def processors(self) -> tuple[structlog.typing.Processor, ...]:
@@ -353,19 +508,21 @@ class CloudWatchRemoteTaskLogger(BaseLogHandler, LoggingMixin):
             if ts := msg.pop("timestamp", None):
                 with contextlib.suppress(Exception):
                     created = datetime.fromisoformat(ts)
-            record = logRecordFactory(
-                name, level, pathname="", lineno=0, msg=msg, args=(), exc_info=None, func=None, sinfo=None
-            )
-            if created is not None:
-                ct = created.timestamp()
-                record.created = ct
-                record.msecs = int((ct - int(ct)) * 1000) + 0.0  # Copied from stdlib logging
-            try:
-                _handler.handle(record)
-            except Exception as e:
-                self.stats.incr(f"mwaa.logging.{CloudWatchRemoteTaskLogger.LOG_SOURCE}.emit_error", 1)
-                # TODO maybe consider removing this if we plan to make logging non-critical
-                raise e
+
+            for chunks_msg in self._split_oversize_event(msg):
+                record = logRecordFactory(
+                    name, level, pathname="", lineno=0, msg=chunks_msg, args=(), exc_info=None, func=None, sinfo=None
+                )
+                if created is not None:
+                    ct = created.timestamp()
+                    record.created = ct
+                    record.msecs = int((ct - int(ct)) * 1000) + 0.0  # Copied from stdlib logging
+                try:
+                    _handler.handle(record)
+                except Exception as e:
+                    self.stats.incr(f"mwaa.logging.{CloudWatchRemoteTaskLogger.LOG_SOURCE}.emit_error", 1)
+                    # TODO maybe consider removing this if we plan to make logging non-critical
+                    raise e
             return event
 
         return (proc,)
@@ -385,6 +542,69 @@ class CloudWatchRemoteTaskLogger(BaseLogHandler, LoggingMixin):
         self.flush()
         return
 
+    def _discover_triggerer_streams(self, base_stream_name: str) -> list[str]:
+        """
+        Discover triggerer log streams associated with a task instance.
+
+        Uses describe_log_streams with a prefix filter to find streams matching
+        the pattern: {base_stream_name}.trigger.{numeric_id}.log
+
+        :param base_stream_name: The primary task log stream name.
+        :returns: List of triggerer stream names, or empty list if none found.
+        """
+        try:
+            log_group = self.log_group_arn.rsplit(":", 1)[1]
+            prefix = base_stream_name + ".trigger."
+            streams: list[str] = []
+            kwargs = {
+                "logGroupName": log_group,
+                "logStreamNamePrefix": prefix,
+            }
+            while True:
+                response = self.hook.conn.describe_log_streams(**kwargs)
+                for stream in response.get("logStreams", []):
+                    name = stream.get("logStreamName", "")
+                    if self.TRIGGERER_STREAM_PATTERN.search(name):
+                        streams.append(name)
+                next_token = response.get("nextToken")
+                if not next_token:
+                    break
+                kwargs["nextToken"] = next_token
+            return streams
+        except Exception:
+            return []
+
+    def _read_triggerer_logs(
+        self, triggerer_streams: list[str], task_instance
+    ) -> LogMessages:
+        """
+        Read log events from all discovered triggerer streams.
+
+        For each stream, prepends a header indicating the source stream,
+        reads events via get_cloudwatch_logs, and converts them to
+        StructuredLogMessage objects.
+
+        :param triggerer_streams: List of triggerer log stream names.
+        :param task_instance: The task instance to get logs about.
+        :returns: List of log messages (StructuredLogMessage objects with headers).
+        """
+        from airflow.utils.log.file_task_handler import StructuredLogMessage
+
+        all_logs: LogMessages = []
+        for stream_name in triggerer_streams:
+            all_logs.append(
+                f"Reading triggerer logs from: {stream_name}"
+            )
+            try:
+                events = self.get_cloudwatch_logs(stream_name, task_instance)
+                for log in events:
+                    all_logs.append(StructuredLogMessage.model_validate(log))
+            except Exception as e:
+                all_logs.append(
+                    f"Failed to read triggerer logs from: {stream_name}: {e}"
+                )
+        return all_logs
+
     def read(
         self, task_instance, try_number, metadata=None
     ) -> tuple[LogMessages, LogMetadata]:
@@ -395,7 +615,16 @@ class CloudWatchRemoteTaskLogger(BaseLogHandler, LoggingMixin):
         """
         stream_name = self._render_filename(task_instance, try_number).replace(":", "_")
         messages, logs = self._read_remote_logs(stream_name, task_instance)
-        return messages + logs, metadata
+
+        try:
+            triggerer_streams = self._discover_triggerer_streams(stream_name)
+            triggerer_logs = self._read_triggerer_logs(triggerer_streams, task_instance)
+        except Exception as e:
+            triggerer_logs = [
+                f"Failed to read triggerer logs: {e}"
+            ]
+
+        return messages + logs + triggerer_logs, metadata
 
     def _read_remote_logs(self, relative_path, ti: RuntimeTI) -> tuple[LogSourceInfo, LogMessages | None]:
         messages = [
