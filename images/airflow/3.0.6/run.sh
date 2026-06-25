@@ -51,6 +51,9 @@ ENV_NAME="" # Choose an environment name here.
 REGION="us-west-2" # Keeping the region us-west-2 as default.
 export REGION
 
+# CloudWatch logging mode: "auto" (on when ACCOUNT_ID+ENV_NAME are set), "true" (force on), "false" (force off).
+USE_CLOUDWATCH_LOGS="auto"
+
 # AWS Credentials
 # For local running without a real AWS account, dummy values are sufficient —
 # ElasticMQ (local SQS) does not validate credentials, but boto3 requires
@@ -73,23 +76,65 @@ export GENERATE_BILL_OF_MATERIALS
 # MWAA Configuration
 MWAA__CORE__REQUIREMENTS_PATH="/usr/local/airflow/requirements/requirements.txt"
 MWAA__CORE__STARTUP_SCRIPT_PATH="/usr/local/airflow/startup/startup.sh"
-MWAA__LOGGING__AIRFLOW_DAGPROCESSOR_LOGS_ENABLED="true"
-MWAA__LOGGING__AIRFLOW_DAGPROCESSOR_LOG_GROUP_ARN="arn:aws:logs:${REGION}:${ACCOUNT_ID}:log-group:${ENV_NAME}-DAGProcessing"
+# Logging values derived from USE_CLOUDWATCH_LOGS.
+case "$USE_CLOUDWATCH_LOGS" in
+    auto)
+        if [ -n "$ACCOUNT_ID" ] && [ -n "$ENV_NAME" ]; then
+            LOGS_ENABLED="true"
+        else
+            LOGS_ENABLED="false"
+        fi
+        ;;
+    true)
+        if [ -z "$ACCOUNT_ID" ] || [ -z "$ENV_NAME" ]; then
+            echo "ERROR: USE_CLOUDWATCH_LOGS=\"true\" requires ACCOUNT_ID and ENV_NAME (or use \"auto\"/\"false\")." >&2
+            exit 1
+        fi
+        LOGS_ENABLED="true"
+        ;;
+    false)
+        LOGS_ENABLED="false"
+        ;;
+    *)
+        echo "ERROR: USE_CLOUDWATCH_LOGS must be auto, true, or false (got \"$USE_CLOUDWATCH_LOGS\")." >&2
+        exit 1
+        ;;
+esac
+
+if [ "$LOGS_ENABLED" == "true" ]; then
+    arn_prefix="arn:aws:logs:${REGION}:${ACCOUNT_ID}:log-group:${ENV_NAME}"
+    DAGPROCESSOR_LOG_GROUP_ARN="${arn_prefix}-DAGProcessing"
+    SCHEDULER_LOG_GROUP_ARN="${arn_prefix}-Scheduler"
+    TASK_LOG_GROUP_ARN="${arn_prefix}-Task"
+    TRIGGERER_LOG_GROUP_ARN="${arn_prefix}-Scheduler"  # Triggerer reuses the Scheduler log group
+    WEBSERVER_LOG_GROUP_ARN="${arn_prefix}-WebServer"
+    WORKER_LOG_GROUP_ARN="${arn_prefix}-Worker"
+else
+    DAGPROCESSOR_LOG_GROUP_ARN=""
+    SCHEDULER_LOG_GROUP_ARN=""
+    TASK_LOG_GROUP_ARN=""
+    TRIGGERER_LOG_GROUP_ARN=""
+    WEBSERVER_LOG_GROUP_ARN=""
+    WORKER_LOG_GROUP_ARN=""
+fi
+
+MWAA__LOGGING__AIRFLOW_DAGPROCESSOR_LOGS_ENABLED="$LOGS_ENABLED"
+MWAA__LOGGING__AIRFLOW_DAGPROCESSOR_LOG_GROUP_ARN="$DAGPROCESSOR_LOG_GROUP_ARN"
 MWAA__LOGGING__AIRFLOW_DAGPROCESSOR_LOG_LEVEL="INFO"
-MWAA__LOGGING__AIRFLOW_SCHEDULER_LOGS_ENABLED="true"
-MWAA__LOGGING__AIRFLOW_SCHEDULER_LOG_GROUP_ARN="arn:aws:logs:${REGION}:${ACCOUNT_ID}:log-group:${ENV_NAME}-Scheduler"
+MWAA__LOGGING__AIRFLOW_SCHEDULER_LOGS_ENABLED="$LOGS_ENABLED"
+MWAA__LOGGING__AIRFLOW_SCHEDULER_LOG_GROUP_ARN="$SCHEDULER_LOG_GROUP_ARN"
 MWAA__LOGGING__AIRFLOW_SCHEDULER_LOG_LEVEL="INFO"
-MWAA__LOGGING__AIRFLOW_TASK_LOGS_ENABLED="true"
-MWAA__LOGGING__AIRFLOW_TASK_LOG_GROUP_ARN="arn:aws:logs:${REGION}:${ACCOUNT_ID}:log-group:${ENV_NAME}-Task"
+MWAA__LOGGING__AIRFLOW_TASK_LOGS_ENABLED="$LOGS_ENABLED"
+MWAA__LOGGING__AIRFLOW_TASK_LOG_GROUP_ARN="$TASK_LOG_GROUP_ARN"
 MWAA__LOGGING__AIRFLOW_TASK_LOG_LEVEL="INFO"
-MWAA__LOGGING__AIRFLOW_TRIGGERER_LOGS_ENABLED="true"
-MWAA__LOGGING__AIRFLOW_TRIGGERER_LOG_GROUP_ARN="arn:aws:logs:${REGION}:${ACCOUNT_ID}:log-group:${ENV_NAME}-Scheduler"
+MWAA__LOGGING__AIRFLOW_TRIGGERER_LOGS_ENABLED="$LOGS_ENABLED"
+MWAA__LOGGING__AIRFLOW_TRIGGERER_LOG_GROUP_ARN="$TRIGGERER_LOG_GROUP_ARN"
 MWAA__LOGGING__AIRFLOW_TRIGGERER_LOG_LEVEL="INFO"
-MWAA__LOGGING__AIRFLOW_WEBSERVER_LOGS_ENABLED="true"
-MWAA__LOGGING__AIRFLOW_WEBSERVER_LOG_GROUP_ARN="arn:aws:logs:${REGION}:${ACCOUNT_ID}:log-group:${ENV_NAME}-WebServer"
+MWAA__LOGGING__AIRFLOW_WEBSERVER_LOGS_ENABLED="$LOGS_ENABLED"
+MWAA__LOGGING__AIRFLOW_WEBSERVER_LOG_GROUP_ARN="$WEBSERVER_LOG_GROUP_ARN"
 MWAA__LOGGING__AIRFLOW_WEBSERVER_LOG_LEVEL="INFO"
-MWAA__LOGGING__AIRFLOW_WORKER_LOGS_ENABLED="true"
-MWAA__LOGGING__AIRFLOW_WORKER_LOG_GROUP_ARN="arn:aws:logs:${REGION}:${ACCOUNT_ID}:log-group:${ENV_NAME}-Worker"
+MWAA__LOGGING__AIRFLOW_WORKER_LOGS_ENABLED="$LOGS_ENABLED"
+MWAA__LOGGING__AIRFLOW_WORKER_LOG_GROUP_ARN="$WORKER_LOG_GROUP_ARN"
 MWAA__LOGGING__AIRFLOW_WORKER_LOG_LEVEL="INFO"
 MWAA__CORE__TASK_MONITORING_ENABLED="false"
 MWAA__CORE__TERMINATE_IF_IDLE="false"

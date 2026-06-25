@@ -32,21 +32,20 @@ python3 create_venvs.py --target <development | production>
 python3 create_venvs.py --target <development | production> --version 3.0.6
 ```
 
-3. Build a supported Airflow version Docker image
+3. Build and run a supported Airflow version Docker image:
    - `cd <amazon-mwaa-docker-images path>/images/airflow/2.9.2`
-   - Update `run.sh` file with your account ID, environment name and account credentials, api-server URL 
-   - (`http://host_name:8080`). The permissions associated
-   with the provided credentials will be assigned to the Airflow components that would be started with the next step. 
-   So, if you receive any error message indicating lack of permissions, then try providing the permissions to the 
-   identity whose credentials were used.
-   - `./run.sh` This will build and run all the necessary containers and automatically create the following CloudWatch log groups:
+   - `./run.sh`
+
+   By default this runs fully locally (no AWS account needed): it builds the images, starts the containers, and writes logs inside the container at `/usr/local/airflow/logs/`. The web server is at `http://localhost:8080`.
+
+   To publish logs to CloudWatch instead, set `ACCOUNT_ID`, `ENV_NAME`, and real AWS credentials in `run.sh`. `./run.sh` then creates and writes to these log groups (your credentials need permission to do so):
      - `{ENV_NAME}-DAGProcessing`
      - `{ENV_NAME}-Scheduler`
      - `{ENV_NAME}-Worker`
      - `{ENV_NAME}-Task`
      - `{ENV_NAME}-WebServer`
 
-Airflow should be up and running now. You can access the web server on your localhost on port 8080.
+   The credentials you provide are also used by the Airflow components at runtime, so if you hit permission errors, grant the needed permissions to that identity.
 
 ---
 
@@ -126,6 +125,8 @@ docker compose down
 | Login fails at `http://localhost:8080` | Check the webserver container logs for the credentials printed on startup |
 | DAG not appearing | Check the scheduler container logs or verify the file exists in the `dags\` folder |
 
+---
+
 ### Authentication from version 3.0.1 onward
 For environments created using this repository starting with version 3.0.1, we default to using `SimpleAuthManager`, 
 which is also the default auth manager in Airflow 3.0.0+. By default, `SIMPLE_AUTH_MANAGER_ALL_ADMINS` is set to true, 
@@ -142,6 +143,7 @@ SIMPLE_AUTH_MANAGER_ALL_ADMINS=false
 In this mode, a password will be automatically generated for each user and printed in the webserver logs as soon as 
 webserver starts.
 
+---
 
 ### Generated Docker Images
 
@@ -177,6 +179,7 @@ Each of the postfixes added to the image tag represents a certain build type, as
   install tools like `wget` to make it possible for the user to fetch web pages. For a complete
   listing of what is installed in `dev` images, see the `bootstrap-dev` folders.
 
+---
 
 ## Extra commands
 
