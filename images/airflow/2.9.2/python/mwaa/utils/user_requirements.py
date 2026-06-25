@@ -11,6 +11,7 @@ from pathlib import Path
 import logging
 import os
 import re
+import shutil
 import subprocess as sp
 import zipfile
 
@@ -138,12 +139,16 @@ def package_user_requirements(environ: dict[str, str]):
     airflow_home = os.environ.get("AIRFLOW_HOME", "/usr/local/airflow")
     plugins_dir = Path(airflow_home) / "plugins"
     requirements_dir = Path(airflow_home) / "requirements"
-    plugins_dir.mkdir(parents=True, exist_ok=True)
+    downloads_dir = requirements_dir / "downloads"
     requirements_dir.mkdir(parents=True, exist_ok=True)
 
-    logger.info(f"Downloading packages from {requirements_file} into {plugins_dir}")
+    if downloads_dir.exists():
+        shutil.rmtree(downloads_dir)
+    downloads_dir.mkdir(parents=True, exist_ok=True)
+
+    logger.info(f"Downloading packages from {requirements_file} into {downloads_dir}")
     result = sp.run(
-        ["pip3", "download", "-r", requirements_file, "-d", str(plugins_dir)],
+        ["pip3", "download", "-r", requirements_file, "-d", str(downloads_dir)],
         env=environ,
     )
     if result.returncode != 0:
@@ -153,7 +158,7 @@ def package_user_requirements(environ: dict[str, str]):
     zip_path = requirements_dir / "plugins.zip"
     logger.info(f"Creating {zip_path}")
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-        for f in plugins_dir.iterdir():
+        for f in downloads_dir.iterdir():
             if f.is_file():
                 zf.write(f, f.name)
 
@@ -161,7 +166,7 @@ def package_user_requirements(environ: dict[str, str]):
     original_content = _read_requirements_file(requirements_file)
     packaged_req_path.write_text(
         f"--no-index\n"
-        f"--find-links /usr/local/airflow/plugins\n"
+        f"--find-links {plugins_dir}\n"
         f"{original_content}\n"
     )
     logger.info(
