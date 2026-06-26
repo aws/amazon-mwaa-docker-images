@@ -98,6 +98,7 @@ async def install_user_requirements(cmd: str, environ: dict[str, str]):
                 TimeoutCondition(USER_REQUIREMENTS_MAX_INSTALL_TIME),
             ],
             friendly_name=f"{logger_prefix}_requirements",
+            always_publish=True,
         )
         pip_process.start()
         if pip_process.process and pip_process.process.returncode != 0:
