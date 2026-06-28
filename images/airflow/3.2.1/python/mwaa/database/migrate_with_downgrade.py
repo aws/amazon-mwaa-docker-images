@@ -40,19 +40,20 @@ def _verify_environ():
         logger.error("The necessary environment variables are not set.")
         sys.exit(1)
 
+@with_db_retry
+def _create_engine_with_retry():
+    engine = create_engine(
+        get_db_connection_string(),
+        **MAINTENANCE_ENGINE_KWARGS,
+    )
+    with engine.connect() as conn:
+        conn.execute(text("SELECT 1"))
+    return engine
+
+
 def _ensure_rds_iam_user():
     try:
-        @with_db_retry
-        def _connect_static():
-            engine = create_engine(
-                get_db_connection_string(),
-                **MAINTENANCE_ENGINE_KWARGS,
-            )
-            with engine.connect() as conn:
-                conn.execute(text("SELECT 1"))
-            return engine
-
-        db_engine = _connect_static()
+        db_engine = _create_engine_with_retry()
         with db_engine.connect() as conn:
             with conn.begin():
                 result = conn.execute(text("SELECT 1 FROM pg_roles WHERE rolname = :rolename"), {"rolename": DB_IAM_USERNAME})
@@ -222,10 +223,115 @@ def _fix_fab_sequence_defaults():
         raise
 
 
+def _fix_deferred_task_serialization():
+    """
+    Re-encode columns whose serialization format changed between 3.2.1 and the
+    downgrade targets (3.0.6 / 2.11.0).
+
+    3.2.1 stores ``task_instance.next_kwargs`` as raw JSONB and ``trigger.kwargs``
+    via ``airflow.sdk.serde``. Both 3.0.6 and 2.11.0 read these columns with
+    ``BaseSerialization`` (ExtendedJSON), which expects the ``{"__var","__type"}``
+    envelope and has no fallback -> ``KeyError <Encoding.VAR:'__var'>`` while the
+    scheduler materializes rows in ``get_running_dag_runs_to_examine`` (and the
+    triggerer in ``Trigger.bulk_fetch``).
+
+    This runs in the 3.2.1 image (so both ``serde`` and ``BaseSerialization`` are
+    available) BEFORE the Alembic schema downgrade, while the 3.2.1 schema is still
+    in place (``task_instance.id`` exists; after the downgrade the Airflow 2.x table
+    has a composite PK with no ``id`` column). The schema downgrade leaves these
+    JSONB column contents untouched, so translating first is safe for both targets
+    and lets in-flight deferred tasks survive the downgrade instead of crashing.
+    """
+    import json
+    from airflow.serialization.serialized_objects import BaseSerialization
+
+    try:
+        from airflow.sdk.serde import deserialize as serde_deserialize
+    except Exception:
+        serde_deserialize = None
+
+    def _to_base_serialization(raw):
+        # `raw` is the JSON value already loaded from the DB (dict/list/primitive).
+        obj = raw
+        if serde_deserialize is not None:
+            try:
+                obj = serde_deserialize(raw)  # serde-encoded -> python obj
+            except Exception:
+                obj = raw  # already a plain value (e.g. defer-time raw dict)
+        return BaseSerialization.serialize(obj)
+
+    try:
+        db_engine = _create_engine_with_retry()
+        with db_engine.connect() as conn:
+            with conn.begin():
+                # --- task_instance.next_kwargs (scheduler path) ---
+                ti_rows = conn.execute(
+                    text(
+                        "SELECT id, next_kwargs FROM task_instance "
+                        "WHERE next_kwargs IS NOT NULL"
+                    )
+                ).fetchall()
+                for ti_id, next_kwargs in ti_rows:
+                    fixed = _to_base_serialization(next_kwargs)
+                    conn.execute(
+                        text(
+                            "UPDATE task_instance SET next_kwargs = :v WHERE id = :i"
+                        ),
+                        {"v": json.dumps(fixed), "i": ti_id},
+                    )
+                logging.info(
+                    "Re-encoded next_kwargs for %d task_instance row(s).", len(ti_rows)
+                )
+
+                # --- trigger.kwargs (triggerer path) ---
+                # 3.0.x/2.x _decrypt_kwargs accepts a plaintext value that
+                # startswith("{"), so we store plaintext BaseSerialization JSON and
+                # skip re-encryption.
+                from airflow.models.crypto import get_fernet
+
+                fernet = get_fernet()
+                trg_rows = conn.execute(
+                    text("SELECT id, kwargs FROM trigger WHERE kwargs IS NOT NULL")
+                ).fetchall()
+                for trg_id, kwargs in trg_rows:
+                    if kwargs.startswith("{"):
+                        raw = json.loads(kwargs)
+                    else:
+                        raw = json.loads(fernet.decrypt(kwargs.encode("utf-8")).decode("utf-8"))
+                    fixed = _to_base_serialization(raw)
+                    conn.execute(
+                        text("UPDATE trigger SET kwargs = :v WHERE id = :i"),
+                        {"v": json.dumps(fixed), "i": trg_id},
+                    )
+                logging.info(
+                    "Re-encoded kwargs for %d trigger row(s).", len(trg_rows)
+                )
+
+        logging.info("Deferred-task serialization fix completed successfully.")
+    except Exception as e:
+        logger.error(f"Error while re-encoding deferred-task serialization: {e}")
+        raise
+
+
 def _check_downgrade_db():
     target_version = os.environ.get("MWAA__DB__AIRFLOW_TARGET_VERSION", None)
     current_version = os.environ.get("AIRFLOW_VERSION", None)
     if target_version and current_version and Version(target_version) < Version(current_version):
+        needs_downgrade_compat_fixes = Version(target_version) in (Version("3.0.6"), Version("2.11.0"))
+
+        # Re-encode deferred-task serialization BEFORE the schema downgrade, while the
+        # 3.2.1 schema is still in place (task_instance.id and trigger.kwargs exist).
+        # Running this AFTER the Alembic downgrade fails on the 2.11.0 target because the
+        # Airflow 2.x task_instance table has no `id` column (composite PK only). The
+        # 3.2.1-format data is unchanged by the schema downgrade, so translating first
+        # is safe for both targets.
+        if needs_downgrade_compat_fixes:
+            logging.info(
+                "Re-encoding deferred-task serialization (next_kwargs / trigger.kwargs) "
+                "for downgrade compatibility..."
+            )
+            _fix_deferred_task_serialization()
+
         logging.info(f"Downgrading the database to {target_version}. Downgrading...")
         args = Namespace(
                 from_revision=None,
@@ -239,7 +345,7 @@ def _check_downgrade_db():
             )
         airflow_db_command.downgrade(args)
 
-        if Version(target_version) in (Version("3.0.6"), Version("2.11.0")):
+        if needs_downgrade_compat_fixes:
             logging.info(
                 "Target version uses an older FAB provider, downgrading FAB provider database..."
             )
