@@ -71,6 +71,7 @@ def _execute_startup_script(cmd: str, environ: Dict[str, str]) -> Dict[str, str]
             ],
             friendly_name=f"{PROCESS_LOGGER_PREFIX}_startup",
             sigterm_patience_interval=STARTUP_SCRIPT_SIGTERM_PATIENCE_INTERVAL,
+            always_publish=True,
         )
         startup_script_process.start()
         end_time = time.time()
@@ -86,6 +87,7 @@ def _execute_startup_script(cmd: str, environ: Dict[str, str]) -> Dict[str, str]
                 TimeoutCondition(STARTUP_SCRIPT_MAX_EXECUTION_TIME),
             ],
             friendly_name=f"{PROCESS_LOGGER_PREFIX}_startup",
+            always_publish=True,
         )
         verification_process.start()
 

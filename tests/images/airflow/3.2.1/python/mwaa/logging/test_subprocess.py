@@ -170,3 +170,20 @@ class TestReadSubprocessLogStream:
         assert subprocess_instance.process_logger.info.call_count == expected_info
         assert subprocess_instance.process_logger.warning.call_count == expected_warning
         assert subprocess_instance.process_logger.error.call_count == expected_error
+
+
+    def test_always_publish_bypasses_log_level_filter(self):
+        """Subprocesses with always_publish=True should log all output regardless of level threshold."""
+        sub = Subprocess(cmd="test_command", always_publish=True)
+        mock_process = Mock()
+        mock_process.stdout = BytesIO(
+            b"Collecting boto3==1.28.0\n"
+            b"Successfully installed boto3-1.28.0\n"
+        )
+        mock_process.poll.return_value = 0
+
+        sub.process_logger = Mock()
+        with patch.dict(os.environ, {'AIRFLOW_CONSOLE_LOG_LEVEL': 'ERROR'}):
+            sub._read_subprocess_log_stream(mock_process)
+
+        assert sub.process_logger.info.call_count == 2

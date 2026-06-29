@@ -97,7 +97,8 @@ class Subprocess:
         conditions: List[ProcessCondition] = [],
         sigterm_patience_interval: timedelta = _SIGTERM_DEFAULT_PATIENCE_INTERVAL,
         on_sigterm: Optional[Callable[[], None]] = None,
-        is_essential: bool = False
+        is_essential: bool = False,
+        always_publish: bool = False
     ):
         """
         Initialize the Subprocess object.
@@ -133,6 +134,7 @@ class Subprocess:
         self.conditions = conditions
         self.sigterm_patience_interval = sigterm_patience_interval
         self.on_sigterm = on_sigterm
+        self.always_publish = always_publish
 
         self.start_time: float | None = None
         self.process: Popen[Any] | None = None
@@ -267,6 +269,9 @@ class Subprocess:
                     time.sleep(_SUBPROCESS_LOG_POLL_IDLE_SLEEP_INTERVAL.total_seconds())
             else:
                 decoded_line = line.decode("utf-8", errors="replace").rstrip()
+                if self.always_publish:
+                    self.process_logger.info(decoded_line)
+                    continue
                 parsed_level = _parse_log_level(decoded_line)
                 if parsed_level is not None:
                     last_level = parsed_level
