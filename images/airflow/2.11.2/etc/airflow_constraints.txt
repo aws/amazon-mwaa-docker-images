@@ -141,7 +141,7 @@ apache-airflow-providers-exasol==4.10.0
 apache-airflow-providers-facebook==3.9.2
 apache-airflow-providers-ftp==3.14.1
 apache-airflow-providers-github==2.11.0
-apache-airflow-providers-google==20.0.0
+apache-airflow-providers-google==22.0.0
 apache-airflow-providers-grpc==3.9.2
 apache-airflow-providers-hashicorp==4.5.0
 apache-airflow-providers-http==6.0.0
