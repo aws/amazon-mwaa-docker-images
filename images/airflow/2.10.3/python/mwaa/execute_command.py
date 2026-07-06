@@ -232,8 +232,29 @@ def _create_airflow_process_conditions(airflow_cmd: str, environ: Dict[str, str]
         AirflowDbReachableCondition(airflow_component=airflow_cmd),
     ]
     if _is_sidecar_health_monitoring_enabled():
-        replacement_threshold = int(
-            (environ or os.environ).get("AIRFLOW__MWAA__WORKER_REPLACEMENT_THRESHOLD_SECONDS", "0")
+        raw_threshold = (environ or os.environ).get(
+            "AIRFLOW__MWAA__WORKER_REPLACEMENT_THRESHOLD_SECONDS", "0"
+        )
+        try:
+            replacement_threshold = int(float(raw_threshold))
+        except (ValueError, TypeError):
+            logger.warning(
+                "Invalid WORKER_REPLACEMENT_THRESHOLD_SECONDS value: %r. "
+                "Defaulting to 0 (disabled).",
+                raw_threshold,
+            )
+            replacement_threshold = 0
+        if replacement_threshold < 0:
+            logger.warning(
+                "Negative WORKER_REPLACEMENT_THRESHOLD_SECONDS value: %d. "
+                "Defaulting to 0 (disabled).",
+                replacement_threshold,
+            )
+            replacement_threshold = 0
+        logger.debug(
+            "FastReplace: replacement_threshold=%d seconds (raw=%r)",
+            replacement_threshold,
+            raw_threshold,
         )
         conditions.append(
             SidecarHealthCondition(
