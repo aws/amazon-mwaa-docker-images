@@ -138,7 +138,7 @@ def _create_airflow_webserver_subprocesses(environ: Dict[str, str]):
 
 
 def _create_airflow_worker_subprocesses(environ: Dict[str, str], sigterm_patience_interval: timedelta | None = None):
-    conditions = _create_airflow_process_conditions('worker')
+    conditions = _create_airflow_process_conditions('worker', environ)
     # MWAA__CORE__TASK_MONITORING_ENABLED is set to 'true' for workers where we want to monitor count of tasks currently getting
     # executed on the worker. This will be used to determine if idle worker checks are to be enabled.
     task_monitoring_enabled = (
@@ -220,22 +220,48 @@ def _create_airflow_scheduler_subprocesses(environ: Dict[str, str], conditions: 
         ]
 
 
-def _create_airflow_process_conditions(airflow_cmd: str):
+def _create_airflow_process_conditions(airflow_cmd: str, environ: Dict[str, str] | None = None):
     """
     Get conditions for the given Airflow command.
 
     :param airflow_cmd: The command to get conditions for, e.g. "scheduler"
+    :param environ: The environment variables dict (used for config lookup).
     :returns: A list of conditions for the given Airflow command.
     """
     conditions: List[ProcessCondition] = [
         AirflowDbReachableCondition(airflow_component=airflow_cmd),
     ]
     if _is_sidecar_health_monitoring_enabled():
+        raw_threshold = (environ or os.environ).get(
+            "AIRFLOW__MWAA__WORKER_REPLACEMENT_THRESHOLD_SECONDS", "0"
+        )
+        try:
+            replacement_threshold = int(float(raw_threshold))
+        except (ValueError, TypeError):
+            logger.warning(
+                "Invalid WORKER_REPLACEMENT_THRESHOLD_SECONDS value: %r. "
+                "Defaulting to 0 (disabled).",
+                raw_threshold,
+            )
+            replacement_threshold = 0
+        if replacement_threshold < 0:
+            logger.warning(
+                "Negative WORKER_REPLACEMENT_THRESHOLD_SECONDS value: %d. "
+                "Defaulting to 0 (disabled).",
+                replacement_threshold,
+            )
+            replacement_threshold = 0
+        logger.debug(
+            "FastReplace: replacement_threshold=%d seconds (raw=%r)",
+            replacement_threshold,
+            raw_threshold,
+        )
         conditions.append(
             SidecarHealthCondition(
                 airflow_component=airflow_cmd,
                 container_start_time=CONTAINER_START_TIME,
                 port=_get_sidecar_health_port(),
+                replacement_threshold=replacement_threshold,
             ),
         )
     return conditions

@@ -17,6 +17,7 @@ from functools import cached_property
 from types import FrameType, TracebackType
 from typing import Callable, Deque, Optional
 import logging
+import os
 import signal
 import socket
 import sys
@@ -186,18 +187,22 @@ class SidecarHealthCondition(ProcessCondition):
         airflow_component: str,
         container_start_time: float,
         port: int = SIDECAR_DEFAULT_HEALTH_PORT,
+        replacement_threshold: int = 0,
     ):
         """
         :param airflow_component: The airflow component to check.
         :param container_start_time: The epoch in seconds, i.e. time.time(), when the
           container started.
         :param port: The port the sidecar sends health monitoring results to.
+        :param replacement_threshold: Seconds after which an unhealthy worker should be replaced.
         """
         super().__init__()
         self.airflow_component = airflow_component
         self.port = port
         self.socket: socket.socket | None
         self.container_start_time: float = container_start_time
+        self.last_healthy_time: float = container_start_time
+        self.replacement_threshold: int = replacement_threshold
 
     def prepare(self):
         """
@@ -261,13 +266,32 @@ class SidecarHealthCondition(ProcessCondition):
                 case "blue" | "yellow":
                     # We treat blue/yellow as healthy to avoid unnecessary restarts,
                     # but we log a warning.
-                    response = ProcessConditionResponse(
-                        condition=self,
-                        successful=True,
-                        message=f"Status received from sidecar: {status}",
-                    )
-                    logger.warning(response.message)
+                    # However, if the customer has configured a replacement threshold
+                    # and sufficient time has passed without a healthy heartbeat,
+                    # we treat this as a failure to trigger worker replacement.
+                    seconds_since_healthy = time.time() - self.last_healthy_time
+                    if (
+                        self.replacement_threshold > 0
+                        and self.airflow_component.lower() == "worker"
+                        and seconds_since_healthy >= self.replacement_threshold
+                    ):
+                        response = ProcessConditionResponse(
+                            condition=self,
+                            successful=False,
+                            message=f"No healthy heartbeat for {seconds_since_healthy:.0f}s "
+                            f"(configured threshold: {self.replacement_threshold}s). "
+                            f"Last sidecar status: {status}",
+                        )
+                        logger.error(response.message)
+                    else:
+                        response = ProcessConditionResponse(
+                            condition=self,
+                            successful=True,
+                            message=f"Status received from sidecar: {status}",
+                        )
+                        logger.warning(response.message)
                 case "healthy":
+                    self.last_healthy_time = time.time()
                     response = ProcessConditionResponse(
                         condition=self,
                         successful=True,

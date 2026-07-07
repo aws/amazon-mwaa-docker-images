@@ -146,3 +146,82 @@ def test_execute_command_task_monitoring_enabled(mock_shared_memory, mock_worker
 
 
 
+
+
+# ------------------------
+# Tests for replacement threshold parsing
+# ------------------------
+
+class TestReplacementThresholdParsing:
+    """Tests for WORKER_REPLACEMENT_THRESHOLD_SECONDS env var parsing in _create_airflow_process_conditions."""
+
+    @patch('mwaa.execute_command._is_sidecar_health_monitoring_enabled', return_value=True)
+    @patch('mwaa.execute_command._get_sidecar_health_port', return_value=8200)
+    def test_valid_positive_threshold(self, mock_port, mock_enabled):
+        """Valid positive integer is accepted."""
+        from mwaa.execute_command import _create_airflow_process_conditions, CONTAINER_START_TIME
+        env = {"AIRFLOW__MWAA__WORKER_REPLACEMENT_THRESHOLD_SECONDS": "300"}
+        conditions = _create_airflow_process_conditions("worker", env)
+        sidecar_cond = [c for c in conditions if hasattr(c, 'replacement_threshold')]
+        assert len(sidecar_cond) == 1
+        assert sidecar_cond[0].replacement_threshold == 300
+
+    @patch('mwaa.execute_command._is_sidecar_health_monitoring_enabled', return_value=True)
+    @patch('mwaa.execute_command._get_sidecar_health_port', return_value=8200)
+    def test_zero_threshold(self, mock_port, mock_enabled):
+        """Zero means disabled."""
+        from mwaa.execute_command import _create_airflow_process_conditions
+        env = {"AIRFLOW__MWAA__WORKER_REPLACEMENT_THRESHOLD_SECONDS": "0"}
+        conditions = _create_airflow_process_conditions("worker", env)
+        sidecar_cond = [c for c in conditions if hasattr(c, 'replacement_threshold')]
+        assert sidecar_cond[0].replacement_threshold == 0
+
+    @patch('mwaa.execute_command._is_sidecar_health_monitoring_enabled', return_value=True)
+    @patch('mwaa.execute_command._get_sidecar_health_port', return_value=8200)
+    def test_negative_threshold_defaults_to_zero(self, mock_port, mock_enabled):
+        """Negative value is clamped to 0."""
+        from mwaa.execute_command import _create_airflow_process_conditions
+        env = {"AIRFLOW__MWAA__WORKER_REPLACEMENT_THRESHOLD_SECONDS": "-100"}
+        conditions = _create_airflow_process_conditions("worker", env)
+        sidecar_cond = [c for c in conditions if hasattr(c, 'replacement_threshold')]
+        assert sidecar_cond[0].replacement_threshold == 0
+
+    @patch('mwaa.execute_command._is_sidecar_health_monitoring_enabled', return_value=True)
+    @patch('mwaa.execute_command._get_sidecar_health_port', return_value=8200)
+    def test_non_integer_string_defaults_to_zero(self, mock_port, mock_enabled):
+        """Arbitrary string like 'abc' defaults to 0."""
+        from mwaa.execute_command import _create_airflow_process_conditions
+        env = {"AIRFLOW__MWAA__WORKER_REPLACEMENT_THRESHOLD_SECONDS": "abc"}
+        conditions = _create_airflow_process_conditions("worker", env)
+        sidecar_cond = [c for c in conditions if hasattr(c, 'replacement_threshold')]
+        assert sidecar_cond[0].replacement_threshold == 0
+
+    @patch('mwaa.execute_command._is_sidecar_health_monitoring_enabled', return_value=True)
+    @patch('mwaa.execute_command._get_sidecar_health_port', return_value=8200)
+    def test_decimal_string_is_floored(self, mock_port, mock_enabled):
+        """Decimal like '30.5' is floored to 30."""
+        from mwaa.execute_command import _create_airflow_process_conditions
+        env = {"AIRFLOW__MWAA__WORKER_REPLACEMENT_THRESHOLD_SECONDS": "30.5"}
+        conditions = _create_airflow_process_conditions("worker", env)
+        sidecar_cond = [c for c in conditions if hasattr(c, 'replacement_threshold')]
+        assert sidecar_cond[0].replacement_threshold == 30
+
+    @patch('mwaa.execute_command._is_sidecar_health_monitoring_enabled', return_value=True)
+    @patch('mwaa.execute_command._get_sidecar_health_port', return_value=8200)
+    def test_empty_string_defaults_to_zero(self, mock_port, mock_enabled):
+        """Empty string defaults to 0."""
+        from mwaa.execute_command import _create_airflow_process_conditions
+        env = {"AIRFLOW__MWAA__WORKER_REPLACEMENT_THRESHOLD_SECONDS": ""}
+        conditions = _create_airflow_process_conditions("worker", env)
+        sidecar_cond = [c for c in conditions if hasattr(c, 'replacement_threshold')]
+        assert sidecar_cond[0].replacement_threshold == 0
+
+    @patch('mwaa.execute_command._is_sidecar_health_monitoring_enabled', return_value=True)
+    @patch('mwaa.execute_command._get_sidecar_health_port', return_value=8200)
+    def test_env_var_not_set_defaults_to_zero(self, mock_port, mock_enabled):
+        """When the env var is not set, defaults to 0."""
+        from mwaa.execute_command import _create_airflow_process_conditions
+        env = {}
+        conditions = _create_airflow_process_conditions("worker", env)
+        sidecar_cond = [c for c in conditions if hasattr(c, 'replacement_threshold')]
+        assert sidecar_cond[0].replacement_threshold == 0
