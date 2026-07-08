@@ -11,13 +11,23 @@
 #   (apache/airflow#66647). This script backports the effect onto 3.2.1 by serving the identical Monaco bytes
 #   from the Airflow webserver's own origin.
 #
-#   REMOVE this script on versions higher than 3.2.1.
+#   REMOVE this script on versions higher than 3.2.1. A build-time guard below fails the build if it ever runs
+#   on any other Airflow version, so it cannot silently persist past 3.2.1.
 #
 
 set -euo pipefail
 
 # shellcheck source=images/airflow/3.2.1/bootstrap/common.sh
 source /bootstrap/common.sh
+
+# Guard: this backport applies ONLY to Airflow 3.2.1 (the CDN fetch exists in 3.2.0/3.2.1 and is fixed upstream
+# in 3.2.2). AIRFLOW_VERSION is set per version in each Dockerfile.base, so if this script is ever carried into
+# another version's bootstrap dir the build fails here instead of silently shipping. Delete the script to resolve.
+EXPECTED_AIRFLOW_VERSION="3.2.1"
+if [ "${AIRFLOW_VERSION:-}" != "${EXPECTED_AIRFLOW_VERSION}" ]; then
+  echo "ERROR: 002-vendor-monaco-editor.sh is a ${EXPECTED_AIRFLOW_VERSION}-only backport, but AIRFLOW_VERSION='${AIRFLOW_VERSION:-unset}'; remove it (fixed upstream in Airflow 3.2.2)." >&2
+  exit 1
+fi
 
 MONACO_VERSION="0.52.2"
 MONACO_TARBALL_URL="https://registry.npmjs.org/monaco-editor/-/monaco-editor-${MONACO_VERSION}.tgz"
