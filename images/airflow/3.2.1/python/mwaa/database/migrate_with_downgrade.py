@@ -317,7 +317,7 @@ def _check_downgrade_db():
     target_version = os.environ.get("MWAA__DB__AIRFLOW_TARGET_VERSION", None)
     current_version = os.environ.get("AIRFLOW_VERSION", None)
     if target_version and current_version and Version(target_version) < Version(current_version):
-        needs_downgrade_compat_fixes = Version(target_version) in (Version("3.0.6"), Version("2.11.0"))
+        needs_downgrade_compat_fixes = Version(target_version) in (Version("3.0.6"), Version("2.11.0"), Version("2.11.2"))
 
         # Re-encode deferred-task serialization BEFORE the schema downgrade, while the
         # 3.2.1 schema is still in place (task_instance.id and trigger.kwargs exist).
