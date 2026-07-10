@@ -154,7 +154,7 @@ $env:AWS_SECRET_ACCESS_KEY = "local" # Put your credentials here, or leave as "l
 $env:AWS_SESSION_TOKEN     = ""      # Put your credentials here (leave empty for offline use).
 
 # Set to http://host_name:8080
-$env:MWAA__CORE__API_SERVER_URL = "http://mwaa-320-webserver:8080"
+$env:MWAA__CORE__API_SERVER_URL = "http://mwaa-330-webserver:8080"
 
 # BOM Generation
 $env:GENERATE_BILL_OF_MATERIALS = "False"

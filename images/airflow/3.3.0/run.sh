@@ -67,7 +67,7 @@ export AWS_SECRET_ACCESS_KEY
 export AWS_SESSION_TOKEN
 
 # Set to http://host_name:8080
-MWAA__CORE__API_SERVER_URL="http://mwaa-320-webserver:8080"
+MWAA__CORE__API_SERVER_URL="http://mwaa-330-webserver:8080"
 
 # BOM Generation
 GENERATE_BILL_OF_MATERIALS="False"
