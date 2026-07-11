@@ -84,7 +84,7 @@ aioitertools==0.13.0
 aiomysql==0.3.2
 aioresponses==0.7.8
 aiosignal==1.4.0
-aiosmtplib==5.1.0
+aiosmtplib==5.1.1
 airbyte-api==0.53.0
 alabaster==1.0.0
 alembic==1.18.4
