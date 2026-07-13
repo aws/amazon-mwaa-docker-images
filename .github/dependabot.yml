@@ -1,0 +1,15 @@
+version: 2
+updates:
+  # Root-level dev dependencies (ruff, pytest, etc.) — allow updates
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  # Airflow version directories are intentionally pinned — suppress all updates
+  - package-ecosystem: "pip"
+    directories:
+      - "/images/airflow/*"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0
