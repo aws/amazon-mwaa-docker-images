@@ -50,6 +50,11 @@ services:
     command: test-startup-script
     container_name: mwaa-320-startup-script
 
+  package-requirements:
+    <<: *airflow-common
+    command: package-requirements
+    container_name: mwaa-320-package-requirements
+
 volumes:
   postgres-db-volume:
     name: "mwaa-320-db-volume"
