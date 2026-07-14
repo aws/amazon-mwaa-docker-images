@@ -328,55 +328,116 @@ class CloudWatchRemoteTaskLogger(BaseLogHandler, LoggingMixin):
             handlers. And only the processor attribute from the remote logging class is loaded into the Structlog
             logger used for task logging.
         """
-        from logging import getLogRecordFactory
-
         import structlog.stdlib
-
-        logRecordFactory = getLogRecordFactory()
-        # The handler MUST be initted here, before the processor is actually used to log anything.
-        # Otherwise, logging that occurs during the creation of the handler can create infinite loops.
-        _handler = self.get_handler()
         from airflow.sdk.log import relative_path_from_logger
 
-        def proc(logger: structlog.typing.WrappedLogger, method_name: str, event: structlog.typing.EventDict):
-            if not logger or not (stream_name := relative_path_from_logger(logger)):
-                return event
-            _handler.log_stream_name = stream_name.as_posix().replace(":", "_")
-
-            if self.log_group_name.endswith("-Task") \
-                    and any(re.match(p, _handler.log_stream_name) for p in CloudWatchRemoteTaskLogger.IGNORED_PATTERNS):
-                return event
-
-            name = event.get("logger_name") or event.get("logger", "")
-            level = structlog.stdlib.NAME_TO_LEVEL.get(method_name.lower(), logging.INFO)
-            if level < self.log_level:
-                return event
-
-            msg = copy.copy(event)
-            created = None
-            if ts := msg.pop("timestamp", None):
-                with contextlib.suppress(Exception):
-                    created = datetime.fromisoformat(ts)
-            record = logRecordFactory(
-                name, level, pathname="", lineno=0, msg=msg, args=(), exc_info=None, func=None, sinfo=None
+        if self.NON_CRITICAL_LOGGING_ENABLED:
+            _handler = ForkSafeFluentHandler(
+                'customer.task.logs',
+                host='localhost',
+                port=24224,
+                queue_maxsize=50000,
+                queue_circular=True,
             )
-            if created is not None:
-                ct = created.timestamp()
-                record.created = ct
-                record.msecs = int((ct - int(ct)) * 1000) + 0.0  # Copied from stdlib logging
-            try:
-                # In Airflow 3.1+, triggerer_job_runner's _process_log_messages_from_subprocess
-                # calls configure_logging() -> dictConfig() which shuts down all existing
-                # handlers, setting watchtower's shutting_down=True and silently dropping
-                # all subsequent log records. Reset it to keep sending.
-                if getattr(_handler, 'shutting_down', False):
-                    _handler.shutting_down = False
-                _handler.handle(record)
-            except Exception as e:
-                self.stats.incr(f"mwaa.logging.{CloudWatchRemoteTaskLogger.LOG_SOURCE}.emit_error", 1)
-                # TODO maybe consider removing this if we plan to make logging non-critical
-                raise e
-            return event
+            log_group = self.log_group_name
+            # Stash log_stream on the handler so the formatter can access it per-call
+            _handler._current_log_stream = ""
+
+            class _TaskRoutingFormatter(logging.Formatter):
+                def format(self, record) -> Dict[str, str]:  # type: ignore[override]
+                    return {
+                        'log_group': log_group,
+                        'log_stream': _handler._current_log_stream,
+                        'message': json.dumps(record.msg, default=str) if isinstance(record.msg, dict) else record.getMessage(),
+                    }
+
+            _handler.setFormatter(_TaskRoutingFormatter())
+            # Assign to self.handler so close() and upload() -> flush() drain the
+            # sender queue at task exit. The sender's send thread is a daemon thread,
+            # so without a proper close() the last log events of a task can be lost.
+            self.handler = _handler
+
+            def proc(logger: structlog.typing.WrappedLogger, method_name: str, event: structlog.typing.EventDict):
+                if not logger or not (stream_name := relative_path_from_logger(logger)):
+                    return event
+                _handler._current_log_stream = stream_name.as_posix().replace(":", "_")
+
+                if self.log_group_name.endswith("-Task") \
+                        and any(re.match(p, _handler._current_log_stream) for p in CloudWatchRemoteTaskLogger.IGNORED_PATTERNS):
+                    return event
+
+                name = event.get("logger_name") or event.get("logger", "")
+                level = structlog.stdlib.NAME_TO_LEVEL.get(method_name.lower(), logging.INFO)
+                if level < self.log_level:
+                    return event
+
+                msg = copy.copy(event)
+                created = None
+                if ts := msg.pop("timestamp", None):
+                    with contextlib.suppress(Exception):
+                        created = datetime.fromisoformat(ts)
+
+                record = logging.LogRecord(
+                    name=name,
+                    level=level,
+                    pathname="", lineno=0, msg=msg, args=(), exc_info=None,
+                )
+                if created is not None:
+                    ct = created.timestamp()
+                    record.created = ct
+                    record.msecs = int((ct - int(ct)) * 1000) + 0.0  # Copied from stdlib logging
+                try:
+                    _handler.emit(record)
+                except Exception:
+                    self.stats.incr(f"mwaa.logging.{CloudWatchRemoteTaskLogger.LOG_SOURCE}.emit_error", 1)
+                return event
+
+        else:
+            from logging import getLogRecordFactory
+
+            logRecordFactory = getLogRecordFactory()
+            # The handler MUST be initted here, before the processor is actually used to log anything.
+            # Otherwise, logging that occurs during the creation of the handler can create infinite loops.
+            _handler = self.get_handler()
+
+            def proc(logger: structlog.typing.WrappedLogger, method_name: str, event: structlog.typing.EventDict):
+                if not logger or not (stream_name := relative_path_from_logger(logger)):
+                    return event
+                _handler.log_stream_name = stream_name.as_posix().replace(":", "_")
+
+                if self.log_group_name.endswith("-Task") \
+                        and any(re.match(p, _handler.log_stream_name) for p in CloudWatchRemoteTaskLogger.IGNORED_PATTERNS):
+                    return event
+
+                name = event.get("logger_name") or event.get("logger", "")
+                level = structlog.stdlib.NAME_TO_LEVEL.get(method_name.lower(), logging.INFO)
+                if level < self.log_level:
+                    return event
+
+                msg = copy.copy(event)
+                created = None
+                if ts := msg.pop("timestamp", None):
+                    with contextlib.suppress(Exception):
+                        created = datetime.fromisoformat(ts)
+                record = logRecordFactory(
+                    name, level, pathname="", lineno=0, msg=msg, args=(), exc_info=None, func=None, sinfo=None
+                )
+                if created is not None:
+                    ct = created.timestamp()
+                    record.created = ct
+                    record.msecs = int((ct - int(ct)) * 1000) + 0.0  # Copied from stdlib logging
+                try:
+                    # In Airflow 3.1+, triggerer_job_runner's _process_log_messages_from_subprocess
+                    # calls configure_logging() -> dictConfig() which shuts down all existing
+                    # handlers, setting watchtower's shutting_down=True and silently dropping
+                    # all subsequent log records. Reset it to keep sending.
+                    if getattr(_handler, 'shutting_down', False):
+                        _handler.shutting_down = False
+                    _handler.handle(record)
+                except Exception as e:
+                    self.stats.incr(f"mwaa.logging.{CloudWatchRemoteTaskLogger.LOG_SOURCE}.emit_error", 1)
+                    raise e
+                return event
 
         return (proc,)
 
