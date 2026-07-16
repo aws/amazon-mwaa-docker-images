@@ -546,7 +546,7 @@ def test_dag_processing_log_handler(mock_boto3_client, mock_fluent, mock_watchto
             'queue_circular': True,
         }
 
-def test_cloudwatch_remote_task_logger_always_uses_watchtower_not_fluent(mock_boto3_client, mock_fluent, mock_watchtower):
+def test_cloudwatch_remote_task_logger_uses_fluent_when_non_critical(mock_boto3_client, mock_fluent, mock_watchtower):
     with patch.dict(os.environ, {'USE_NON_CRITICAL_LOGGING': 'true'}, clear=True):
         import importlib
         import mwaa.logging.cloudwatch_handlers
@@ -559,14 +559,46 @@ def test_cloudwatch_remote_task_logger_always_uses_watchtower_not_fluent(mock_bo
             log_level='INFO'
         )
 
-        # Trigger handler initialisation (lazy)
-        logger.get_handler()
+        # Access processors to trigger the fluent handler creation
+        _ = logger.processors
 
-        assert logger.handler is not None
-        assert mock_watchtower.called, "CloudWatchRemoteTaskLogger must use watchtower"
+        assert mock_fluent.called, (
+            "CloudWatchRemoteTaskLogger must use Fluent "
+            "when USE_NON_CRITICAL_LOGGING=true"
+        )
+        mock_fluent.assert_called_once_with(
+            'customer.task.logs',
+            host='localhost',
+            port=24224,
+            queue_maxsize=50000,
+            queue_circular=True,
+        )
+        assert not mock_watchtower.called, (
+            "CloudWatchRemoteTaskLogger must NOT use watchtower "
+            "when USE_NON_CRITICAL_LOGGING=true"
+        )
+
+
+def test_cloudwatch_remote_task_logger_uses_watchtower_when_non_critical_disabled(mock_boto3_client, mock_fluent, mock_watchtower):
+    with patch.dict(os.environ, {'USE_NON_CRITICAL_LOGGING': 'false'}, clear=True):
+        import importlib
+        import mwaa.logging.cloudwatch_handlers
+        importlib.reload(mwaa.logging.cloudwatch_handlers)
+
+        logger = CloudWatchRemoteTaskLogger(
+            log_group_arn='arn:aws:logs:us-west-2:123456789012:log-group:test-Task',
+            kms_key_arn=None,
+            enabled=True,
+            log_level='INFO'
+        )
+
+        # Access processors to trigger the watchtower handler creation
+        _ = logger.processors
+
+        assert mock_watchtower.called, "CloudWatchRemoteTaskLogger must use watchtower when NON_CRITICAL disabled"
         assert not mock_fluent.called, (
-            "CloudWatchRemoteTaskLogger must NOT use Fluent, "
-            "even with USE_NON_CRITICAL_LOGGING=true"
+            "CloudWatchRemoteTaskLogger must NOT use Fluent "
+            "when USE_NON_CRITICAL_LOGGING=false"
         )
         mock_watchtower.assert_called_once_with(
             log_group_name='test-Task',
