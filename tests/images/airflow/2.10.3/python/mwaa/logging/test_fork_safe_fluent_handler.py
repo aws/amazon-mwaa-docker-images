@@ -228,3 +228,135 @@ class TestQueueCircularConfiguration:
         assert h.sender.queue_circular is True
         assert h.sender.queue_maxsize == 50000
         h.close()
+
+
+class TestMonotonicTimestampNudge:
+    """Tests for the strictly-increasing millisecond timestamp enforcement.
+
+    CloudWatch Logs timestamps have millisecond resolution and CloudWatch does
+    not guarantee display order for same-timestamp events (they sort by
+    ingestion time, then message index — nondeterministic across PutLogEvents
+    batches). ForkSafeFluentHandler.emit() therefore nudges each record's
+    timestamp to be at least 1ms after the previous one.
+
+    IMPORTANT: these tests assert on the WIRE encoding — the millisecond value
+    CloudWatch will actually store after fluent EventTime packing
+    (seconds + int((created % 1) * 1e9) nanoseconds) and Fluent Bit's floor to
+    milliseconds — NOT on record.created directly. Two float-arithmetic bugs
+    shipped in earlier iterations of the nudge precisely because tests
+    asserted on Python-side values:
+      1. record.created = ms / 1000.0 floors back down 1ms for ~50% of values
+         through the EventTime reconstruction (fixed with mid-ms bias).
+      2. int(created * 1000) can round UP across a ms boundary while the wire
+         value stays below it, letting a same-source tie through un-nudged
+         (fixed by computing the check with wire-identical arithmetic).
+    """
+
+    @staticmethod
+    def _make_record(created):
+        import logging
+        r = logging.LogRecord('t', 20, '', 0, 'msg', (), None)
+        r.created = created
+        r.msecs = (created - int(created)) * 1000  # as real records have
+        return r
+
+    @staticmethod
+    def _cw_ms(created):
+        """The millisecond timestamp CloudWatch stores for this record.
+
+        Reproduces fluent sender.EventTime packing (seconds uint32 +
+        nanoseconds uint32) followed by Fluent Bit's floor to milliseconds.
+        """
+        import struct
+        from fluent import sender as fluent_sender
+        et = fluent_sender.EventTime(created)
+        secs, nanos = struct.unpack('>II', et.data)
+        return secs * 1000 + nanos // 1_000_000
+
+    def _emit_and_capture_cw_ms(self, handler, created_values):
+        """Emit records through the real handler, capture wire ms values."""
+        from unittest.mock import patch
+        captured = []
+        with patch('fluent.handler.FluentHandler.emit',
+                   side_effect=lambda rec: captured.append(self._cw_ms(rec.created))):
+            for created in created_values:
+                handler.emit(self._make_record(created))
+        return captured
+
+    def test_same_millisecond_burst_gets_unique_increasing_ms(self, handler):
+        """A burst of records in the same millisecond must land on strictly
+        increasing, unique CloudWatch milliseconds."""
+        base = 1784526643.000100
+        cw = self._emit_and_capture_cw_ms(
+            handler, [base + i * 0.00001 for i in range(50)])
+
+        assert len(set(cw)) == 50, f"CW ms collisions: {sorted(cw)}"
+        assert cw == sorted(cw), "CW ms values must be strictly increasing"
+
+    def test_records_in_distinct_ms_are_not_modified(self, handler):
+        """Records already >=1ms apart must pass through with their natural
+        timestamps (the nudge only activates on ties)."""
+        base = 1784526643.0
+        values = [base + i * 0.005 for i in range(10)]  # 5ms apart
+        cw = self._emit_and_capture_cw_ms(handler, values)
+
+        assert cw == [self._cw_ms(v) for v in values]
+
+    def test_backwards_clock_sample_is_nudged_forward(self, handler):
+        """A record whose clock reads earlier than the previous one (clock
+        adjustment) must still land strictly after it."""
+        base = 1784526643.500
+        cw = self._emit_and_capture_cw_ms(
+            handler, [base, base + 0.0001, base - 1.0])
+
+        assert len(set(cw)) == 3
+        assert cw == sorted(cw)
+
+    def test_boundary_straddling_floats_cannot_tie(self, handler):
+        """Values within sub-microsecond of millisecond boundaries — the class
+        that defeated both earlier nudge implementations — must never produce
+        a tied or decreasing wire millisecond."""
+        base_ms = 1784526643000
+        values = []
+        t = base_ms
+        for k in range(500):
+            t += 1
+            for eps in (-2e-7, -1e-7, 0.0, 1e-7):
+                values.append(t / 1000.0 + eps)
+
+        cw = self._emit_and_capture_cw_ms(handler, values)
+
+        assert len(set(cw)) == len(cw), "wire ms collision from boundary floats"
+        assert cw == sorted(cw), "wire ms regression from boundary floats"
+
+    def test_dense_stress_profile_all_unique(self, handler):
+        """Stress-test-shaped emission (bursts up to ~11 lines/ms with gaps)
+        must produce all-unique, strictly increasing wire milliseconds."""
+        import random
+        rng = random.Random(42)
+        t = 1784526643.0
+        values = []
+        for i in range(5000):
+            if i % 6 == 0:
+                t += rng.choice([0.0, 0.001, 0.002])
+            values.append(t)
+
+        cw = self._emit_and_capture_cw_ms(handler, values)
+
+        assert len(set(cw)) == 5000
+        assert cw == sorted(cw)
+
+    def test_msecs_kept_consistent_for_formatters(self, handler):
+        """When a record is nudged, record.msecs must match record.created so
+        %(asctime)s in formatted messages agrees with the CW timestamp."""
+        from unittest.mock import patch
+        records = []
+        with patch('fluent.handler.FluentHandler.emit',
+                   side_effect=lambda rec: records.append(rec)):
+            base = 1784526643.000100
+            for i in range(5):
+                handler.emit(self._make_record(base))  # all identical -> nudged
+
+        for rec in records:
+            expected_msecs = (rec.created - int(rec.created)) * 1000
+            assert abs(rec.msecs - expected_msecs) < 1e-6

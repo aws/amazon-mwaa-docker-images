@@ -152,6 +152,8 @@ class BaseLogHandler(logging.Handler):
                 port=24224,
                 queue_maxsize=50000,
                 queue_circular=True,
+                # Nanosecond precision to prevent whole-second ties in timestamp, which causes out of order logs in CloudWatch.
+                nanosecond_precision=True,
             )
             if self.formatter:
                 # Wrap the existing formatter to add routing fields

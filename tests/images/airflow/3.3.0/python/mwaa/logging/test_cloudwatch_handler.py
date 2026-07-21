@@ -190,6 +190,7 @@ def test_log_handler_creation(mock_boto3_client, mock_watchtower, mock_fluent, u
                 port=24224,
                 queue_maxsize=50000,
                 queue_circular=True,
+                nanosecond_precision=True,
             )
 
 def test_cloudwatch_remote_task_logger_initialization(mock_boto3_client):
@@ -498,6 +499,7 @@ def test_subprocess_log_handler_with_fluent(mock_boto3_client, mock_fluent):
             'port': 24224,
             'queue_maxsize': 50000,
             'queue_circular': True,
+            'nanosecond_precision': True,
         }
 
 def test_dag_processor_manager_log_handler(mock_boto3_client, mock_fluent, mock_watchtower):
@@ -520,6 +522,7 @@ def test_dag_processor_manager_log_handler(mock_boto3_client, mock_fluent, mock_
             'port': 24224,
             'queue_maxsize': 50000,
             'queue_circular': True,
+            'nanosecond_precision': True,
         }
 
 def test_dag_processing_log_handler(mock_boto3_client, mock_fluent, mock_watchtower):
@@ -544,6 +547,7 @@ def test_dag_processing_log_handler(mock_boto3_client, mock_fluent, mock_watchto
             'port': 24224,
             'queue_maxsize': 50000,
             'queue_circular': True,
+            'nanosecond_precision': True,
         }
 
 def test_cloudwatch_remote_task_logger_always_uses_watchtower_not_fluent(mock_boto3_client, mock_fluent, mock_watchtower):

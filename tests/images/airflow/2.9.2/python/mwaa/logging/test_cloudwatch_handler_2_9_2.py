@@ -191,6 +191,7 @@ def test_log_handler_creation(mock_boto3_client, mock_watchtower, mock_fluent, u
                 port=24224,
                 queue_maxsize=50000,
                 queue_circular=True,
+                nanosecond_precision=True,
             )
 
 def test_task_log_handler_with_fluent(mock_boto3_client, mock_fluent):
@@ -217,6 +218,7 @@ def test_task_log_handler_with_fluent(mock_boto3_client, mock_fluent):
             'port': 24224,
             'queue_maxsize': 50000,
             'queue_circular': True,
+            'nanosecond_precision': True,
         }
 
 def test_subprocess_log_handler_with_fluent(mock_boto3_client, mock_fluent):
@@ -242,6 +244,7 @@ def test_subprocess_log_handler_with_fluent(mock_boto3_client, mock_fluent):
             'port': 24224,
             'queue_maxsize': 50000,
             'queue_circular': True,
+            'nanosecond_precision': True,
         }
 
 def test_dag_processor_manager_log_handler(mock_boto3_client, mock_fluent, mock_watchtower):
@@ -265,6 +268,7 @@ def test_dag_processor_manager_log_handler(mock_boto3_client, mock_fluent, mock_
             'port': 24224,
             'queue_maxsize': 50000,
             'queue_circular': True,
+            'nanosecond_precision': True,
         }
 
 def test_dag_processing_log_handler(mock_boto3_client, mock_fluent, mock_watchtower):
@@ -290,4 +294,5 @@ def test_dag_processing_log_handler(mock_boto3_client, mock_fluent, mock_watchto
             'port': 24224,
             'queue_maxsize': 50000,
             'queue_circular': True,
+            'nanosecond_precision': True,
         }

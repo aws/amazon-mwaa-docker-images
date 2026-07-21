@@ -65,9 +65,32 @@ class ForkSafeFluentSender(asyncsender.FluentSender):
 
 
 class ForkSafeFluentHandler(fluent_handler.FluentHandler):
-    """A FluentHandler that uses ForkSafeFluentSender for fork-safety."""
+    """A FluentHandler that uses ForkSafeFluentSender for fork-safety.
+
+    Also enforces strictly increasing millisecond timestamps per handler:
+    CloudWatch does not guarantee display order for same-millisecond events,
+    so tied timestamps are nudged forward to make ordering deterministic.
+    """
 
     def getSenderClass(self):
         """Return the ForkSafeFluentSender class for fork-safe logging."""
         return ForkSafeFluentSender
 
+    def emit(self, record):
+        """Emit a record, enforcing a strictly increasing ms timestamp."""
+        # Compute ms with the same arithmetic as the wire encoding: fluent's
+        # EventTime packs seconds plus the fractional second as nanoseconds
+        # (int((created % 1) * 1e9)), which Fluent Bit floors to milliseconds
+        # for CloudWatch. A plain int(record.created * 1000) can disagree with
+        # that by 1ms near boundaries, letting same-millisecond ties through
+        # the check below.
+        ms = int(record.created) * 1000 + int((record.created % 1) * 1e9) // 1_000_000
+        last_ms = getattr(self, "_last_emitted_ms", 0)
+        if ms <= last_ms:
+            ms = last_ms + 1
+            # Mid-ms bias: a bare ms/1000.0 can floor back into the previous
+            # millisecond after EventTime float reconstruction.
+            record.created = (ms + 0.5) / 1000.0
+            record.msecs = (record.created - int(record.created)) * 1000
+        self._last_emitted_ms = ms
+        return super().emit(record)
