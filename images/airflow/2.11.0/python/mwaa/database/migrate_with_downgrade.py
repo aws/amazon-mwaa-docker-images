@@ -18,6 +18,7 @@ import sys
 from mwaa.config.database import get_db_connection_string
 from mwaa.utils.db_retry import with_db_retry, MAINTENANCE_ENGINE_KWARGS
 from mwaa.utils.dblock import with_db_lock
+from mwaa.config.airflow_rds_iam_patch import is_using_rds_proxy
 from mwaa.utils.get_rds_iam_credentials import RDSIAMCredentialProvider
 from airflow.cli.commands import db_command as airflow_db_command
 
@@ -74,7 +75,10 @@ def _ensure_rds_iam_user():
             db_engine = _connect_static()
         except Exception as e:
             logger.warning(f"Static credentials failed: {type(e).__name__}: {e}")
-            db_engine = _connect_iam()
+            if is_using_rds_proxy():
+                db_engine = _connect_iam()
+            else:
+                raise
 
         with db_engine.connect() as conn:
             with conn.begin():
