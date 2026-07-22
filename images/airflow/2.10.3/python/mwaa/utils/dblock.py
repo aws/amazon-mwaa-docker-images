@@ -28,8 +28,8 @@ F = TypeVar("F", bound=Callable[..., Any])
 @with_db_retry
 def _connect_with_retry() -> Connection:
     """Establish a DB connection with retry on transient RDS Proxy failures."""
-    from mwaa.config.airflow_rds_iam_patch import use_iam_credentials
-    if use_iam_credentials():
+    from mwaa.config.airflow_rds_iam_patch import is_using_rds_proxy, use_iam_credentials
+    if use_iam_credentials() and is_using_rds_proxy():
         from mwaa.utils.get_rds_iam_credentials import RDSIAMCredentialProvider
         token = RDSIAMCredentialProvider.get_token()
         conn_url = RDSIAMCredentialProvider.create_db_connection_url(token)

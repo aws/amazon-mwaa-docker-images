@@ -7,6 +7,7 @@ def test_connect_with_retry_uses_static_credentials_when_iam_disabled():
     from mwaa.utils.dblock import _connect_with_retry
 
     with patch('mwaa.config.airflow_rds_iam_patch.use_iam_credentials', return_value=False), \
+         patch('mwaa.config.airflow_rds_iam_patch.is_using_rds_proxy', return_value=True), \
          patch('mwaa.utils.dblock.create_engine') as mock_create_engine, \
          patch('mwaa.utils.dblock.get_db_connection_string', return_value='postgresql://static/airflow'):
         mock_engine = MagicMock()
@@ -22,11 +23,12 @@ def test_connect_with_retry_uses_static_credentials_when_iam_disabled():
         assert result == mock_conn
 
 
-def test_connect_with_retry_uses_iam_credentials_when_enabled():
-    """Test that _connect_with_retry uses RDSIAMCredentialProvider when IAM is enabled."""
+def test_connect_with_retry_uses_iam_credentials_when_enabled_and_rds_proxy():
+    """Test that _connect_with_retry uses RDSIAMCredentialProvider when IAM is enabled and RDS Proxy is available."""
     from mwaa.utils.dblock import _connect_with_retry
 
     with patch('mwaa.config.airflow_rds_iam_patch.use_iam_credentials', return_value=True), \
+         patch('mwaa.config.airflow_rds_iam_patch.is_using_rds_proxy', return_value=True), \
          patch('mwaa.utils.get_rds_iam_credentials.RDSIAMCredentialProvider') as mock_provider, \
          patch('mwaa.utils.dblock.create_engine') as mock_create_engine, \
          patch('mwaa.utils.dblock.get_db_connection_string', return_value='postgresql://static/airflow'):
@@ -44,4 +46,25 @@ def test_connect_with_retry_uses_iam_credentials_when_enabled():
         mock_create_engine.assert_called_once()
         call_args = mock_create_engine.call_args
         assert call_args[0][0] == 'postgresql://airflow_user:iam-token-123@host/db'
+        assert result == mock_conn
+
+
+def test_connect_with_retry_falls_back_to_static_when_no_rds_proxy():
+    """Test that _connect_with_retry falls back to static credentials when IAM is enabled but RDS Proxy is not available."""
+    from mwaa.utils.dblock import _connect_with_retry
+
+    with patch('mwaa.config.airflow_rds_iam_patch.use_iam_credentials', return_value=True), \
+         patch('mwaa.config.airflow_rds_iam_patch.is_using_rds_proxy', return_value=False), \
+         patch('mwaa.utils.dblock.create_engine') as mock_create_engine, \
+         patch('mwaa.utils.dblock.get_db_connection_string', return_value='postgresql://static/airflow'):
+        mock_engine = MagicMock()
+        mock_create_engine.return_value = mock_engine
+        mock_conn = MagicMock()
+        mock_engine.connect.return_value = mock_conn
+
+        result = _connect_with_retry()
+
+        mock_create_engine.assert_called_once()
+        call_args = mock_create_engine.call_args
+        assert call_args[0][0] == 'postgresql://static/airflow'
         assert result == mock_conn
