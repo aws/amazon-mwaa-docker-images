@@ -135,7 +135,7 @@ def package_user_requirements(environ: dict[str, str]):
         logger.info("No user requirements file found. Nothing to package.")
         return
 
-    airflow_home = os.environ.get("AIRFLOW_HOME", "/usr/local/airflow")
+    airflow_home = environ.get("AIRFLOW_HOME", "/usr/local/airflow")
     plugins_dir = Path(airflow_home) / "plugins"
     requirements_dir = Path(airflow_home) / "requirements"
     downloads_dir = requirements_dir / "downloads"
