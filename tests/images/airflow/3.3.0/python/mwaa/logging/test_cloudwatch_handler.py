@@ -1,10 +1,11 @@
 import logging
+import time
 import pytest
 import os
 import importlib
 import types
 from datetime import datetime, timezone, timedelta
-from unittest.mock import patch, Mock, MagicMock, ANY
+from unittest.mock import patch, Mock, MagicMock, ANY, call
 
 from mwaa.config.setup_environment import (
     setup_environment_variables,
@@ -190,6 +191,8 @@ def test_log_handler_creation(mock_boto3_client, mock_watchtower, mock_fluent, u
                 port=24224,
                 queue_maxsize=50000,
                 queue_circular=True,
+                queue_overflow_handler=ANY,
+                buffer_overflow_handler=ANY,
                 nanosecond_precision=True,
             )
 
@@ -499,6 +502,8 @@ def test_subprocess_log_handler_with_fluent(mock_boto3_client, mock_fluent):
             'port': 24224,
             'queue_maxsize': 50000,
             'queue_circular': True,
+            'queue_overflow_handler': ANY,
+            'buffer_overflow_handler': ANY,
             'nanosecond_precision': True,
         }
 
@@ -522,6 +527,8 @@ def test_dag_processor_manager_log_handler(mock_boto3_client, mock_fluent, mock_
             'port': 24224,
             'queue_maxsize': 50000,
             'queue_circular': True,
+            'queue_overflow_handler': ANY,
+            'buffer_overflow_handler': ANY,
             'nanosecond_precision': True,
         }
 
@@ -547,6 +554,8 @@ def test_dag_processing_log_handler(mock_boto3_client, mock_fluent, mock_watchto
             'port': 24224,
             'queue_maxsize': 50000,
             'queue_circular': True,
+            'queue_overflow_handler': ANY,
+            'buffer_overflow_handler': ANY,
             'nanosecond_precision': True,
         }
 
@@ -927,3 +936,160 @@ def test_discover_triggerer_streams_follows_pagination(mock_boto3_client):
         assert stream_page2 in streams
         assert len(streams) == 2
         assert logger.hook.conn.describe_log_streams.call_count == 2
+
+# --- Tests for NCL observability metrics ---
+
+def test_queue_overflow_handler_emits_metric(mock_boto3_client):
+    """Verify that queue_overflow_handler fires the queue_evicted StatsD metric."""
+    with patch.dict(os.environ, {'USE_NON_CRITICAL_LOGGING': 'true'}, clear=True):
+        import importlib
+        import mwaa.logging.cloudwatch_handlers
+        importlib.reload(mwaa.logging.cloudwatch_handlers)
+        from mwaa.logging.cloudwatch_handlers import _make_overflow_handlers
+
+        with patch('mwaa.logging.cloudwatch_handlers.get_statsd') as mock_get_statsd:
+            mock_stats = MagicMock()
+            mock_get_statsd.return_value = mock_stats
+
+            queue_handler, _ = _make_overflow_handlers("scheduler")
+            queue_handler(b'\x00' * 128)
+
+            mock_stats.incr.assert_called_once_with("mwaa.logging.scheduler.ncl_queue_evicted_records", 1)
+
+
+def test_buffer_overflow_handler_emits_metrics(mock_boto3_client):
+    """Verify that buffer_overflow_handler fires both buffer_overflow and buffer_overflow_bytes metrics."""
+    with patch.dict(os.environ, {'USE_NON_CRITICAL_LOGGING': 'true'}, clear=True):
+        import importlib
+        import mwaa.logging.cloudwatch_handlers
+        importlib.reload(mwaa.logging.cloudwatch_handlers)
+        from mwaa.logging.cloudwatch_handlers import _make_overflow_handlers
+
+        with patch('mwaa.logging.cloudwatch_handlers.get_statsd') as mock_get_statsd:
+            mock_stats = MagicMock()
+            mock_get_statsd.return_value = mock_stats
+
+            _, buffer_handler = _make_overflow_handlers("worker")
+            fake_pendings = b'\x00' * 2048
+            buffer_handler(fake_pendings)
+
+            mock_stats.incr.assert_any_call("mwaa.logging.worker.ncl_buffer_overflow", 1)
+            mock_stats.incr.assert_any_call("mwaa.logging.worker.ncl_buffer_overflow_bytes", 2048)
+
+
+def test_emitted_counter_batches_at_threshold(mock_boto3_client, mock_fluent):
+    """Verify that the emitted metric is batched: fires every _EMITTED_BATCH_SIZE records."""
+    with patch.dict(os.environ, {'USE_NON_CRITICAL_LOGGING': 'true'}, clear=True):
+        import importlib
+        import mwaa.logging.cloudwatch_handlers
+        importlib.reload(mwaa.logging.cloudwatch_handlers)
+        from mwaa.logging.cloudwatch_handlers import BaseLogHandler, _EMITTED_BATCH_SIZE
+
+        handler = BaseLogHandler('arn:aws:logs:us-west-2:123456789012:log-group:test', None, True)
+        handler.create_cloudwatch_handler('test_stream', 'scheduler')
+
+        mock_stats = MagicMock()
+        handler.stats = mock_stats
+
+        # Emit _EMITTED_BATCH_SIZE - 1 records: no emitted metric yet
+        record = logging.LogRecord('test', logging.INFO, '', 0, 'msg', (), None)
+        for _ in range(_EMITTED_BATCH_SIZE - 1):
+            handler.emit(record)
+
+        emitted_calls = [c for c in mock_stats.incr.call_args_list if 'emitted' in str(c)]
+        assert len(emitted_calls) == 0, "Should not have flushed emitted yet"
+
+        # One more emit crosses the threshold
+        handler.emit(record)
+
+        emitted_calls = [c for c in mock_stats.incr.call_args_list if 'emitted' in str(c)]
+        assert len(emitted_calls) == 1
+        assert emitted_calls[0] == call(f"mwaa.logging.scheduler.ncl_emitted_records", _EMITTED_BATCH_SIZE)
+
+
+def test_emitted_counter_flushes_remainder_on_close(mock_boto3_client, mock_fluent):
+    """Verify that close() flushes any remaining emitted count."""
+    with patch.dict(os.environ, {'USE_NON_CRITICAL_LOGGING': 'true'}, clear=True):
+        import importlib
+        import mwaa.logging.cloudwatch_handlers
+        importlib.reload(mwaa.logging.cloudwatch_handlers)
+        from mwaa.logging.cloudwatch_handlers import BaseLogHandler
+
+        handler = BaseLogHandler('arn:aws:logs:us-west-2:123456789012:log-group:test', None, True)
+        handler.create_cloudwatch_handler('test_stream', 'worker')
+
+        mock_stats = MagicMock()
+        handler.stats = mock_stats
+
+        # Emit 5 records (below threshold)
+        record = logging.LogRecord('test', logging.INFO, '', 0, 'msg', (), None)
+        for _ in range(5):
+            handler.emit(record)
+
+        # Close should flush the remainder
+        handler.close()
+
+        emitted_calls = [c for c in mock_stats.incr.call_args_list if 'emitted' in str(c)]
+        assert len(emitted_calls) == 1
+        assert emitted_calls[0] == call("mwaa.logging.worker.ncl_emitted_records", 5)
+
+
+def test_emitted_counter_flushes_remainder_on_flush(mock_boto3_client, mock_fluent):
+    """Verify that flush() flushes any remaining emitted count."""
+    with patch.dict(os.environ, {'USE_NON_CRITICAL_LOGGING': 'true'}, clear=True):
+        import importlib
+        import mwaa.logging.cloudwatch_handlers
+        importlib.reload(mwaa.logging.cloudwatch_handlers)
+        from mwaa.logging.cloudwatch_handlers import BaseLogHandler
+
+        handler = BaseLogHandler('arn:aws:logs:us-west-2:123456789012:log-group:test', None, True)
+        handler.create_cloudwatch_handler('test_stream', 'scheduler')
+
+        mock_stats = MagicMock()
+        handler.stats = mock_stats
+
+        # Emit 3 records (below threshold)
+        record = logging.LogRecord('test', logging.INFO, '', 0, 'msg', (), None)
+        for _ in range(3):
+            handler.emit(record)
+
+        handler.flush()
+
+        emitted_calls = [c for c in mock_stats.incr.call_args_list if 'emitted' in str(c)]
+        assert len(emitted_calls) == 1
+        assert emitted_calls[0] == call("mwaa.logging.scheduler.ncl_emitted_records", 3)
+
+
+def test_emitted_counter_flushes_on_time_interval(mock_boto3_client, mock_fluent):
+    """Verify that the emitted counter flushes after _EMITTED_FLUSH_INTERVAL_SECONDS even below batch threshold."""
+    with patch.dict(os.environ, {'USE_NON_CRITICAL_LOGGING': 'true'}, clear=True):
+        import importlib
+        import mwaa.logging.cloudwatch_handlers
+        importlib.reload(mwaa.logging.cloudwatch_handlers)
+        from mwaa.logging.cloudwatch_handlers import BaseLogHandler, _EMITTED_FLUSH_INTERVAL_SECONDS
+
+        handler = BaseLogHandler('arn:aws:logs:us-west-2:123456789012:log-group:test', None, True)
+        handler.create_cloudwatch_handler('test_stream', 'scheduler')
+
+        mock_stats = MagicMock()
+        handler.stats = mock_stats
+
+        # Emit 5 records (well below batch threshold of 100)
+        record = logging.LogRecord('test', logging.INFO, '', 0, 'msg', (), None)
+        for _ in range(5):
+            handler.emit(record)
+
+        # No flush yet — below threshold and within time window
+        emitted_calls = [c for c in mock_stats.incr.call_args_list if 'emitted' in str(c)]
+        assert len(emitted_calls) == 0
+
+        # Simulate time passing beyond the flush interval
+        handler._last_emitted_flush = time.time() - _EMITTED_FLUSH_INTERVAL_SECONDS - 1
+
+        # Next emit should trigger a time-based flush
+        handler.emit(record)
+
+        emitted_calls = [c for c in mock_stats.incr.call_args_list if 'emitted' in str(c)]
+        assert len(emitted_calls) == 1
+        # 5 from before + 1 that triggered the flush = 6
+        assert emitted_calls[0] == call("mwaa.logging.scheduler.ncl_emitted_records", 6)
