@@ -2,7 +2,7 @@
 
 # Python imports
 from functools import cache
-from typing import Dict
+from typing import Any, Dict
 import json
 import logging
 import os
@@ -48,7 +48,46 @@ def _get_essential_airflow_executor_config(executor_type: str) -> Dict[str, str]
             # getjson() and properly preserves nested dict types. This config is
             # merged into the Celery config dict built by get_default_celery_config().
             from mwaa.config.celery import get_broker_transport_config
-            extra_celery_config = get_broker_transport_config()
+            # Merge customer-provided extra_celery_config with MWAA's broker
+            # transport config so the customer's keys survive while MWAA
+            # broker keys win on collision. Customer value comes from the
+            # Airflow config secret (MWAA__CORE__CUSTOM_AIRFLOW_CONFIGS);
+            # the raw env var is only used in local development.
+
+            def _parse_extra_celery_config(raw: str) -> Dict[str, Any]:
+                try:
+                    parsed = json.loads(raw)
+                except json.JSONDecodeError:
+                    logger.warning(
+                        "AIRFLOW__CELERY__EXTRA_CELERY_CONFIG is not valid "
+                        "JSON; ignoring it."
+                    )
+                    return {}
+                if not isinstance(parsed, dict):
+                    logger.warning(
+                        "AIRFLOW__CELERY__EXTRA_CELERY_CONFIG is not a JSON "
+                        "object; ignoring it."
+                    )
+                    return {}
+                return parsed
+
+            user_extra_celery_config = {
+                # Raw environment variable (lower priority).
+                **_parse_extra_celery_config(
+                    os.environ.get("AIRFLOW__CELERY__EXTRA_CELERY_CONFIG", "{}")
+                ),
+                # Customer Airflow config secret (higher priority, consistent
+                # with the merge order in setup_environment.py).
+                **_parse_extra_celery_config(
+                    get_user_airflow_config().get(
+                        "AIRFLOW__CELERY__EXTRA_CELERY_CONFIG", "{}"
+                    )
+                ),
+            }
+            extra_celery_config = {
+                **user_extra_celery_config,
+                **get_broker_transport_config(),
+            }
             return {
                 "AIRFLOW__CELERY__BROKER_URL": get_sqs_endpoint(),
                 "AIRFLOW__CELERY__CELERY_CONFIG_OPTIONS": celery_config_module_path,
