@@ -262,6 +262,12 @@ async def main() -> None:
     executor_type = os.environ.get("MWAA__CORE__EXECUTOR_TYPE", "CeleryExecutor")
     environ = setup_environment_variables(command, executor_type)
 
+    # Install RDS IAM credential rotation for non-migrate-db commands.
+    # migrate-db uses admin credentials for schema migrations.
+    if command != "migrate-db":
+        from mwaa.config.rds_iam_patch import install_rds_iam_patch
+        install_rds_iam_patch()
+
     if command == "migrate-db":
         await airflow_db_migrate(environ)
         print("Finished running db validations")
