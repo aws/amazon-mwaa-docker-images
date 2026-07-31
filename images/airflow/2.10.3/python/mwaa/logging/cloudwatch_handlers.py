@@ -37,6 +37,42 @@ USE_NON_CRITICAL_LOGGING = os.environ.get('USE_NON_CRITICAL_LOGGING', 'false')
 LOG_GROUP_INIT_WAIT_SECONDS = 900
 ERROR_REPORTING_WAIT_SECONDS = 60
 
+# Batch size for the emitted counter: we accumulate locally and flush to StatsD
+# every N records to avoid doubling the UDP packet rate at high throughput.
+_EMITTED_BATCH_SIZE = 100
+# Time-based flush interval (seconds) for the emitted counter: ensures low-volume
+# sources still report metrics regularly for pattern observation.
+_EMITTED_FLUSH_INTERVAL_SECONDS = 60
+
+
+def _make_overflow_handlers(logs_source: str):
+    """
+    Create queue_overflow_handler and buffer_overflow_handler callbacks for a
+    ForkSafeFluentHandler instance.
+
+    These callbacks emit StatsD metrics when the fluent sender drops log records,
+    giving us visibility into log loss from the Python side of the NCL pipeline.
+
+    Args:
+        logs_source: Identifies the log source (e.g. "scheduler", "task") for the
+            metric name: mwaa.logging.{logs_source}.ncl_queue_evicted_records, etc.
+
+    Returns:
+        (queue_overflow_handler, buffer_overflow_handler) tuple of callables.
+    """
+    stats = get_statsd()
+
+    def queue_overflow_handler(discarded_bytes):
+        """Called once per eviction when the circular queue is full."""
+        stats.incr(f"mwaa.logging.{logs_source}.ncl_queue_evicted_records", 1)
+
+    def buffer_overflow_handler(pendings):
+        """Called when the TCP send buffer exceeds bufmax after a socket failure."""
+        stats.incr(f"mwaa.logging.{logs_source}.ncl_buffer_overflow", 1)
+        stats.incr(f"mwaa.logging.{logs_source}.ncl_buffer_overflow_bytes", len(pendings))
+
+    return queue_overflow_handler, buffer_overflow_handler
+
 # fmt: off
 # IMPORTANT NOTE: The time complexity of log inspection is O(M*N) where M is the number
 # of logs and N is the number of log patterns. As such, each new pattern added will
@@ -106,6 +142,12 @@ class BaseLogHandler(logging.Handler):
         logging.Handler.__init__(self)
 
         self.stats = get_statsd()
+        # Batched emitted counter: accumulate locally, flush to StatsD every
+        # _EMITTED_BATCH_SIZE records or _EMITTED_FLUSH_INTERVAL_SECONDS,
+        # whichever comes first. Avoids excessive UDP packet rate at high
+        # throughput while still providing regular data points for low-volume sources.
+        self._emitted_count = 0
+        self._last_emitted_flush = time.time()
 
     def create_cloudwatch_handler(
         self,
@@ -132,12 +174,15 @@ class BaseLogHandler(logging.Handler):
         self.log_stream = stream_name
 
         if self.enabled and self.NON_CRITICAL_LOGGING_ENABLED:
+            queue_overflow_handler, buffer_overflow_handler = _make_overflow_handlers(logs_source)
             self.handler = ForkSafeFluentHandler(
                 'customer.logs',
                 host='localhost',
                 port=24224,
                 queue_maxsize=50000,
                 queue_circular=True,
+                queue_overflow_handler=queue_overflow_handler,
+                buffer_overflow_handler=buffer_overflow_handler,
                 # Nanosecond precision to prevent whole-second ties in timestamp, which causes out of order logs in CloudWatch.
                 nanosecond_precision=True,
             )
@@ -187,6 +232,10 @@ class BaseLogHandler(logging.Handler):
     def close(self):
         """Close the log handler (by closing the underlying log handler)."""
         if self.handler is not None:
+            # Flush any remaining emitted count before closing.
+            if self._emitted_count > 0:
+                self.stats.incr(f"mwaa.logging.{self.logs_source}.ncl_emitted_records", self._emitted_count)
+                self._emitted_count = 0
             self.handler.close()
             self.handler = None
 
@@ -230,6 +279,14 @@ class BaseLogHandler(logging.Handler):
                 try:
                     self.handler.emit(record)  # type: ignore
                     self.sniff_errors(record)
+                    # Batch the emitted metric to avoid flooding StatsD with per-record packets.
+                    # Flush on count threshold OR time interval, whichever comes first.
+                    self._emitted_count += 1
+                    if self._emitted_count >= _EMITTED_BATCH_SIZE or \
+                            (time.time() - self._last_emitted_flush) >= _EMITTED_FLUSH_INTERVAL_SECONDS:
+                        self.stats.incr(f"mwaa.logging.{self.logs_source}.ncl_emitted_records", self._emitted_count)
+                        self._emitted_count = 0
+                        self._last_emitted_flush = time.time()
                 except Exception:
                     self.stats.incr(f"mwaa.logging.{self.logs_source}.emit_error", 1)
                     self._report_logging_error("Failed to emit log record.")
@@ -258,6 +315,10 @@ class BaseLogHandler(logging.Handler):
         if not self.handler:
             return
         try:
+            # Flush any remaining emitted count.
+            if self._emitted_count > 0:
+                self.stats.incr(f"mwaa.logging.{self.logs_source}.ncl_emitted_records", self._emitted_count)
+                self._emitted_count = 0
             self.handler.flush()
         except Exception:
             self.stats.incr(f"mwaa.logging.{self.logs_source}.flush_error", 1)
@@ -312,12 +373,16 @@ class TaskLogHandler(BaseLogHandler, CloudwatchTaskHandler):
         logs_client: CloudWatchLogsClient = boto3.client("logs")  # type: ignore
 
         if self.enabled and self.NON_CRITICAL_LOGGING_ENABLED:
+            self.logs_source = "Task"
+            queue_overflow_handler, buffer_overflow_handler = _make_overflow_handlers("Task")
             self.handler = ForkSafeFluentHandler(
                 'customer.task.logs',
                 host='localhost',
                 port=24224,
                 queue_maxsize=50000,
                 queue_circular=True,
+                queue_overflow_handler=queue_overflow_handler,
+                buffer_overflow_handler=buffer_overflow_handler,
                 # Nanosecond precision to prevent whole-second ties in timestamp, which causes out of order logs in CloudWatch.
                 nanosecond_precision=True,
             )
@@ -341,6 +406,7 @@ class TaskLogHandler(BaseLogHandler, CloudwatchTaskHandler):
             self.handler.setFormatter(TaskFormatter())
 
         elif self.enabled:
+            self.logs_source = "Task"
             # identical to open-source implementation, except create_log_group set to False
             self.handler = watchtower.CloudWatchLogHandler(
                 log_group_name=self.log_group_name,
