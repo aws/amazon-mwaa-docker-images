@@ -10,7 +10,7 @@ only activates for RDS Proxy environments, and skips the migrate-db process.
 import logging
 import os
 
-from sqlalchemy import make_url
+from sqlalchemy.engine import make_url
 
 from mwaa.config.rds_iam_credentials import (
     RDSIAMCredentialProvider,
