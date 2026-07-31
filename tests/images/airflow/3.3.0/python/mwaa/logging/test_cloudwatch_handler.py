@@ -937,6 +937,42 @@ def test_discover_triggerer_streams_follows_pagination(mock_boto3_client):
         assert len(streams) == 2
         assert logger.hook.conn.describe_log_streams.call_count == 2
 
+def test_cloudwatch_remote_task_logger_uses_fluent_when_non_critical(mock_boto3_client, mock_fluent, mock_watchtower):
+    with patch.dict(os.environ, {'USE_NON_CRITICAL_LOGGING': 'true'}, clear=True):
+        import importlib
+        import mwaa.logging.cloudwatch_handlers
+        importlib.reload(mwaa.logging.cloudwatch_handlers)
+
+        logger = CloudWatchRemoteTaskLogger(
+            log_group_arn='arn:aws:logs:us-west-2:123456789012:log-group:test-Task',
+            kms_key_arn=None,
+            enabled=True,
+            log_level='INFO'
+        )
+
+        # Access processors to trigger the fluent handler creation
+        _ = logger.processors
+
+        assert mock_fluent.called, (
+            "CloudWatchRemoteTaskLogger must use Fluent "
+            "when USE_NON_CRITICAL_LOGGING=true"
+        )
+        mock_fluent.assert_called_once_with(
+            'customer.task.logs',
+            host='localhost',
+            port=24224,
+            queue_maxsize=50000,
+            queue_circular=True,
+            queue_overflow_handler=ANY,
+            buffer_overflow_handler=ANY,
+            nanosecond_precision=True,
+        )
+        assert not mock_watchtower.called, (
+            "CloudWatchRemoteTaskLogger must NOT use watchtower "
+            "when USE_NON_CRITICAL_LOGGING=true"
+        )
+
+
 # --- Tests for NCL observability metrics ---
 
 def test_queue_overflow_handler_emits_metric(mock_boto3_client):
