@@ -80,6 +80,137 @@ def test_invalid_executor(invalid_executor):
     with pytest.raises(ValueError):
         _get_essential_airflow_executor_config(invalid_executor)
 
+# ---------------------------------------------------
+# Customer Extra Celery Config Merge Tests
+# ---------------------------------------------------
+
+MOCK_BROKER_TRANSPORT_CONFIG = {
+    "broker_transport": "mocked.transport.Transport",
+    "broker_transport_options": {
+        "visibility_timeout": 43200,
+        "region": "us-east-1",
+    },
+}
+
+
+def _get_celery_executor_config(monkeypatch):
+    """Call _get_essential_airflow_executor_config with mocked dependencies."""
+    monkeypatch.setattr("mwaa.config.airflow.get_sqs_endpoint", lambda: "sqs://endpoint")
+    monkeypatch.setattr("mwaa.config.airflow.get_sqs_queue_name", lambda: "test-queue")
+    monkeypatch.setattr("mwaa.config.airflow.get_db_connection_string", lambda: "postgresql://db")
+
+    with patch(
+        "mwaa.config.celery.get_broker_transport_config",
+        return_value=dict(MOCK_BROKER_TRANSPORT_CONFIG),
+    ):
+        return _get_essential_airflow_executor_config("CeleryExecutor")
+
+
+def test_customer_extra_celery_config_is_merged(monkeypatch, env_helper):
+    """Customer-provided extra_celery_config keys must survive the merge with
+    MWAA's broker transport config (regression test for GitHub issue #571)."""
+    env_helper.set({
+        "MWAA__CORE__CUSTOM_AIRFLOW_CONFIGS": json.dumps({
+            "AIRFLOW__CELERY__EXTRA_CELERY_CONFIG": json.dumps(
+                {"worker_max_tasks_per_child": 50}
+            )
+        })
+    })
+
+    result = _get_celery_executor_config(monkeypatch)
+
+    extra_config = json.loads(result["AIRFLOW__CELERY__EXTRA_CELERY_CONFIG"])
+    # Customer key survives.
+    assert extra_config["worker_max_tasks_per_child"] == 50
+    # MWAA broker transport config remains intact.
+    assert extra_config["broker_transport"] == "mocked.transport.Transport"
+    assert (
+        extra_config["broker_transport_options"]
+        == MOCK_BROKER_TRANSPORT_CONFIG["broker_transport_options"]
+    )
+
+
+def test_mwaa_broker_config_wins_on_collision(monkeypatch, env_helper):
+    """MWAA broker transport keys must win when the customer tries to override
+    them, while the customer's non-colliding keys survive."""
+    env_helper.set({
+        "MWAA__CORE__CUSTOM_AIRFLOW_CONFIGS": json.dumps({
+            "AIRFLOW__CELERY__EXTRA_CELERY_CONFIG": json.dumps({
+                "broker_transport": "customer.transport.Transport",
+                "broker_transport_options": {"visibility_timeout": 1},
+                "worker_max_tasks_per_child": 50,
+            })
+        })
+    })
+
+    result = _get_celery_executor_config(monkeypatch)
+
+    extra_config = json.loads(result["AIRFLOW__CELERY__EXTRA_CELERY_CONFIG"])
+    # MWAA broker keys win on collision.
+    assert extra_config["broker_transport"] == "mocked.transport.Transport"
+    assert (
+        extra_config["broker_transport_options"]
+        == MOCK_BROKER_TRANSPORT_CONFIG["broker_transport_options"]
+    )
+    # Customer's non-colliding key survives.
+    assert extra_config["worker_max_tasks_per_child"] == 50
+
+
+def test_extra_celery_config_secret_wins_over_env_var(monkeypatch, env_helper):
+    """The Airflow config secret takes priority over the raw environment
+    variable, consistent with the merge order in setup_environment.py."""
+    env_helper.set({
+        "AIRFLOW__CELERY__EXTRA_CELERY_CONFIG": json.dumps(
+            {"worker_max_tasks_per_child": 10, "worker_prefetch_multiplier": 4}
+        ),
+        "MWAA__CORE__CUSTOM_AIRFLOW_CONFIGS": json.dumps({
+            "AIRFLOW__CELERY__EXTRA_CELERY_CONFIG": json.dumps(
+                {"worker_max_tasks_per_child": 50}
+            )
+        }),
+    })
+
+    result = _get_celery_executor_config(monkeypatch)
+
+    extra_config = json.loads(result["AIRFLOW__CELERY__EXTRA_CELERY_CONFIG"])
+    # Secret value wins on collision.
+    assert extra_config["worker_max_tasks_per_child"] == 50
+    # Non-colliding env var key survives.
+    assert extra_config["worker_prefetch_multiplier"] == 4
+
+
+@pytest.mark.parametrize("invalid_value", [
+    "{not-valid-json",
+    '["not", "an", "object"]',
+    '"just a string"',
+    "42",
+])
+def test_invalid_customer_extra_celery_config_ignored(
+    monkeypatch, env_helper, invalid_value
+):
+    """Invalid or non-object JSON values are logged and ignored; the broker
+    transport config remains intact."""
+    env_helper.set({
+        "MWAA__CORE__CUSTOM_AIRFLOW_CONFIGS": json.dumps({
+            "AIRFLOW__CELERY__EXTRA_CELERY_CONFIG": invalid_value
+        })
+    })
+
+    result = _get_celery_executor_config(monkeypatch)
+
+    extra_config = json.loads(result["AIRFLOW__CELERY__EXTRA_CELERY_CONFIG"])
+    assert extra_config == MOCK_BROKER_TRANSPORT_CONFIG
+
+
+def test_no_customer_extra_celery_config(monkeypatch):
+    """Without any customer-provided value, extra_celery_config is exactly the
+    MWAA broker transport config."""
+    result = _get_celery_executor_config(monkeypatch)
+
+    extra_config = json.loads(result["AIRFLOW__CELERY__EXTRA_CELERY_CONFIG"])
+    assert extra_config == MOCK_BROKER_TRANSPORT_CONFIG
+
+
 # ---------------------------
 # Core Config Tests
 # ---------------------------
