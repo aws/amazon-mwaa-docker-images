@@ -204,6 +204,35 @@ def _is_protected_os_environ(key: str) -> bool:
     # Check whether this is an MWAA configuration or a protected variable
     return key.startswith("MWAA__") or key in protected_vars
 
+
+# Configs that are safe to pass through during migrate-db. The full user config is
+# excluded from migrate-db because configs requiring plugin installations can break the
+# migration container (see #360). However, certain configs like the default pool task
+# slot count are needed during migration to ensure the default pool is created with the
+# correct size (see #168, #382, #397).
+_MIGRATE_DB_SAFE_CONFIGS = [
+    "AIRFLOW__CORE__DEFAULT_POOL_TASK_SLOT_COUNT",
+]
+
+
+def _filter_migrate_db_safe_config(user_config: Dict[str, str]) -> Dict[str, str]:
+    """
+    Filter user Airflow configs to only the safe subset for the migrate-db command.
+
+    Most user configs are excluded from migrate-db to prevent breakage (e.g. configs
+    that require plugin installations). This function allows through only configs that
+    are known to be safe and necessary during database migration.
+
+    :param user_config: The full user Airflow configuration dictionary.
+    :returns A dictionary containing only the safe environment variables.
+    """
+    return {
+        key: value
+        for key, value in user_config.items()
+        if key in _MIGRATE_DB_SAFE_CONFIGS
+    }
+
+
 def setup_environment_variables(command: str, executor_type: str) -> Dict:
     """Set up and return environment variables for Airflow execution.
 
@@ -223,7 +252,9 @@ def setup_environment_variables(command: str, executor_type: str) -> Dict:
     mwaa_opinionated_airflow_config = get_opinionated_airflow_config()
     mwaa_essential_airflow_environ = get_essential_environ(command)
     mwaa_opinionated_airflow_environ = get_opinionated_environ()
-    user_airflow_config = {} if command == "migrate-db" else get_user_airflow_config()
+    user_airflow_config = get_user_airflow_config()
+    if command == "migrate-db":
+        user_airflow_config = _filter_migrate_db_safe_config(user_airflow_config)
 
 
     startup_script_environ = _execute_startup_script(

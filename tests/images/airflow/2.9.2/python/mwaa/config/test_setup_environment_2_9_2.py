@@ -9,6 +9,7 @@ from mwaa.config.setup_environment import (
     _execute_startup_script,
     _export_env_variables,
     _is_protected_os_environ,
+    _filter_migrate_db_safe_config,
 )
 from mwaa.subprocess.subprocess import Subprocess  # Add this import
 
@@ -265,3 +266,61 @@ def test_setup_environment_variables_different_commands(
         assert args[0] == command
         # Verify the environment dict was passed (without checking exact contents)
         assert isinstance(args[1], dict)
+
+
+# ------------------------
+# Migrate-DB Safe Config Tests
+# ------------------------
+
+def test_filter_migrate_db_safe_config_passes_pool_config():
+    """Test that default_pool_task_slot_count is passed through for migrate-db"""
+    user_config = {
+        "AIRFLOW__CORE__DEFAULT_POOL_TASK_SLOT_COUNT": "10000",
+        "AIRFLOW__CORE__SOME_OTHER_CONFIG": "value",
+        "AIRFLOW__WEBSERVER__WORKERS": "4",
+    }
+    result = _filter_migrate_db_safe_config(user_config)
+
+    assert result == {"AIRFLOW__CORE__DEFAULT_POOL_TASK_SLOT_COUNT": "10000"}
+
+
+def test_filter_migrate_db_safe_config_empty_when_no_pool_config():
+    """Test that result is empty when user hasn't set pool config"""
+    user_config = {
+        "AIRFLOW__CORE__SOME_OTHER_CONFIG": "value",
+        "AIRFLOW__WEBSERVER__WORKERS": "4",
+    }
+    result = _filter_migrate_db_safe_config(user_config)
+
+    assert result == {}
+
+
+def test_filter_migrate_db_safe_config_empty_when_no_user_config():
+    """Test that result is empty when there's no user config at all"""
+    result = _filter_migrate_db_safe_config({})
+
+    assert result == {}
+
+
+def test_setup_environment_variables_migrate_db_passes_pool_config(
+        mock_environ,
+        mock_config_functions
+):
+    """Test that migrate-db command passes through pool slot config but not other user configs"""
+    mock_config_functions["get_user_airflow_config"].return_value = {
+        "AIRFLOW__CORE__DEFAULT_POOL_TASK_SLOT_COUNT": "10000",
+        "AIRFLOW__CORE__LOAD_EXAMPLES": "True",
+    }
+
+    with patch("mwaa.config.setup_environment._execute_startup_script") as mock_execute_script, \
+            patch("mwaa.config.setup_environment._export_env_variables"):
+        mock_execute_script.return_value = {}
+
+        result = setup_environment_variables("migrate-db", "CeleryExecutor")
+
+        # Pool config should be passed through
+        assert result.get("AIRFLOW__CORE__DEFAULT_POOL_TASK_SLOT_COUNT") == "10000"
+        # Other user configs should NOT be passed through
+        assert result.get("AIRFLOW__CORE__LOAD_EXAMPLES") != "True" or \
+               result.get("AIRFLOW__CORE__LOAD_EXAMPLES") == mock_config_functions[
+                   "get_essential_airflow_config"].return_value.get("AIRFLOW__CORE__LOAD_EXAMPLES")
