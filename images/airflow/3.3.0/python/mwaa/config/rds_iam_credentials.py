@@ -183,6 +183,16 @@ def use_iam_credentials() -> bool:
     return os.environ.get("USE_IAM_CREDENTIALS", "").lower() == "true"
 
 
+def is_local_runner() -> bool:
+    """Check if running in local runner mode.
+
+    RDS IAM authentication requires an ECS task metadata endpoint and an RDS
+    Proxy, neither of which exist when running the image locally, so the patch
+    must not be installed in that case.
+    """
+    return os.environ.get("MWAA_LOCAL_RUNNER", "").lower() == "true"
+
+
 def is_using_rds_proxy() -> bool:
     """Check if the environment is using RDS Proxy.
 

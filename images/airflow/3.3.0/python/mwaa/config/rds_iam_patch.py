@@ -3,17 +3,27 @@
 Attaches a global listener to SQLAlchemy's Engine class that intercepts
 metadata database connections and replaces credentials with fresh IAM tokens.
 
-This module is feature-flag controlled by USE_IAM_CREDENTIALS=true,
-only activates for RDS Proxy environments, and skips the migrate-db process.
+This module is feature-flag controlled by USE_IAM_CREDENTIALS=true, only
+activates for RDS Proxy environments, and skips the migrate-db process and the
+local runner.
+
+``install_rds_iam_patch()`` is called from ``airflow_local_settings.py``, which
+Airflow imports during ``settings.initialize()`` in every Airflow process. The
+listener registered here only affects the process that registers it, so it has
+to be installed there rather than from the entrypoint, whose Airflow components
+run as separate subprocesses.
 """
 
 import logging
 import os
+from functools import cache
 
 from sqlalchemy import make_url
 
+from mwaa.config.database import get_db_connection_string
 from mwaa.config.rds_iam_credentials import (
     RDSIAMCredentialProvider,
+    is_local_runner,
     is_using_rds_proxy,
     use_iam_credentials,
 )
@@ -21,6 +31,10 @@ from mwaa.config.rds_iam_credentials import (
 logger = logging.getLogger(__name__)
 
 MWAA_AIRFLOW_COMPONENT = os.environ.get("MWAA_AIRFLOW_COMPONENT")
+
+# Set once the do_connect listener has been registered, so that installing the
+# patch more than once in the same process does not stack duplicate listeners.
+_patch_installed = False
 
 
 def _is_from_migrate_db() -> bool:
@@ -31,12 +45,25 @@ def _is_from_migrate_db() -> bool:
     return MWAA_AIRFLOW_COMPONENT == "migrate-db"
 
 
+@cache
 def _get_metadata_url():
-    """Get the parsed metadata DB URL from environment."""
-    conn_str = os.environ.get("AIRFLOW__DATABASE__SQL_ALCHEMY_CONN")
-    if not conn_str:
+    """Get the parsed metadata DB URL.
+
+    Derived from ``get_db_connection_string()`` rather than from
+    ``AIRFLOW__DATABASE__SQL_ALCHEMY_CONN``: that variable is only placed in the
+    environment dictionary handed to the Airflow subprocesses, so it is not
+    guaranteed to be present in ``os.environ`` of the process evaluating this.
+    The underlying ``MWAA__DB__*`` variables are always present.
+
+    The result is cached because this is consulted on every connection attempt.
+    """
+    try:
+        return make_url(get_db_connection_string())
+    except Exception as e:
+        # Never let this propagate into the do_connect listener: raising there
+        # would break every database connection in the process.
+        logger.error("Could not determine the metadata DB URL: %s", e)
         return None
-    return make_url(conn_str)
 
 
 def _is_accessing_metadata_db(dialect, cargs, cparams) -> bool:
@@ -80,7 +107,14 @@ def install_rds_iam_patch() -> None:
     - USE_IAM_CREDENTIALS=true
     - Environment uses RDS Proxy (MWAA__DB__POSTGRES_SSLMODE=require)
     - Current process is NOT migrate-db
+    - Current process is NOT the local runner
     """
+    global _patch_installed
+
+    if _patch_installed:
+        logger.debug("RDS IAM patch already installed in this process.")
+        return
+
     if not use_iam_credentials():
         logger.info("RDS IAM patch not installed: USE_IAM_CREDENTIALS is not true.")
         return
@@ -91,6 +125,10 @@ def install_rds_iam_patch() -> None:
 
     if _is_from_migrate_db():
         logger.info("RDS IAM patch not installed: running in migrate-db process.")
+        return
+
+    if is_local_runner():
+        logger.info("RDS IAM patch not installed: running in local runner mode.")
         return
 
     from sqlalchemy import event
@@ -108,4 +146,5 @@ def install_rds_iam_patch() -> None:
         cparams.update(url.query)
 
     event.listen(Engine, "do_connect", patch_rds_iam_authentication)
+    _patch_installed = True
     logger.info("RDS IAM authentication patch installed successfully.")

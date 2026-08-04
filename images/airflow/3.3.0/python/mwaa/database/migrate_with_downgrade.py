@@ -26,6 +26,7 @@ from mwaa.utils.dblock import with_db_lock
 from airflow.cli.commands import db_command as airflow_db_command
 
 DB_IAM_USERNAME = "airflow_user"
+DB_ADMIN_USERNAME = "adminuser"
 DB_NAME = "AirflowMetadata"
 
 # Usually, we pass the `__name__` variable instead as that defaults to the module path,
@@ -96,47 +97,66 @@ def _ensure_rds_iam_user():
                 else:
                     logger.info("db rds iam user already exists")
 
-                # Always ensure permissions are up to date
-                conn.execute(text(f"GRANT rds_iam TO {DB_IAM_USERNAME}"))
-                conn.execute(
-                    text(
-                        f'GRANT ALL PRIVILEGES ON DATABASE "{DB_NAME}" TO {DB_IAM_USERNAME}'
+                # Only the admin role can hand out these privileges. When this
+                # runs as airflow_user the grants would fail, so mirror the 2.x
+                # behaviour and gate them on the current role.
+                current_role = conn.execute(text("SELECT current_user")).scalar()
+
+                if current_role == DB_ADMIN_USERNAME:
+                    logger.info(
+                        "Current role is %s, setting up permissions for %s",
+                        DB_ADMIN_USERNAME,
+                        DB_IAM_USERNAME,
                     )
-                )
-                conn.execute(text(f"GRANT ALL ON SCHEMA public TO {DB_IAM_USERNAME}"))
-                conn.execute(
-                    text(
-                        f"GRANT ALL ON ALL TABLES IN SCHEMA public TO {DB_IAM_USERNAME}"
+                    conn.execute(text(f"GRANT rds_iam TO {DB_IAM_USERNAME}"))
+                    conn.execute(
+                        text(
+                            f'GRANT ALL PRIVILEGES ON DATABASE "{DB_NAME}" TO {DB_IAM_USERNAME}'
+                        )
                     )
-                )
-                conn.execute(
-                    text(
-                        f"GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO {DB_IAM_USERNAME}"
+                    conn.execute(
+                        text(f"GRANT ALL ON SCHEMA public TO {DB_IAM_USERNAME}")
                     )
-                )
-                conn.execute(
-                    text(
-                        f"GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO {DB_IAM_USERNAME}"
+                    conn.execute(
+                        text(
+                            f"GRANT ALL ON ALL TABLES IN SCHEMA public TO {DB_IAM_USERNAME}"
+                        )
                     )
-                )
-                conn.execute(
-                    text(
-                        f"ALTER DEFAULT PRIVILEGES IN SCHEMA public "
-                        f"GRANT ALL ON TABLES TO {DB_IAM_USERNAME}"
+                    conn.execute(
+                        text(
+                            f"GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO {DB_IAM_USERNAME}"
+                        )
                     )
-                )
-                conn.execute(
-                    text(
-                        f"ALTER DEFAULT PRIVILEGES IN SCHEMA public "
-                        f"GRANT ALL ON SEQUENCES TO {DB_IAM_USERNAME}"
+                    conn.execute(
+                        text(
+                            f"GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO {DB_IAM_USERNAME}"
+                        )
                     )
-                )
-                conn.execute(
-                    text(
-                        f"ALTER DEFAULT PRIVILEGES IN SCHEMA public "
-                        f"GRANT ALL ON FUNCTIONS TO {DB_IAM_USERNAME}"
+                    conn.execute(
+                        text(
+                            f"ALTER DEFAULT PRIVILEGES IN SCHEMA public "
+                            f"GRANT ALL ON TABLES TO {DB_IAM_USERNAME}"
+                        )
                     )
-                )
+                    conn.execute(
+                        text(
+                            f"ALTER DEFAULT PRIVILEGES IN SCHEMA public "
+                            f"GRANT ALL ON SEQUENCES TO {DB_IAM_USERNAME}"
+                        )
+                    )
+                    conn.execute(
+                        text(
+                            f"ALTER DEFAULT PRIVILEGES IN SCHEMA public "
+                            f"GRANT ALL ON FUNCTIONS TO {DB_IAM_USERNAME}"
+                        )
+                    )
+                    # Needed so that airflow_user inherits ownership of objects
+                    # created by adminuser during migrations.
+                    conn.execute(
+                        text(f"GRANT {DB_ADMIN_USERNAME} TO {DB_IAM_USERNAME}")
+                    )
+                elif current_role == DB_IAM_USERNAME:
+                    logger.info("Current role is %s", DB_IAM_USERNAME)
     except Exception as e:
         logger.warning("Error while ensuring rds iam db credentials, skipping. %s", e)
 
