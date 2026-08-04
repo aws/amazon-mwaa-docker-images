@@ -30,8 +30,6 @@ from mwaa.config.rds_iam_credentials import (
 
 logger = logging.getLogger(__name__)
 
-MWAA_AIRFLOW_COMPONENT = os.environ.get("MWAA_AIRFLOW_COMPONENT")
-
 # Set once the do_connect listener has been registered, so that installing the
 # patch more than once in the same process does not stack duplicate listeners.
 _patch_installed = False
@@ -39,10 +37,11 @@ _patch_installed = False
 
 def _is_from_migrate_db() -> bool:
     """Check if the current process is the migrate-db container."""
-    if MWAA_AIRFLOW_COMPONENT is None:
+    component = os.environ.get("MWAA_AIRFLOW_COMPONENT")
+    if component is None:
         logger.debug("MWAA_AIRFLOW_COMPONENT not set in environment.")
         return False
-    return MWAA_AIRFLOW_COMPONENT == "migrate-db"
+    return component == "migrate-db"
 
 
 @cache

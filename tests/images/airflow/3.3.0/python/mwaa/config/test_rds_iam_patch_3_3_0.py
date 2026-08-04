@@ -2,27 +2,26 @@ import pytest
 from unittest.mock import patch, MagicMock
 
 
+def _reset_patch_state():
+    """Reset the one-shot install flag so a test can install the patch again."""
+    from mwaa.config import rds_iam_patch
+
+    rds_iam_patch._patch_installed = False
+    getattr(rds_iam_patch._get_metadata_url, "cache_clear", lambda: None)()
+
+
+
 def test_is_from_migrate_db():
     """Test migrate-db detection"""
-    import importlib
-    import mwaa.config.rds_iam_patch
+    from mwaa.config.rds_iam_patch import _is_from_migrate_db
 
     with patch.dict("os.environ", {"MWAA_AIRFLOW_COMPONENT": "migrate-db"}):
-        importlib.reload(mwaa.config.rds_iam_patch)
-        from mwaa.config.rds_iam_patch import _is_from_migrate_db
-
         assert _is_from_migrate_db() is True
 
     with patch.dict("os.environ", {"MWAA_AIRFLOW_COMPONENT": "scheduler"}):
-        importlib.reload(mwaa.config.rds_iam_patch)
-        from mwaa.config.rds_iam_patch import _is_from_migrate_db
-
         assert _is_from_migrate_db() is False
 
     with patch.dict("os.environ", {}, clear=True):
-        importlib.reload(mwaa.config.rds_iam_patch)
-        from mwaa.config.rds_iam_patch import _is_from_migrate_db
-
         assert _is_from_migrate_db() is False
 
 
@@ -166,8 +165,7 @@ def test_install_rds_iam_patch_not_installed_no_rds_proxy():
 
 def test_install_rds_iam_patch_not_installed_migrate_db():
     """Test patch not installed for migrate-db process"""
-    import importlib
-    import mwaa.config.rds_iam_patch
+    from mwaa.config.rds_iam_patch import install_rds_iam_patch
 
     with patch.dict(
         "os.environ",
@@ -177,9 +175,7 @@ def test_install_rds_iam_patch_not_installed_migrate_db():
             "MWAA_AIRFLOW_COMPONENT": "migrate-db",
         },
     ):
-        importlib.reload(mwaa.config.rds_iam_patch)
-        from mwaa.config.rds_iam_patch import install_rds_iam_patch
-
+        _reset_patch_state()
         with patch("sqlalchemy.event.listen") as mock_listen:
             install_rds_iam_patch()
             mock_listen.assert_not_called()
@@ -187,8 +183,7 @@ def test_install_rds_iam_patch_not_installed_migrate_db():
 
 def test_install_rds_iam_patch_installed():
     """Test patch installed when all conditions are met"""
-    import importlib
-    import mwaa.config.rds_iam_patch
+    from mwaa.config.rds_iam_patch import install_rds_iam_patch
 
     with patch.dict(
         "os.environ",
@@ -198,9 +193,7 @@ def test_install_rds_iam_patch_installed():
             "MWAA_AIRFLOW_COMPONENT": "scheduler",
         },
     ):
-        importlib.reload(mwaa.config.rds_iam_patch)
-        from mwaa.config.rds_iam_patch import install_rds_iam_patch
-
+        _reset_patch_state()
         with patch("sqlalchemy.event.listen") as mock_listen:
             install_rds_iam_patch()
             mock_listen.assert_called_once()
@@ -265,11 +258,9 @@ def test_get_metadata_url_returns_none_on_missing_config():
 
 def test_end_to_end_metadata_db_detected_without_airflow_conn_var():
     """The patch must recognise the metadata DB using only MWAA__DB__* vars."""
-    import importlib
     import mwaa.config.rds_iam_patch
 
     with patch.dict("os.environ", _RDS_PROXY_ENV, clear=True):
-        importlib.reload(mwaa.config.rds_iam_patch)
         _clear_metadata_url_cache(mwaa.config.rds_iam_patch)
         cparams = {
             "host": "test.rds.amazonaws.com",
@@ -287,15 +278,12 @@ def test_end_to_end_metadata_db_detected_without_airflow_conn_var():
 
 def test_install_rds_iam_patch_not_installed_local_runner():
     """Test patch not installed when running as the local runner."""
-    import importlib
-    import mwaa.config.rds_iam_patch
+    from mwaa.config.rds_iam_patch import install_rds_iam_patch
 
     with patch.dict(
         "os.environ", {**_RDS_PROXY_ENV, "MWAA_LOCAL_RUNNER": "true"}, clear=True
     ):
-        importlib.reload(mwaa.config.rds_iam_patch)
-        from mwaa.config.rds_iam_patch import install_rds_iam_patch
-
+        _reset_patch_state()
         with patch("sqlalchemy.event.listen") as mock_listen:
             install_rds_iam_patch()
             mock_listen.assert_not_called()
@@ -303,13 +291,10 @@ def test_install_rds_iam_patch_not_installed_local_runner():
 
 def test_install_rds_iam_patch_is_idempotent():
     """Installing twice in one process must register only one listener."""
-    import importlib
-    import mwaa.config.rds_iam_patch
+    from mwaa.config.rds_iam_patch import install_rds_iam_patch
 
     with patch.dict("os.environ", _RDS_PROXY_ENV, clear=True):
-        importlib.reload(mwaa.config.rds_iam_patch)
-        from mwaa.config.rds_iam_patch import install_rds_iam_patch
-
+        _reset_patch_state()
         with patch("sqlalchemy.event.listen") as mock_listen:
             install_rds_iam_patch()
             install_rds_iam_patch()
