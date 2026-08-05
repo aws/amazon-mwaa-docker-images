@@ -53,7 +53,7 @@ services:
   package-requirements:
     <<: *airflow-common
     command: package-requirements
-    container_name: mwaa-320-package-requirements
+    container_name: mwaa-2112-package-requirements
 
 volumes:
   postgres-db-volume:
