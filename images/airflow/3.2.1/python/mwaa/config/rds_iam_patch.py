@@ -141,6 +141,11 @@ def install_rds_iam_patch() -> None:
         token = RDSIAMCredentialProvider.get_token()
         url = make_url(RDSIAMCredentialProvider.create_db_connection_url(token))
 
+        # Clear existing connection params to avoid conflicts between
+        # SQLAlchemy versions (SA 2.0 uses 'dbname' in cparams while
+        # translate_connect_args returns 'database' -- both present causes
+        # psycopg2 to raise "can't specify both 'database' and 'dbname'").
+        cparams.clear()
         cparams.update(url.translate_connect_args(username="user"))
         cparams.update(url.query)
 
