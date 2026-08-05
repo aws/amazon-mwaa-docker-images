@@ -625,7 +625,7 @@ pytokens==0.4.1
 pytz==2026.1.post1
 pywinrm==0.5.0
 qdrant-client==1.16.2
-ray==2.54.0
+ray==2.56.0
 reactivex==4.1.0
 readme_renderer==44.0
 redis==6.4.0
