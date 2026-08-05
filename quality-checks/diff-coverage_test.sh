@@ -193,24 +193,25 @@ main() {
         echo "  - $dir"
     done
 
+    # Coverage checks run for all versions by default. Add a version to
+    # excluded_versions only when necessary (e.g., its test folder is not
+    # yet complete).
+    local excluded_versions=(
+    )
+
     # Check each modified image directory
     for dir in $modified_dirs; do
-        # Only run for images with populated test directories
-        # TODO: Append below line to `if` statement when test folder for 3.0.6 is complete \
-        # || [ "$dir" == "images/airflow/3.0.6" ] \
-        if [ "$dir" == "images/airflow/2.9.2" ] \
-        || [ "$dir" == "images/airflow/2.10.1" ] \
-        || [ "$dir" == "images/airflow/2.10.3" ] \
-        || [ "$dir" == "images/airflow/2.11.0" ] \
-        ; then
-            if [ -d "$dir" ]; then
-                echo -e "\n${BLUE}Checking ${dir}...${NC}"
-                if ! check_coverage "$dir" "$base_branch"; then
-                    status=1
-                fi
+        local version
+        version=$(basename "$dir")
+        if [[ " ${excluded_versions[*]} " == *" ${version} "* ]]; then
+            echo "Skipping directory \"${dir}\" (excluded from coverage checks)..."
+            continue
+        fi
+        if [ -d "$dir" ]; then
+            echo -e "\n${BLUE}Checking ${dir}...${NC}"
+            if ! check_coverage "$dir" "$base_branch"; then
+                status=1
             fi
-        else
-            echo "Skipping directory \"${dir}\" (tests not yet created)..."
         fi
     done
 
