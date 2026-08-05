@@ -13,7 +13,7 @@ pyright==1.1.360
 psycopg2-binary==2.9.10
 pytest==8.4.1
 pytest-asyncio==0.25.0
-pytest-cov==6.2.1
+pytest-cov==7.1.0
 pytest-mock==3.14.1
 ruff==0.12.1
 setuptools==80.9.0
