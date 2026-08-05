@@ -17,5 +17,5 @@ pytest-cov==6.2.1
 pytest-mock==3.14.1
 ruff==0.12.1
 setuptools==80.9.0
-snowballstemmer==3.0.1
+snowballstemmer==3.1.1
 wheel==0.46.2
