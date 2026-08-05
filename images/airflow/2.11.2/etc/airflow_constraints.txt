@@ -50,7 +50,7 @@ Flask-SQLAlchemy==2.5.1
 Flask-Session==0.8.0
 Flask-WTF==1.2.2
 Flask==2.3.3
-GitPython==3.1.46
+GitPython==3.1.57
 Incremental==24.11.0
 JayDeBeApi==1.2.3
 Jinja2==3.1.6
