@@ -75,7 +75,22 @@ def _ensure_rds_iam_user():
                 logger.info("RDS IAM connection successful.")
                 return engine
 
-            db_engine = _connect_iam()
+            try:
+                db_engine = _connect_iam()
+            except Exception as iam_error:
+                # Deliberate hard failure, unlike the best-effort paths in this
+                # function. Reaching here means neither the static credentials
+                # nor an RDS IAM token can open a connection, so the grants
+                # below cannot be applied and migrate-db must not continue.
+                # Raising explicitly, rather than letting _connect_iam()
+                # propagate on its own, keeps the intent unambiguous and puts a
+                # single precise error in the logs instead of surfacing later as
+                # a lock-acquisition failure in _migrate_db().
+                raise RuntimeError(
+                    "Could not connect to the metadata database with either "
+                    "static or RDS IAM credentials; unable to ensure the RDS "
+                    "IAM user."
+                ) from iam_error
         else:
             logger.warning(
                 "Error while ensuring rds iam db credentials, skipping. %s", e

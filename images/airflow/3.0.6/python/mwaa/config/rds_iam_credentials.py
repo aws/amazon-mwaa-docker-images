@@ -163,6 +163,9 @@ class RDSIAMCredentialProvider:
         :returns: PostgreSQL connection URL with IAM authentication.
         """
         if token is None:
+            # NOTE: bypasses the get_token() cache, matching 2.x. No caller uses
+            # this default path today; the cache bypass is tracked for a
+            # cross-version follow-up rather than diverging from 2.x here.
             token = cls.generate_credentials()
 
         auth_token = quote_plus(token)
