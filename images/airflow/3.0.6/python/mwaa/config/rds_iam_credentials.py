@@ -9,14 +9,55 @@ import logging
 import os
 import threading
 import time
+import urllib.error
 import urllib.request
 from urllib.parse import quote_plus, urlparse
 
 import boto3
+from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
 
 logger = logging.getLogger(__name__)
 
 DB_IAM_USERNAME = "airflow_user"
+
+# The ECS task credential endpoint is link-local (169.254.170.2), routed inside
+# the task's own network namespace, and normally answers in milliseconds. It can
+# still fail with a connect timeout, but per the Fargate Data Plane analysis in
+# P481207036 that is not the endpoint being unhealthy or throttling: breaching
+# the TMDS limit (80 req/s steady, 120 burst) returns HTTP 429 on a completed
+# connection, whereas a connect timeout means the *calling* process could not
+# complete connect() in time because it is resource starved. So the call must be
+# bounded and retried rather than left to block.
+#
+# Note botocore's AWS_METADATA_SERVICE_TIMEOUT / _NUM_ATTEMPTS do not apply here:
+# this fetch is plain urllib, not botocore, so the values have to be set
+# explicitly.
+_METADATA_TIMEOUT_SECONDS = float(
+    os.environ.get("MWAA__DB__IAM_METADATA_TIMEOUT", "5")
+)
+_METADATA_ATTEMPTS = int(os.environ.get("MWAA__DB__IAM_METADATA_ATTEMPTS", "3"))
+
+
+def _is_transient_metadata_error(exception: BaseException) -> bool:
+    """Return True for metadata failures that are worth retrying.
+
+    Retries connect/read timeouts and connection errors, plus HTTP 429 (the
+    documented TMDS throttle response) and 5xx. Deliberately does not retry
+    configuration mistakes such as a missing environment variable, or client
+    errors like 404, where retrying only delays the failure.
+    """
+    if isinstance(exception, urllib.error.HTTPError):
+        return exception.code == 429 or exception.code >= 500
+    # socket.timeout is an alias of TimeoutError on Python 3.10+.
+    return isinstance(exception, (urllib.error.URLError, TimeoutError, ConnectionError))
+
+
+_with_metadata_retry = retry(
+    stop=stop_after_attempt(_METADATA_ATTEMPTS),
+    wait=wait_exponential(multiplier=1, min=1, max=4),
+    retry=retry_if_exception(_is_transient_metadata_error),
+    reraise=True,
+)
 
 
 class RDSIAMCredentialProvider:
@@ -31,11 +72,18 @@ class RDSIAMCredentialProvider:
     _expires_at: float = 0
 
     @staticmethod
+    @_with_metadata_retry
     def get_ecs_credentials() -> dict:
         """Get AWS credentials from ECS task metadata endpoint.
 
         Uses AWS_TASK_EXEC_CREDENTIALS_RELATIVE_URI for the credential path
         and ECS_CONTAINER_METADATA_URI for the base URL.
+
+        The request is bounded by MWAA__DB__IAM_METADATA_TIMEOUT and retried up
+        to MWAA__DB__IAM_METADATA_ATTEMPTS times on transient failures. Without
+        a timeout this call can block indefinitely, and it runs inside the
+        SQLAlchemy do_connect listener, so a hang would stall a metadata
+        database connection.
 
         :returns: AWS credentials dict with AccessKeyId, SecretAccessKey, Token.
         :raises ValueError: If required environment variables are not set.
@@ -56,7 +104,7 @@ class RDSIAMCredentialProvider:
         no_proxy_handler = urllib.request.ProxyHandler({})
         opener = urllib.request.build_opener(no_proxy_handler)
 
-        with opener.open(request) as response:
+        with opener.open(request, timeout=_METADATA_TIMEOUT_SECONDS) as response:
             credentials_data = json.loads(response.read().decode("utf-8"))
 
         return credentials_data
@@ -139,8 +187,19 @@ class RDSIAMCredentialProvider:
     def get_token(cls) -> str:
         """Get cached RDS IAM token, refreshing if expired or missing.
 
-        Uses thread-safe caching with 5-minute refresh buffer before
-        the 15-minute token expiration.
+        Tokens are valid for 15 minutes and refreshed at the 10-minute mark, so
+        a refresh failure still leaves roughly 5 minutes of usable token. In
+        that window the cached token is reused rather than failing the caller:
+        the endpoint this refresh depends on times out under process contention
+        (P481207036), and a transient blip should not break a metadata database
+        connection.
+
+        The refresh is deliberately performed while holding the lock. That
+        serialises concurrent refreshes into a single fetch, which is the
+        "shared credential provider" shape the Fargate Data Plane team
+        recommends to avoid multiplying connects to the endpoint. It is only
+        safe to hold the lock across the network call because that call is now
+        bounded by MWAA__DB__IAM_METADATA_TIMEOUT.
 
         :returns: Cached or freshly generated RDS auth token.
         """
@@ -150,8 +209,21 @@ class RDSIAMCredentialProvider:
         if cls._token is None or now > cls._expires_at - 300:
             with cls._lock:
                 if cls._token is None or now > cls._expires_at - 300:
-                    cls._token = cls.generate_credentials()
-                    cls._expires_at = now + 15 * 60  # 15 mins
+                    try:
+                        token = cls.generate_credentials()
+                    except Exception as e:
+                        if cls._token is not None and time.time() < cls._expires_at:
+                            logger.warning(
+                                "Could not refresh the RDS IAM token (%s); reusing "
+                                "the cached token, which is still valid.",
+                                e,
+                            )
+                            return cls._token
+                        raise
+                    cls._token = token
+                    # Timed from after the mint, not from before the lock wait,
+                    # so a slow refresh cannot overstate the token's lifetime.
+                    cls._expires_at = time.time() + 15 * 60  # 15 mins
 
         return cls._token
 

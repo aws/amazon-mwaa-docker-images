@@ -288,3 +288,182 @@ def test_is_using_rds_proxy():
 
     with patch.dict("os.environ", {}, clear=True):
         assert is_using_rds_proxy() is False
+
+
+# --- ECS metadata endpoint hardening (see P481207036) ---
+
+_ECS_ENV = {
+    "AWS_TASK_EXEC_CREDENTIALS_RELATIVE_URI": "/v2/credentials/abc",
+    "ECS_CONTAINER_METADATA_URI": "http://169.254.170.2/v3/containers/test",
+}
+_CREDS = {
+    "AccessKeyId": "k",
+    "SecretAccessKey": "s",
+    "Token": "t",
+}
+
+
+def _mock_opener(side_effect=None, payload=None):
+    """Build a mock urllib opener returning payload, or raising side_effect."""
+    opener = MagicMock()
+    if side_effect is not None:
+        opener.open.side_effect = side_effect
+    else:
+        response = MagicMock()
+        response.read.return_value = json.dumps(payload or _CREDS).encode("utf-8")
+        opener.open.return_value.__enter__.return_value = response
+    return opener
+
+
+def _reset_token_cache():
+    from mwaa.config.rds_iam_credentials import RDSIAMCredentialProvider
+
+    RDSIAMCredentialProvider._token = None
+    RDSIAMCredentialProvider._expires_at = 0
+
+
+def test_ecs_metadata_fetch_passes_a_timeout():
+    """The fetch must be bounded; without a timeout urllib blocks indefinitely.
+
+    It runs inside the SQLAlchemy do_connect listener, so an unbounded hang
+    would stall a metadata database connection.
+    """
+    from mwaa.config import rds_iam_credentials
+    from mwaa.config.rds_iam_credentials import RDSIAMCredentialProvider
+
+    opener = _mock_opener()
+    with patch.dict("os.environ", _ECS_ENV), patch(
+        "urllib.request.build_opener", return_value=opener
+    ):
+        assert RDSIAMCredentialProvider.get_ecs_credentials() == _CREDS
+
+    _, kwargs = opener.open.call_args
+    assert kwargs.get("timeout") == rds_iam_credentials._METADATA_TIMEOUT_SECONDS
+    assert kwargs["timeout"] > 0
+
+
+def test_ecs_metadata_fetch_retries_transient_failure_then_succeeds():
+    """A single connect timeout must not fail the caller."""
+    import urllib.error
+
+    from mwaa.config.rds_iam_credentials import RDSIAMCredentialProvider
+
+    response = MagicMock()
+    response.read.return_value = json.dumps(_CREDS).encode("utf-8")
+    ok = MagicMock()
+    ok.__enter__ = MagicMock(return_value=response)
+    ok.__exit__ = MagicMock(return_value=False)
+
+    opener = MagicMock()
+    opener.open.side_effect = [urllib.error.URLError("timed out"), ok]
+
+    with patch.dict("os.environ", _ECS_ENV), patch(
+        "urllib.request.build_opener", return_value=opener
+    ), patch("tenacity.nap.time.sleep"):
+        assert RDSIAMCredentialProvider.get_ecs_credentials() == _CREDS
+
+    assert opener.open.call_count == 2
+
+
+def test_ecs_metadata_fetch_does_not_retry_config_errors():
+    """A missing environment variable is not transient; fail immediately."""
+    from mwaa.config.rds_iam_credentials import RDSIAMCredentialProvider
+
+    opener = _mock_opener()
+    with patch.dict("os.environ", {}, clear=True), patch(
+        "urllib.request.build_opener", return_value=opener
+    ):
+        with pytest.raises(ValueError):
+            RDSIAMCredentialProvider.get_ecs_credentials()
+    opener.open.assert_not_called()
+
+
+def test_transient_error_classification():
+    """429 and 5xx are retryable; 4xx client errors are not."""
+    import urllib.error
+
+    from mwaa.config.rds_iam_credentials import _is_transient_metadata_error
+
+    def http(code):
+        return urllib.error.HTTPError("u", code, "msg", None, None)
+
+    assert _is_transient_metadata_error(http(429)) is True
+    assert _is_transient_metadata_error(http(503)) is True
+    assert _is_transient_metadata_error(http(500)) is True
+    assert _is_transient_metadata_error(http(404)) is False
+    assert _is_transient_metadata_error(http(403)) is False
+    assert _is_transient_metadata_error(urllib.error.URLError("boom")) is True
+    assert _is_transient_metadata_error(TimeoutError()) is True
+    assert _is_transient_metadata_error(ConnectionResetError()) is True
+    assert _is_transient_metadata_error(ValueError("config")) is False
+
+
+def test_failed_refresh_reuses_a_still_valid_cached_token():
+    """A refresh failure inside the grace window must not fail the caller.
+
+    Tokens live 15 minutes and are refreshed at 10, so a blip during refresh
+    still leaves a usable token.
+    """
+    from mwaa.config.rds_iam_credentials import RDSIAMCredentialProvider
+
+    try:
+        RDSIAMCredentialProvider._token = "still_valid"
+        # Inside the refresh window (expires in 60s) but not yet expired.
+        RDSIAMCredentialProvider._expires_at = time.time() + 60
+
+        with patch.object(
+            RDSIAMCredentialProvider,
+            "generate_credentials",
+            side_effect=Exception("metadata endpoint timed out"),
+        ):
+            assert RDSIAMCredentialProvider.get_token() == "still_valid"
+    finally:
+        _reset_token_cache()
+
+
+def test_failed_refresh_raises_once_the_token_has_expired():
+    """Past expiry there is nothing safe to reuse, so surface the failure."""
+    from mwaa.config.rds_iam_credentials import RDSIAMCredentialProvider
+
+    try:
+        RDSIAMCredentialProvider._token = "expired"
+        RDSIAMCredentialProvider._expires_at = time.time() - 1
+
+        with patch.object(
+            RDSIAMCredentialProvider,
+            "generate_credentials",
+            side_effect=Exception("metadata endpoint timed out"),
+        ):
+            with pytest.raises(Exception, match="metadata endpoint timed out"):
+                RDSIAMCredentialProvider.get_token()
+    finally:
+        _reset_token_cache()
+
+
+def test_token_expiry_measured_after_the_mint():
+    """Expiry must be timed from after the fetch, not before the lock wait.
+
+    Uses a stepped clock so a slow mint is distinguishable: timing from before
+    would set expiry to 1000+900, from after to 2000+900. With a real (instant)
+    mint the two are indistinguishable, which is why the clock is stubbed.
+    """
+    from mwaa.config.rds_iam_credentials import RDSIAMCredentialProvider
+
+    calls = {"n": 0}
+
+    def stepped_clock():
+        calls["n"] += 1
+        return 1000.0 if calls["n"] == 1 else 2000.0
+
+    try:
+        _reset_token_cache()
+        with patch(
+            "mwaa.config.rds_iam_credentials.time.time", side_effect=stepped_clock
+        ), patch.object(
+            RDSIAMCredentialProvider, "generate_credentials", return_value="fresh"
+        ):
+            assert RDSIAMCredentialProvider.get_token() == "fresh"
+
+        assert RDSIAMCredentialProvider._expires_at == 2000.0 + 15 * 60
+    finally:
+        _reset_token_cache()
