@@ -144,11 +144,11 @@ def test_install_rds_iam_patch_not_installed_no_iam():
     """Test patch not installed when USE_IAM_CREDENTIALS is not true"""
     from mwaa.config.rds_iam_patch import install_rds_iam_patch
 
-    with patch.dict("os.environ", {"USE_IAM_CREDENTIALS": "false"}, clear=True), patch(
-        "sqlalchemy.event.listen"
-    ) as mock_listen:
-        install_rds_iam_patch()
-        mock_listen.assert_not_called()
+    with patch.dict("os.environ", {"USE_IAM_CREDENTIALS": "false"}, clear=True):
+        _reset_patch_state()
+        with patch("sqlalchemy.event.listen") as mock_listen:
+            install_rds_iam_patch()
+            mock_listen.assert_not_called()
 
 
 def test_install_rds_iam_patch_not_installed_no_rds_proxy():
@@ -158,9 +158,11 @@ def test_install_rds_iam_patch_not_installed_no_rds_proxy():
     with patch.dict(
         "os.environ",
         {"USE_IAM_CREDENTIALS": "true", "MWAA__DB__POSTGRES_SSLMODE": "disable"},
-    ), patch("sqlalchemy.event.listen") as mock_listen:
-        install_rds_iam_patch()
-        mock_listen.assert_not_called()
+    ):
+        _reset_patch_state()
+        with patch("sqlalchemy.event.listen") as mock_listen:
+            install_rds_iam_patch()
+            mock_listen.assert_not_called()
 
 
 def test_install_rds_iam_patch_not_installed_migrate_db():
@@ -469,7 +471,9 @@ def test_do_connect_listener_injects_the_token():
         "dbname": "AirflowMetadata",
         "port": 5432,
         "user": "airflow_user",
-        "stale": "should be cleared",
+        # Engine connect_args (MWAA_CONNECT_ARGS) arrive via cparams.
+        "connect_timeout": 15,
+        "keepalives": 1,
     }
 
     with patch.dict("os.environ", env, clear=True), patch.object(
@@ -480,12 +484,16 @@ def test_do_connect_listener_injects_the_token():
         _clear_metadata_url_cache(m)
         captured["fn"]("postgresql", None, [], cparams)
 
-    # cparams was rebuilt from the IAM URL, and the pre-existing key is gone.
-    assert "stale" not in cparams
+    # Credentials were rebuilt from the IAM URL.
     assert cparams["password"] == "tok"
     assert cparams["host"] == "proxy.rds.amazonaws.com"
     # 'dbname'/'database' must not both be present (psycopg2 rejects that).
     assert not ("dbname" in cparams and "database" in cparams)
+    # Engine connect_args that arrive via cparams (connect_timeout and the
+    # keepalives* settings from MWAA_CONNECT_ARGS) must survive the token
+    # injection; only the aliased credential keys are replaced.
+    assert cparams["connect_timeout"] == 15
+    assert cparams["keepalives"] == 1
 
 
 def test_do_connect_listener_ignores_other_databases():
