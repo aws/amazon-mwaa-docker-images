@@ -338,6 +338,16 @@ def _reset_token_cache():
     RDSIAMCredentialProvider._expires_at = 0
 
 
+def _join_refresh_thread():
+    """Wait for the background refresh thread so assertions are deterministic."""
+    from mwaa.config.rds_iam_credentials import RDSIAMCredentialProvider
+
+    thread = RDSIAMCredentialProvider._refresh_thread
+    if thread is not None:
+        thread.join(timeout=5)
+        assert not thread.is_alive(), "background refresh did not finish"
+
+
 def test_ecs_metadata_fetch_passes_a_timeout():
     """The fetch must be bounded; without a timeout urllib blocks indefinitely.
 
@@ -418,14 +428,17 @@ def test_failed_refresh_reuses_a_still_valid_cached_token():
     """A refresh failure inside the grace window must not fail the caller.
 
     Tokens live 15 minutes and are refreshed at 10, so a blip during refresh
-    still leaves a usable token.
+    still leaves a usable token. The failure happens on the background thread
+    and is logged; the cached token stays in place, and the single-flight
+    guard is released so a later caller can retry the refresh.
     """
     from mwaa.config.rds_iam_credentials import RDSIAMCredentialProvider
 
     try:
         RDSIAMCredentialProvider._token = "still_valid"
         # Inside the refresh window (expires in 60s) but not yet expired.
-        RDSIAMCredentialProvider._expires_at = time.time() + 60
+        expires_at = time.time() + 60
+        RDSIAMCredentialProvider._expires_at = expires_at
 
         with patch.object(
             RDSIAMCredentialProvider,
@@ -433,6 +446,14 @@ def test_failed_refresh_reuses_a_still_valid_cached_token():
             side_effect=Exception("metadata endpoint timed out"),
         ):
             assert RDSIAMCredentialProvider.get_token() == "still_valid"
+            _join_refresh_thread()
+
+        # The failed refresh left the cache untouched...
+        assert RDSIAMCredentialProvider._token == "still_valid"
+        assert RDSIAMCredentialProvider._expires_at == expires_at
+        # ...and released the single-flight guard for the next attempt.
+        assert RDSIAMCredentialProvider._refresh_lock.acquire(blocking=False)
+        RDSIAMCredentialProvider._refresh_lock.release()
     finally:
         _reset_token_cache()
 
@@ -481,5 +502,209 @@ def test_token_expiry_measured_after_the_mint():
             assert RDSIAMCredentialProvider.get_token() == "fresh"
 
         assert RDSIAMCredentialProvider._expires_at == 2000.0 + 15 * 60
+    finally:
+        _reset_token_cache()
+
+
+# --- Off-critical-path token refresh ---
+#
+# The 5-minute refresh buffer on the 15-minute token lifetime exists so the
+# refresh can happen without a caller paying for it. These tests pin that
+# property: a usable token is always served immediately, the refresh runs on a
+# background thread, and only a cold start or a genuinely expired token blocks
+# the caller.
+
+
+def test_due_token_is_served_immediately_and_refreshed_in_background():
+    """A caller holding a usable token must not pay for the refresh.
+
+    Regression test: get_token() used to perform the fetch on the calling
+    thread while holding the lock, so the connection that arrived at the
+    10-minute mark blocked on the ECS metadata endpoint and every other
+    caller in the process queued behind it.
+    """
+    import threading
+
+    from mwaa.config.rds_iam_credentials import RDSIAMCredentialProvider
+
+    caller = threading.current_thread()
+    minting_thread = {}
+
+    def record_thread():
+        minting_thread["thread"] = threading.current_thread()
+        return "refreshed"
+
+    try:
+        RDSIAMCredentialProvider._token = "due_but_valid"
+        # Due for refresh (fewer than 5 minutes left) but not expired.
+        RDSIAMCredentialProvider._expires_at = time.time() + 60
+
+        with patch.object(
+            RDSIAMCredentialProvider, "generate_credentials", side_effect=record_thread
+        ):
+            # The caller is handed the cached token, not the refreshed one.
+            assert RDSIAMCredentialProvider.get_token() == "due_but_valid"
+            _join_refresh_thread()
+
+        # The refresh ran on a different thread and updated the cache.
+        assert minting_thread["thread"] is not caller
+        assert RDSIAMCredentialProvider._token == "refreshed"
+        assert RDSIAMCredentialProvider._expires_at > time.time() + 14 * 60
+    finally:
+        _reset_token_cache()
+
+
+def test_background_refresh_is_single_flight():
+    """Concurrent callers noticing a due token must not multiply fetches.
+
+    Multiplying connects to the ECS credential endpoint under contention is
+    the amplification pattern identified in P481207036, so while one refresh
+    is in flight further callers must be served the cached token without
+    triggering another fetch.
+    """
+    import threading
+
+    from mwaa.config.rds_iam_credentials import RDSIAMCredentialProvider
+
+    release = threading.Event()
+    calls = []
+
+    def slow_mint():
+        calls.append(1)
+        assert release.wait(timeout=5), "test never released the mint"
+        return "refreshed"
+
+    try:
+        RDSIAMCredentialProvider._token = "due_but_valid"
+        RDSIAMCredentialProvider._expires_at = time.time() + 60
+
+        with patch.object(
+            RDSIAMCredentialProvider, "generate_credentials", side_effect=slow_mint
+        ):
+            for _ in range(5):
+                assert RDSIAMCredentialProvider.get_token() == "due_but_valid"
+            release.set()
+            _join_refresh_thread()
+
+        assert len(calls) == 1
+    finally:
+        release.set()
+        _reset_token_cache()
+
+
+def test_cold_start_fetches_synchronously():
+    """With nothing cached there is nothing to serve, so the caller waits."""
+    import threading
+
+    from mwaa.config.rds_iam_credentials import RDSIAMCredentialProvider
+
+    minting_thread = {}
+
+    def record_thread():
+        minting_thread["thread"] = threading.current_thread()
+        return "fresh"
+
+    try:
+        _reset_token_cache()
+        with patch.object(
+            RDSIAMCredentialProvider, "generate_credentials", side_effect=record_thread
+        ):
+            assert RDSIAMCredentialProvider.get_token() == "fresh"
+
+        assert minting_thread["thread"] is threading.current_thread()
+    finally:
+        _reset_token_cache()
+
+
+def test_expired_token_fetches_synchronously():
+    """Past expiry the cached token is unusable, so the caller waits."""
+    import threading
+
+    from mwaa.config.rds_iam_credentials import RDSIAMCredentialProvider
+
+    minting_thread = {}
+
+    def record_thread():
+        minting_thread["thread"] = threading.current_thread()
+        return "fresh"
+
+    try:
+        RDSIAMCredentialProvider._token = "expired"
+        RDSIAMCredentialProvider._expires_at = time.time() - 1
+
+        with patch.object(
+            RDSIAMCredentialProvider, "generate_credentials", side_effect=record_thread
+        ):
+            assert RDSIAMCredentialProvider.get_token() == "fresh"
+
+        assert minting_thread["thread"] is threading.current_thread()
+    finally:
+        _reset_token_cache()
+
+
+def test_locks_are_replaced_after_fork():
+    """A child forked while a lock is held must not inherit it locked.
+
+    Airflow forks (Celery prefork workers, DAG processors). A lock held at
+    fork time is inherited locked by the child with no thread alive to
+    release it, which would wedge every future refresh in that child.
+    """
+    from mwaa.config import rds_iam_credentials as m
+
+    old_lock = m.RDSIAMCredentialProvider._lock
+    old_refresh_lock = m.RDSIAMCredentialProvider._refresh_lock
+    old_lock.acquire()
+    old_refresh_lock.acquire()
+    try:
+        m._reset_locks_after_fork()
+
+        assert m.RDSIAMCredentialProvider._lock is not old_lock
+        assert m.RDSIAMCredentialProvider._refresh_lock is not old_refresh_lock
+        # The replacements are usable.
+        assert m.RDSIAMCredentialProvider._lock.acquire(blocking=False)
+        m.RDSIAMCredentialProvider._lock.release()
+        assert m.RDSIAMCredentialProvider._refresh_lock.acquire(blocking=False)
+        m.RDSIAMCredentialProvider._refresh_lock.release()
+    finally:
+        old_lock.release()
+        old_refresh_lock.release()
+
+
+def test_fork_hook_is_registered_at_import():
+    """The at-fork reset must be wired up when the module is imported."""
+    import importlib
+
+    from mwaa.config import rds_iam_credentials as m
+
+    try:
+        with patch("os.register_at_fork") as mock_register:
+            importlib.reload(m)
+        mock_register.assert_called_once()
+        hook = mock_register.call_args.kwargs["after_in_child"]
+        assert hook.__name__ == "_reset_locks_after_fork"
+    finally:
+        # Restore a clean module (the reload above replaced the class object).
+        importlib.reload(m)
+
+
+def test_failed_thread_start_releases_the_single_flight_guard():
+    """If the refresh thread cannot start, later callers must be able to retry."""
+    import threading
+
+    from mwaa.config.rds_iam_credentials import RDSIAMCredentialProvider
+
+    try:
+        RDSIAMCredentialProvider._token = "due_but_valid"
+        RDSIAMCredentialProvider._expires_at = time.time() + 60
+
+        with patch.object(
+            threading.Thread, "start", side_effect=RuntimeError("can't start new thread")
+        ):
+            # The caller is unaffected: it still gets the cached token.
+            assert RDSIAMCredentialProvider.get_token() == "due_but_valid"
+
+        # The guard was released, so the next caller can attempt the refresh.
+        assert RDSIAMCredentialProvider._refresh_lock.acquire(blocking=False)
+        RDSIAMCredentialProvider._refresh_lock.release()
     finally:
         _reset_token_cache()

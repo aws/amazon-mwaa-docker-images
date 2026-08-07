@@ -20,6 +20,13 @@ logger = logging.getLogger(__name__)
 
 DB_IAM_USERNAME = "airflow_user"
 
+# Tokens are valid for 15 minutes; a refresh is attempted once fewer than 5
+# remain. The buffer exists so the refresh can happen off the critical path:
+# a caller is handed the still-valid cached token immediately while a
+# background thread mints the replacement.
+_TOKEN_LIFETIME_SECONDS = 15 * 60
+_TOKEN_REFRESH_BUFFER_SECONDS = 5 * 60
+
 # The ECS task credential endpoint is link-local (169.254.170.2), routed inside
 # the task's own network namespace, and normally answers in milliseconds. It can
 # still fail with a connect timeout, but per the Fargate Data Plane analysis in
@@ -68,6 +75,13 @@ class RDSIAMCredentialProvider:
     """
 
     _lock = threading.Lock()
+    # Single-flight guard for the background refresh: acquired without
+    # blocking by whichever caller notices the token is due, released by the
+    # refresh thread when it finishes. (threading.Lock permits releasing from
+    # a thread other than the acquirer.)
+    _refresh_lock = threading.Lock()
+    # The last background refresh thread, kept for introspection and tests.
+    _refresh_thread: threading.Thread | None = None
     _token: str | None = None
     _expires_at: float = 0
 
@@ -185,47 +199,96 @@ class RDSIAMCredentialProvider:
 
     @classmethod
     def get_token(cls) -> str:
-        """Get cached RDS IAM token, refreshing if expired or missing.
+        """Get cached RDS IAM token, refreshing if due, expired or missing.
 
-        Tokens are valid for 15 minutes and refreshed at the 10-minute mark, so
-        a refresh failure still leaves roughly 5 minutes of usable token. In
-        that window the cached token is reused rather than failing the caller:
-        the endpoint this refresh depends on times out under process contention
-        (P481207036), and a transient blip should not break a metadata database
-        connection.
+        Tokens are valid for 15 minutes and become due for refresh once fewer
+        than 5 remain. A caller holding a usable token never pays for the
+        refresh: the cached token is returned immediately and the refresh runs
+        on a background thread (see ``_start_background_refresh``). This keeps
+        the ECS metadata fetch off the connection critical path -- the fetch
+        is most likely to be slow exactly when the process is busy
+        (P481207036), which is also when connections are most frequent.
 
-        The refresh is deliberately performed while holding the lock. That
-        serialises concurrent refreshes into a single fetch, which is the
-        "shared credential provider" shape the Fargate Data Plane team
-        recommends to avoid multiplying connects to the endpoint. It is only
-        safe to hold the lock across the network call because that call is now
-        bounded by MWAA__DB__IAM_METADATA_TIMEOUT.
+        Only when nothing usable is cached -- cold start, or a token that has
+        actually expired -- is the fetch performed synchronously on the
+        calling thread. That path holds the lock across the mint, which
+        serialises concurrent callers into a single fetch (the shared
+        credential provider shape the Fargate Data Plane team recommends to
+        avoid multiplying connects to the endpoint), and is only safe to hold
+        across the network call because the call is bounded by
+        MWAA__DB__IAM_METADATA_TIMEOUT.
 
         :returns: Cached or freshly generated RDS auth token.
         """
         now = time.time()
+        token = cls._token
 
-        # Refresh token in cache if missing or expires in 5 mins.
-        if cls._token is None or now > cls._expires_at - 300:
-            with cls._lock:
-                if cls._token is None or now > cls._expires_at - 300:
-                    try:
-                        token = cls.generate_credentials()
-                    except Exception as e:
-                        if cls._token is not None and time.time() < cls._expires_at:
-                            logger.warning(
-                                "Could not refresh the RDS IAM token (%s); reusing "
-                                "the cached token, which is still valid.",
-                                e,
-                            )
-                            return cls._token
-                        raise
-                    cls._token = token
-                    # Timed from after the mint, not from before the lock wait,
-                    # so a slow refresh cannot overstate the token's lifetime.
-                    cls._expires_at = time.time() + 15 * 60  # 15 mins
+        if token is not None and now < cls._expires_at:
+            # The cached token is usable. If it is due for refresh, hand the
+            # refresh to a background thread and serve the cached token
+            # immediately rather than making this caller -- typically a
+            # database connection inside the do_connect listener -- block on
+            # the fetch.
+            if now > cls._expires_at - _TOKEN_REFRESH_BUFFER_SECONDS:
+                cls._start_background_refresh()
+            return token
 
-        return cls._token
+        # Nothing usable: cold start, or the token has expired. Fetch
+        # synchronously; the double-check returns without a second fetch for
+        # the threads that queued behind the winner.
+        with cls._lock:
+            if cls._token is None or time.time() >= cls._expires_at:
+                token = cls.generate_credentials()
+                cls._token = token
+                # Timed from after the mint, not from before the lock wait,
+                # so a slow refresh cannot overstate the token's lifetime.
+                cls._expires_at = time.time() + _TOKEN_LIFETIME_SECONDS
+            return cls._token
+
+    @classmethod
+    def _start_background_refresh(cls) -> None:
+        """Refresh the token on a background thread, single-flight.
+
+        The non-blocking acquire keeps the refresh single-flight, so
+        concurrent callers noticing a due token do not multiply connects to
+        the ECS credential endpoint -- multiplying connects under contention
+        is the amplification pattern identified in P481207036.
+
+        A refresh failure is logged and the still-valid cached token stays in
+        place: tokens become due at the 10-minute mark of their 15-minute
+        lifetime precisely so a failed attempt leaves a ~5 minute window in
+        which later callers re-trigger the refresh.
+        """
+        if not cls._refresh_lock.acquire(blocking=False):
+            # A refresh is already in flight.
+            return
+
+        def _refresh() -> None:
+            try:
+                token = cls.generate_credentials()
+                cls._token = token
+                cls._expires_at = time.time() + _TOKEN_LIFETIME_SECONDS
+            except Exception as e:
+                logger.warning(
+                    "Could not refresh the RDS IAM token in the background "
+                    "(%s); keeping the cached token, which is still valid.",
+                    e,
+                )
+            finally:
+                cls._refresh_lock.release()
+
+        try:
+            thread = threading.Thread(
+                target=_refresh, name="mwaa-rds-iam-token-refresh", daemon=True
+            )
+            cls._refresh_thread = thread
+            thread.start()
+        except Exception as e:
+            # Could not spawn the thread (e.g. resource exhaustion). Release
+            # the guard so a later caller can try again; the cached token is
+            # still valid, so this caller is unaffected.
+            cls._refresh_lock.release()
+            logger.warning("Could not start the RDS IAM token refresh thread: %s", e)
 
     @classmethod
     def create_db_connection_url(cls, token: str | None = None) -> str:
@@ -282,3 +345,20 @@ def is_using_rds_proxy() -> bool:
         logger.warning("MWAA__DB__POSTGRES_SSLMODE not set in environment.")
         return False
     return ssl_mode == "require"
+
+
+def _reset_locks_after_fork() -> None:
+    """Recreate the provider's locks in a forked child.
+
+    Airflow forks (Celery prefork workers, DAG processors). If the parent
+    forks while a lock is held, the child inherits it locked with no thread
+    alive to release it, which would wedge every future refresh in that child.
+    The cached token itself is plain data and remains valid across the fork,
+    so only the locks are replaced.
+    """
+    RDSIAMCredentialProvider._lock = threading.Lock()
+    RDSIAMCredentialProvider._refresh_lock = threading.Lock()
+
+
+if hasattr(os, "register_at_fork"):
+    os.register_at_fork(after_in_child=_reset_locks_after_fork)
