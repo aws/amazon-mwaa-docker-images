@@ -391,7 +391,7 @@ grpcio==1.78.0
 gssapi==1.11.1
 gunicorn==25.1.0
 h11==0.16.0
-h2==4.3.0
+h2==4.4.1
 hatch==1.16.5
 hatchling==1.29.0
 hdfs==2.7.3
