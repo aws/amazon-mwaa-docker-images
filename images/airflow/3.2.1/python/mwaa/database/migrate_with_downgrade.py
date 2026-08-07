@@ -16,11 +16,17 @@ import os
 import sys
 
 from mwaa.config.database import get_db_connection_string
+from mwaa.config.rds_iam_credentials import (
+    RDSIAMCredentialProvider,
+    is_using_rds_proxy,
+    use_iam_credentials,
+)
 from mwaa.utils.db_retry import with_db_retry, MAINTENANCE_ENGINE_KWARGS
 from mwaa.utils.dblock import with_db_lock
 from airflow.cli.commands import db_command as airflow_db_command
 
 DB_IAM_USERNAME = "airflow_user"
+DB_ADMIN_USERNAME = "adminuser"
 DB_NAME = "AirflowMetadata"
 
 # Usually, we pass the `__name__` variable instead as that defaults to the module path,
@@ -54,28 +60,120 @@ def _create_engine_with_retry():
 def _ensure_rds_iam_user():
     try:
         db_engine = _create_engine_with_retry()
+
+    except Exception as e:
+        logger.warning(f"Static credential connection failed: {e}")
+
+        if use_iam_credentials() and is_using_rds_proxy():
+            @with_db_retry
+            def _connect_iam():
+                logger.info("Attempting connection with RDS IAM credentials.")
+                token = RDSIAMCredentialProvider.get_token()
+                url = RDSIAMCredentialProvider.create_db_connection_url(token)
+                engine = create_engine(url, **MAINTENANCE_ENGINE_KWARGS)
+                with engine.connect() as conn:
+                    conn.execute(text("SELECT 1"))
+                logger.info("RDS IAM connection successful.")
+                return engine
+
+            try:
+                db_engine = _connect_iam()
+            except Exception as iam_error:
+                # Deliberate hard failure, unlike the best-effort paths in this
+                # function. Reaching here means neither the static credentials
+                # nor an RDS IAM token can open a connection, so the grants
+                # below cannot be applied and migrate-db must not continue.
+                # Raising explicitly, rather than letting _connect_iam()
+                # propagate on its own, keeps the intent unambiguous and puts a
+                # single precise error in the logs instead of surfacing later as
+                # a lock-acquisition failure in _migrate_db().
+                raise RuntimeError(
+                    "Could not connect to the metadata database with either "
+                    "static or RDS IAM credentials; unable to ensure the RDS "
+                    "IAM user."
+                ) from iam_error
+        else:
+            logger.warning(
+                "Error while ensuring rds iam db credentials, skipping. %s", e
+            )
+            return
+
+    try:
         with db_engine.connect() as conn:
             with conn.begin():
-                result = conn.execute(text("SELECT 1 FROM pg_roles WHERE rolname = :rolename"), {"rolename": DB_IAM_USERNAME})
+                result = conn.execute(
+                    text("SELECT 1 FROM pg_roles WHERE rolname = :rolename"),
+                    {"rolename": DB_IAM_USERNAME},
+                )
                 if not result.fetchone():
-                    print(f"Creating user '{DB_IAM_USERNAME}'")
+                    logger.info(f"Creating user '{DB_IAM_USERNAME}'")
                     conn.execute(text(f"CREATE USER {DB_IAM_USERNAME}"))
-                    print(f"Created db rds iam user")
+                    logger.info("Created db rds iam user")
                 else:
-                    print(f"db rds iam user already exists")
+                    logger.info("db rds iam user already exists")
 
-                # Always ensure permissions are up to date
-                conn.execute(text(f"GRANT rds_iam TO {DB_IAM_USERNAME}"))
-                conn.execute(text(f'GRANT ALL PRIVILEGES ON DATABASE "{DB_NAME}" TO {DB_IAM_USERNAME}'))
-                conn.execute(text(f"GRANT ALL ON SCHEMA public TO {DB_IAM_USERNAME}"))
-                conn.execute(text(f"GRANT ALL ON ALL TABLES IN SCHEMA public TO {DB_IAM_USERNAME}"))
-                conn.execute(text(f"GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO {DB_IAM_USERNAME}"))
-                conn.execute(text(f"GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO {DB_IAM_USERNAME}"))
-                conn.execute(text(f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO {DB_IAM_USERNAME}"))
-                conn.execute(text(f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO {DB_IAM_USERNAME}"))
-                conn.execute(text(f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO {DB_IAM_USERNAME}"))
+                # Only the admin role can hand out these privileges. When this
+                # runs as airflow_user the grants would fail, so mirror the 2.x
+                # behaviour and gate them on the current role.
+                current_role = conn.execute(text("SELECT current_user")).scalar()
+
+                if current_role == DB_ADMIN_USERNAME:
+                    logger.info(
+                        "Current role is %s, setting up permissions for %s",
+                        DB_ADMIN_USERNAME,
+                        DB_IAM_USERNAME,
+                    )
+                    conn.execute(text(f"GRANT rds_iam TO {DB_IAM_USERNAME}"))
+                    conn.execute(
+                        text(
+                            f'GRANT ALL PRIVILEGES ON DATABASE "{DB_NAME}" TO {DB_IAM_USERNAME}'
+                        )
+                    )
+                    conn.execute(
+                        text(f"GRANT ALL ON SCHEMA public TO {DB_IAM_USERNAME}")
+                    )
+                    conn.execute(
+                        text(
+                            f"GRANT ALL ON ALL TABLES IN SCHEMA public TO {DB_IAM_USERNAME}"
+                        )
+                    )
+                    conn.execute(
+                        text(
+                            f"GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO {DB_IAM_USERNAME}"
+                        )
+                    )
+                    conn.execute(
+                        text(
+                            f"GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO {DB_IAM_USERNAME}"
+                        )
+                    )
+                    conn.execute(
+                        text(
+                            f"ALTER DEFAULT PRIVILEGES IN SCHEMA public "
+                            f"GRANT ALL ON TABLES TO {DB_IAM_USERNAME}"
+                        )
+                    )
+                    conn.execute(
+                        text(
+                            f"ALTER DEFAULT PRIVILEGES IN SCHEMA public "
+                            f"GRANT ALL ON SEQUENCES TO {DB_IAM_USERNAME}"
+                        )
+                    )
+                    conn.execute(
+                        text(
+                            f"ALTER DEFAULT PRIVILEGES IN SCHEMA public "
+                            f"GRANT ALL ON FUNCTIONS TO {DB_IAM_USERNAME}"
+                        )
+                    )
+                    # Needed so that airflow_user inherits ownership of objects
+                    # created by adminuser during migrations.
+                    conn.execute(
+                        text(f"GRANT {DB_ADMIN_USERNAME} TO {DB_IAM_USERNAME}")
+                    )
+                elif current_role == DB_IAM_USERNAME:
+                    logger.info("Current role is %s", DB_IAM_USERNAME)
     except Exception as e:
-        logger.warning(f"Error while ensuring rds iam db credentials, skipping. {e}")
+        logger.warning("Error while ensuring rds iam db credentials, skipping. %s", e)
 
 
 @with_db_lock(1234)

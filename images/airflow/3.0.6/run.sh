@@ -73,6 +73,10 @@ MWAA__CORE__API_SERVER_URL="http://mwaa-306-webserver:8080"
 GENERATE_BILL_OF_MATERIALS="False"
 export GENERATE_BILL_OF_MATERIALS
 
+# Local Runner Indicator
+MWAA_LOCAL_RUNNER="true"
+export MWAA_LOCAL_RUNNER
+
 # MWAA Configuration
 MWAA__CORE__REQUIREMENTS_PATH="/usr/local/airflow/requirements/requirements.txt"
 MWAA__CORE__STARTUP_SCRIPT_PATH="/usr/local/airflow/startup/startup.sh"

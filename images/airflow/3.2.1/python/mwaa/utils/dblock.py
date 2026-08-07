@@ -28,7 +28,19 @@ F = TypeVar("F", bound=Callable[..., Any])
 @with_db_retry
 def _connect_with_retry() -> Connection:
     """Establish a DB connection with retry on transient RDS Proxy failures."""
-    engine = create_engine(get_db_connection_string(), **MAINTENANCE_ENGINE_KWARGS)
+    from mwaa.config.rds_iam_credentials import (
+        is_using_rds_proxy,
+        use_iam_credentials,
+    )
+
+    if use_iam_credentials() and is_using_rds_proxy():
+        from mwaa.config.rds_iam_credentials import RDSIAMCredentialProvider
+
+        token = RDSIAMCredentialProvider.get_token()
+        conn_url = RDSIAMCredentialProvider.create_db_connection_url(token)
+    else:
+        conn_url = get_db_connection_string()
+    engine = create_engine(conn_url, **MAINTENANCE_ENGINE_KWARGS)
     return engine.connect()
 
 
