@@ -333,3 +333,240 @@ def test_airflow_local_settings_installs_the_patch():
 
     # Must not leak names into the airflow.settings namespace.
     assert module.__all__ == []
+
+
+# --- Coverage for the customer-settings loading and the listener body ---
+
+_LS_VERSION = "3.3.0"
+
+
+def _local_settings_file():
+    import os
+
+    path = os.path.abspath(
+        os.path.join(
+            os.path.dirname(__file__),
+            "..", "..", "..", "..", "..", "..", "..",
+            "images", "airflow", _LS_VERSION, "airflow_local_settings.py",
+        )
+    )
+    assert os.path.exists(path), f"missing override: {path}"
+    return path
+
+
+def _exec_local_settings(airflow_home=None):
+    """Execute the shipped airflow_local_settings.py with the patch stubbed out."""
+    import importlib.util
+
+    env = {"AIRFLOW_HOME": airflow_home} if airflow_home else {}
+    with patch.dict("os.environ", env), patch(
+        "mwaa.config.rds_iam_patch.install_rds_iam_patch"
+    ):
+        spec = importlib.util.spec_from_file_location(
+            "mwaa_test_local_settings_cov", _local_settings_file()
+        )
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+    return module
+
+
+def _write_customer_file(home, subdir, body):
+    import os
+
+    os.makedirs(os.path.join(home, subdir), exist_ok=True)
+    with open(os.path.join(home, subdir, "airflow_local_settings.py"), "w") as f:
+        f.write(body)
+
+
+def test_customer_settings_in_dags_are_executed(tmp_path):
+    """A customer file in dags/ must be loaded, so its side effects apply."""
+    marker = tmp_path / "dags_ran"
+    _write_customer_file(
+        str(tmp_path),
+        "dags",
+        f"open({str(marker)!r}, 'w').write('ran')\n",
+    )
+
+    _exec_local_settings(str(tmp_path))
+
+    assert marker.exists(), "dags/airflow_local_settings.py was not executed"
+
+
+def test_customer_settings_in_plugins_are_executed(tmp_path):
+    """A customer file in plugins/ must be loaded too."""
+    marker = tmp_path / "plugins_ran"
+    _write_customer_file(
+        str(tmp_path),
+        "plugins",
+        f"open({str(marker)!r}, 'w').write('ran')\n",
+    )
+
+    _exec_local_settings(str(tmp_path))
+
+    assert marker.exists(), "plugins/airflow_local_settings.py was not executed"
+
+
+def test_broken_customer_settings_propagate(tmp_path):
+    """A customer file that fails to load must surface, not be swallowed.
+
+    Matches what Airflow does natively when a local settings file raises.
+    """
+    _write_customer_file(str(tmp_path), "plugins", "raise ValueError('customer bug')\n")
+
+    with pytest.raises(ValueError, match="customer bug"):
+        _exec_local_settings(str(tmp_path))
+
+
+def test_patch_install_failure_propagates():
+    """A failure installing the RDS IAM patch must not be silently ignored."""
+    import importlib.util
+
+    with patch(
+        "mwaa.config.rds_iam_patch.install_rds_iam_patch",
+        side_effect=RuntimeError("patch install blew up"),
+    ):
+        spec = importlib.util.spec_from_file_location(
+            "mwaa_test_local_settings_fail", _local_settings_file()
+        )
+        module = importlib.util.module_from_spec(spec)
+        with pytest.raises(RuntimeError, match="patch install blew up"):
+            spec.loader.exec_module(module)
+
+
+def test_do_connect_listener_injects_the_token():
+    """Exercise the registered listener body, not just its registration."""
+    from mwaa.config import rds_iam_patch as m
+
+    captured = {}
+
+    def fake_listen(target, name, fn):
+        captured["fn"] = fn
+
+    env = {
+        "USE_IAM_CREDENTIALS": "true",
+        "MWAA__DB__POSTGRES_HOST": "proxy.rds.amazonaws.com",
+        "MWAA__DB__POSTGRES_PORT": "5432",
+        "MWAA__DB__POSTGRES_DB": "AirflowMetadata",
+        "MWAA__DB__POSTGRES_SSLMODE": "require",
+        "MWAA__DB__CREDENTIALS": '{"username": "airflow_user", "password": "pw"}',
+        "MWAA_AIRFLOW_COMPONENT": "scheduler",
+    }
+
+    with patch.dict("os.environ", env, clear=True), patch(
+        "sqlalchemy.event.listen", side_effect=fake_listen
+    ):
+        _reset_patch_state()
+        m.install_rds_iam_patch()
+
+    assert "fn" in captured, "listener was not registered"
+
+    token_url = (
+        "postgresql+psycopg2://airflow_user:tok"
+        "@proxy.rds.amazonaws.com:5432/AirflowMetadata?sslmode=require"
+    )
+    cparams = {
+        "host": "proxy.rds.amazonaws.com",
+        "dbname": "AirflowMetadata",
+        "port": 5432,
+        "user": "airflow_user",
+        "stale": "should be cleared",
+    }
+
+    with patch.dict("os.environ", env, clear=True), patch.object(
+        m.RDSIAMCredentialProvider, "get_token", return_value="tok"
+    ), patch.object(
+        m.RDSIAMCredentialProvider, "create_db_connection_url", return_value=token_url
+    ):
+        _clear_metadata_url_cache(m)
+        captured["fn"]("postgresql", None, [], cparams)
+
+    # cparams was rebuilt from the IAM URL, and the pre-existing key is gone.
+    assert "stale" not in cparams
+    assert cparams["password"] == "tok"
+    assert cparams["host"] == "proxy.rds.amazonaws.com"
+    # 'dbname'/'database' must not both be present (psycopg2 rejects that).
+    assert not ("dbname" in cparams and "database" in cparams)
+
+
+def test_do_connect_listener_ignores_other_databases():
+    """Connections that are not the metadata DB must be left untouched."""
+    from mwaa.config import rds_iam_patch as m
+
+    captured = {}
+    env = {
+        "USE_IAM_CREDENTIALS": "true",
+        "MWAA__DB__POSTGRES_HOST": "proxy.rds.amazonaws.com",
+        "MWAA__DB__POSTGRES_PORT": "5432",
+        "MWAA__DB__POSTGRES_DB": "AirflowMetadata",
+        "MWAA__DB__POSTGRES_SSLMODE": "require",
+        "MWAA__DB__CREDENTIALS": '{"username": "airflow_user", "password": "pw"}',
+        "MWAA_AIRFLOW_COMPONENT": "scheduler",
+    }
+
+    with patch.dict("os.environ", env, clear=True), patch(
+        "sqlalchemy.event.listen", side_effect=lambda t, n, fn: captured.update(fn=fn)
+    ):
+        _reset_patch_state()
+        m.install_rds_iam_patch()
+
+    other = {"host": "someone-elses-db", "dbname": "other", "port": 5432, "user": "x"}
+    before = dict(other)
+
+    with patch.dict("os.environ", env, clear=True), patch.object(
+        m.RDSIAMCredentialProvider, "get_token"
+    ) as get_token:
+        _clear_metadata_url_cache(m)
+        captured["fn"]("postgresql", None, [], other)
+        get_token.assert_not_called()
+
+    assert other == before
+
+
+def test_metadata_detection_tolerates_unparseable_cargs():
+    """A malformed DSN in cargs must not raise out of the listener."""
+    from mwaa.config import rds_iam_patch as m
+
+    with patch.object(m, "_get_metadata_url") as mock_url:
+        mock_url.return_value = MagicMock(
+            host="h", database="d", port=5432, username="airflow_user"
+        )
+        # Not a URL at all; the cargs branch must swallow the parse error and
+        # fall through to the cparams check.
+        assert m._is_accessing_metadata_db("postgresql", ["not-a-dsn"], {}) is False
+
+
+def test_dblock_connect_uses_iam_token_when_enabled():
+    """dblock's maintenance connection must use IAM when the feature is on."""
+    from mwaa.utils import dblock
+
+    env = {
+        "USE_IAM_CREDENTIALS": "true",
+        "MWAA__DB__POSTGRES_SSLMODE": "require",
+    }
+    with patch.dict("os.environ", env, clear=True), patch.object(
+        dblock, "create_engine"
+    ) as create_engine, patch(
+        "mwaa.config.rds_iam_credentials.RDSIAMCredentialProvider.get_token",
+        return_value="tok",
+    ), patch(
+        "mwaa.config.rds_iam_credentials.RDSIAMCredentialProvider."
+        "create_db_connection_url",
+        return_value="postgresql+psycopg2://airflow_user:tok@h:5432/d",
+    ):
+        dblock._connect_with_retry()
+
+    assert create_engine.call_args.args[0].endswith("@h:5432/d")
+
+
+def test_dblock_connect_uses_static_credentials_when_disabled():
+    """With the flag off it must fall back to the static connection string."""
+    from mwaa.utils import dblock
+
+    with patch.dict("os.environ", {"USE_IAM_CREDENTIALS": "false"}, clear=True), \
+            patch.object(dblock, "create_engine") as create_engine, \
+            patch.object(
+                dblock, "get_db_connection_string", return_value="postgresql://static"
+            ):
+        dblock._connect_with_retry()
+
+    assert create_engine.call_args.args[0] == "postgresql://static"
