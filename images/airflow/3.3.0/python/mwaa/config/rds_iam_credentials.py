@@ -231,14 +231,16 @@ class RDSIAMCredentialProvider:
     def create_db_connection_url(cls, token: str | None = None) -> str:
         """Create a PostgreSQL connection URL for RDS IAM authentication.
 
-        :param token: RDS IAM auth token. If None, generates a fresh token.
+        :param token: RDS IAM auth token. If None, the cached token from
+            ``get_token()`` is used.
         :returns: PostgreSQL connection URL with IAM authentication.
         """
         if token is None:
-            # NOTE: bypasses the get_token() cache, matching 2.x. No caller uses
-            # this default path today; the cache bypass is tracked for a
-            # cross-version follow-up rather than diverging from 2.x here.
-            token = cls.generate_credentials()
+            # Route through get_token() rather than generate_credentials() so
+            # the default path reuses the thread-safe cache. Calling
+            # generate_credentials() directly would mint a new token -- an ECS
+            # metadata fetch plus a signed boto3 call -- on every connection.
+            token = cls.get_token()
 
         auth_token = quote_plus(token)
         postgres_host = os.environ.get("MWAA__DB__POSTGRES_HOST", "localhost")

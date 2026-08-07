@@ -241,8 +241,17 @@ def test_create_db_connection_url():
 
 
 def test_create_db_connection_url_generate_token():
-    """Test database connection URL creation with token generation"""
+    """The default token path must go through the thread-safe cache.
+
+    Regression test: calling generate_credentials() directly bypassed
+    get_token(), minting a fresh token (ECS metadata fetch + signed boto3 call)
+    on every connection instead of reusing the cached one.
+    """
     from mwaa.config.rds_iam_credentials import RDSIAMCredentialProvider
+
+    # Start from a cold cache; other tests in this module mutate this state.
+    RDSIAMCredentialProvider._token = None
+    RDSIAMCredentialProvider._expires_at = 0
 
     with patch.dict(
         "os.environ",
@@ -254,12 +263,19 @@ def test_create_db_connection_url_generate_token():
         },
     ), patch.object(
         RDSIAMCredentialProvider, "generate_credentials", return_value="generated_token"
-    ):
-        result = RDSIAMCredentialProvider.create_db_connection_url()
-        assert (
+    ) as mock_generate:
+        expected = (
             "postgresql+psycopg2://airflow_user:generated_token"
-            "@test.rds.amazonaws.com:5432/airflow?sslmode=require" in result
+            "@test.rds.amazonaws.com:5432/airflow?sslmode=require"
         )
+
+        assert expected in RDSIAMCredentialProvider.create_db_connection_url()
+        # Second call must be served from the cache, not mint a new token.
+        assert expected in RDSIAMCredentialProvider.create_db_connection_url()
+        assert mock_generate.call_count == 1
+
+    RDSIAMCredentialProvider._token = None
+    RDSIAMCredentialProvider._expires_at = 0
 
 
 def test_use_iam_credentials():
