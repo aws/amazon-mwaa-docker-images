@@ -208,7 +208,7 @@ def _clear_metadata_url_cache(module=None):
     getattr(module._get_metadata_url, "cache_clear", lambda: None)()
 
 
-# --- Regression tests for the aspects restored from the 2.x implementation ---
+# --- Regression tests for patch installation and metadata URL resolution ---
 
 # Environment describing a metadata DB reachable through an RDS Proxy. Note the
 # deliberate absence of AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: that variable is

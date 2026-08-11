@@ -129,7 +129,7 @@ def install_rds_iam_patch() -> None:
     if is_local_runner():
         return
 
-    # Resolve here rather than on the first connection, as 2.x did: it keeps
+    # Resolve here rather than on the first connection to keep
     # get_db_connection_string()'s INFO record out of MWAA CLI stdout.
     _get_metadata_url()
 
