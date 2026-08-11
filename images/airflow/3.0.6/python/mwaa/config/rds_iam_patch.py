@@ -115,24 +115,23 @@ def install_rds_iam_patch() -> None:
     global _patch_installed
 
     if _patch_installed:
-        logger.debug("RDS IAM patch already installed in this process.")
         return
 
     if not use_iam_credentials():
-        logger.info("RDS IAM patch not installed: USE_IAM_CREDENTIALS is not true.")
         return
 
     if not is_using_rds_proxy():
-        logger.info("RDS IAM patch not installed: not using RDS Proxy.")
         return
 
     if _is_from_migrate_db():
-        logger.info("RDS IAM patch not installed: running in migrate-db process.")
         return
 
     if is_local_runner():
-        logger.info("RDS IAM patch not installed: running in local runner mode.")
         return
+
+    # Resolve here rather than on the first connection, as 2.x did: it keeps
+    # get_db_connection_string()'s INFO record out of MWAA CLI stdout.
+    _get_metadata_url()
 
     from sqlalchemy import event
     from sqlalchemy.engine import Engine

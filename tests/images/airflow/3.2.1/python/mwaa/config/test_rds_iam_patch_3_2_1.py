@@ -578,3 +578,35 @@ def test_dblock_connect_uses_static_credentials_when_disabled():
         dblock._connect_with_retry()
 
     assert create_engine.call_args.args[0] == "postgresql://static"
+
+
+def test_install_resolves_metadata_url_eagerly():
+    """The metadata URL is resolved at install time, not on the first connection."""
+    from mwaa.config import rds_iam_patch
+
+    conn_string = (
+        "postgresql+psycopg2://airflow_user:pw@test.rds.amazonaws.com:5432"
+        "/AirflowMetadata?sslmode=require"
+    )
+
+    with patch.dict("os.environ", _RDS_PROXY_ENV, clear=True):
+        _reset_patch_state()
+        with patch.object(
+            rds_iam_patch, "get_db_connection_string", return_value=conn_string
+        ) as mock_conn_string, patch("sqlalchemy.event.listen"):
+            rds_iam_patch.install_rds_iam_patch()
+
+            mock_conn_string.assert_called_once()
+
+            # A later connection must reuse the cached URL, not resolve again.
+            rds_iam_patch._is_accessing_metadata_db(
+                None,
+                (),
+                {
+                    "host": "test.rds.amazonaws.com",
+                    "dbname": "AirflowMetadata",
+                    "port": 5432,
+                    "user": "airflow_user",
+                },
+            )
+            mock_conn_string.assert_called_once()
