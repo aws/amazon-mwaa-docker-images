@@ -1,13 +1,13 @@
 #
 # NOTE: The constraints below are part of the Airflow constraints:
 #
-# https://raw.githubusercontent.com/apache/airflow/constraints-3.3.0/constraints-3.12.txt
+# https://raw.githubusercontent.com/apache/airflow/constraints-3.3.1/constraints-3.12.txt
 #
 # We consider those to be critical to the functionality of our Airflow image
 # and, thus, do not allow the customer to override them.
 #
 
-apache-airflow==3.3.0
+apache-airflow==3.3.1
 # Webserver-related packages
 flask-appbuilder==5.2.1
 Flask-Babel==4.0.0
