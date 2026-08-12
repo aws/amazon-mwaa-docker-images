@@ -197,7 +197,6 @@ main() {
     # excluded_versions only when necessary (e.g., its test folder is not
     # yet complete).
     local excluded_versions=(
-        "3.3.1"
     )
 
     # Check each modified image directory
