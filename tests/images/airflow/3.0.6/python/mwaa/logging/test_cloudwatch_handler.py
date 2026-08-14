@@ -280,22 +280,168 @@ def test_cloudwatch_remote_task_logger_emit_is_noop():
     assert result is None
 
 
-def test_cloudwatch_remote_task_logger_upload_is_noop():
-    """Test that upload() is a no-op for CloudWatchRemoteTaskLogger."""
+def _write_af3_task_log(base, dag_id="d", run_id="r", task_id="t", attempt=1):
+    """Create a nested Airflow 3 task-attempt log file under base; return its path."""
+    log_dir = os.path.join(base, f"dag_id={dag_id}", f"run_id={run_id}", f"task_id={task_id}")
+    os.makedirs(log_dir, exist_ok=True)
+    log_file = os.path.join(log_dir, f"attempt={attempt}.log")
+    with open(log_file, "w") as f:
+        f.write("a task log line\n")
+    return log_file
+
+
+def _make_task_logger(enabled=True):
     logger = CloudWatchRemoteTaskLogger(
         log_group_arn='arn:aws:logs:us-west-2:123456789012:log-group:test-Task',
         kms_key_arn=None,
-        enabled=True,
+        enabled=enabled,
         log_level='INFO'
     )
     logger.handler = Mock()
-    
+    return logger
+
+
+def test_cloudwatch_remote_task_logger_upload_deletes_local_log(tmp_path):
+    """upload() flushes, then deletes the local task-log attempt directory.
+
+    Replaces the old *_upload_is_noop test: that no-op was the disk-accumulation
+    bug. Logs are served from CloudWatch (read() has no local fallback), so
+    removing the local copy loses nothing customer-visible.
+    """
+    base = str(tmp_path)
+    log_file = _write_af3_task_log(base)
+    parent = os.path.dirname(log_file)
+    logger = _make_task_logger(enabled=True)
     ti = MagicMock()
-    
-    # Should not raise any exception
-    result = logger.upload('/tmp/test.log', ti)
+
+    # The supervisor passes the path relative to base_log_folder.
+    rel = os.path.relpath(log_file, base)
+    with patch('mwaa.logging.cloudwatch_handlers.conf') as mock_conf:
+        mock_conf.get.return_value = base
+        result = logger.upload(rel, ti)
+
     assert result is None
     logger.handler.flush.assert_called_once()
+    assert not os.path.exists(log_file)
+    assert not os.path.exists(parent)
+
+
+def test_cloudwatch_remote_task_logger_upload_disabled_keeps_local_log(tmp_path):
+    """When the handler is disabled, logs were not streamed to CloudWatch, so the
+    local copy must NOT be deleted."""
+    base = str(tmp_path)
+    log_file = _write_af3_task_log(base)
+    logger = _make_task_logger(enabled=False)
+    ti = MagicMock()
+
+    rel = os.path.relpath(log_file, base)
+    with patch('mwaa.logging.cloudwatch_handlers.conf') as mock_conf:
+        mock_conf.get.return_value = base
+        result = logger.upload(rel, ti)
+
+    assert result is None
+    logger.handler.flush.assert_called_once()
+    assert os.path.exists(log_file)
+
+
+def test_cloudwatch_remote_task_logger_upload_missing_dir_is_noop(tmp_path):
+    """upload() does not raise if the attempt directory is already gone."""
+    base = str(tmp_path)
+    logger = _make_task_logger(enabled=True)
+    ti = MagicMock()
+
+    # A well-formed relative path whose parent was never created.
+    rel = os.path.join("dag_id=d", "run_id=r", "task_id=t", "attempt=1.log")
+    with patch('mwaa.logging.cloudwatch_handlers.conf') as mock_conf:
+        mock_conf.get.return_value = base
+        result = logger.upload(rel, ti)
+
+    assert result is None
+
+
+def test_cloudwatch_remote_task_logger_upload_skips_path_outside_base(tmp_path):
+    """A path resolving outside base_log_folder is not deleted (traversal guard)."""
+    base = os.path.join(str(tmp_path), "logs")
+    os.makedirs(base, exist_ok=True)
+    # Sentinel file outside the base that must survive.
+    outside = os.path.join(str(tmp_path), "outside.log")
+    with open(outside, "w") as f:
+        f.write("do not delete\n")
+
+    logger = _make_task_logger(enabled=True)
+    ti = MagicMock()
+
+    with patch('mwaa.logging.cloudwatch_handlers.conf') as mock_conf:
+        mock_conf.get.return_value = base
+        result = logger.upload(os.path.join("..", "outside.log"), ti)
+
+    assert result is None
+    assert os.path.exists(outside)
+
+
+def test_cloudwatch_remote_task_logger_upload_handles_absolute_path(tmp_path):
+    """An absolute path under the base is resolved and its parent deleted.
+
+    Defensive-branch coverage: the real supervisor always passes a relative path.
+    """
+    base = str(tmp_path)
+    log_file = _write_af3_task_log(base)
+    parent = os.path.dirname(log_file)
+    logger = _make_task_logger(enabled=True)
+    ti = MagicMock()
+
+    with patch('mwaa.logging.cloudwatch_handlers.conf') as mock_conf:
+        mock_conf.get.return_value = base
+        result = logger.upload(log_file, ti)  # absolute path
+
+    assert result is None
+    assert not os.path.exists(parent)
+
+
+def test_cloudwatch_remote_task_logger_upload_delete_error_is_non_fatal(tmp_path):
+    """A silent rmtree failure (dir remains) increments the metric and is non-fatal.
+
+    rmtree(ignore_errors=True) does not raise on OSError, so the real failure
+    signal is 'parent still exists after rmtree', not an exception. Mock rmtree
+    as a no-op that leaves the directory in place to exercise that path.
+    """
+    base = str(tmp_path)
+    log_file = _write_af3_task_log(base)
+    parent = os.path.dirname(log_file)
+    logger = _make_task_logger(enabled=True)
+    logger.stats = Mock()
+    ti = MagicMock()
+
+    rel = os.path.relpath(log_file, base)
+    with patch('mwaa.logging.cloudwatch_handlers.conf') as mock_conf, \
+         patch('mwaa.logging.cloudwatch_handlers.shutil.rmtree') as mock_rmtree:
+        mock_conf.get.return_value = base
+        result = logger.upload(rel, ti)  # rmtree is a no-op: dir remains
+
+    assert result is None
+    mock_rmtree.assert_called_once()
+    assert os.path.exists(parent)  # simulated silent failure: dir not removed
+    logger.stats.incr.assert_called_once()
+    assert 'local_log_delete_error' in logger.stats.incr.call_args[0][0]
+
+
+def test_cloudwatch_remote_task_logger_upload_unexpected_error_is_non_fatal(tmp_path):
+    """An unexpected error before the delete (e.g. conf resolution) hits the outer
+    except path: metric incremented, non-fatal."""
+    base = str(tmp_path)
+    log_file = _write_af3_task_log(base)
+    logger = _make_task_logger(enabled=True)
+    logger.stats = Mock()
+    ti = MagicMock()
+
+    rel = os.path.relpath(log_file, base)
+    with patch('mwaa.logging.cloudwatch_handlers.conf') as mock_conf:
+        mock_conf.get.side_effect = RuntimeError("conf boom")
+        result = logger.upload(rel, ti)
+
+    assert result is None
+    logger.stats.incr.assert_called_once()
+    assert 'local_log_delete_error' in logger.stats.incr.call_args[0][0]
 
 
 def test_cloudwatch_remote_task_logger_read(mock_boto3_client):
