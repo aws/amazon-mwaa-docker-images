@@ -379,6 +379,39 @@ def test_cloudwatch_remote_task_logger_upload_skips_path_outside_base(tmp_path):
     assert os.path.exists(outside)
 
 
+def test_cloudwatch_remote_task_logger_upload_refuses_to_delete_base(tmp_path):
+    """A log resolving directly under base_log_folder must NOT delete base itself.
+
+    parent == base would otherwise rmtree every task's local logs on the worker.
+    The relative_to guard passes in this case (the file IS inside base), so this
+    equality check is the last line of defense against wiping base_log_folder.
+    """
+    base = str(tmp_path)
+    # A sibling file standing in for another task's logs under base; must survive.
+    sentinel = os.path.join(base, "other_task.log")
+    with open(sentinel, "w") as f:
+        f.write("do not delete\n")
+    # Target log resolves directly under base -> parent == base.
+    log_file = os.path.join(base, "attempt=1.log")
+    with open(log_file, "w") as f:
+        f.write("log\n")
+
+    logger = _make_task_logger(enabled=True)
+    logger.stats = Mock()
+    ti = MagicMock()
+
+    with patch('mwaa.logging.cloudwatch_handlers.conf') as mock_conf:
+        mock_conf.get.return_value = base
+        result = logger.upload("attempt=1.log", ti)
+
+    assert result is None
+    # base and the sibling task's logs are untouched (catastrophe prevented).
+    assert os.path.isdir(base)
+    assert os.path.exists(sentinel)
+    # A clean refusal, not an error path: the error metric must not fire.
+    logger.stats.incr.assert_not_called()
+
+
 def test_cloudwatch_remote_task_logger_upload_handles_absolute_path(tmp_path):
     """An absolute path under the base is resolved and its parent deleted.
 
