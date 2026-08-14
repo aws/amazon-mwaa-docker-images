@@ -19,7 +19,9 @@ from functools import cached_property
 import logging
 import json
 import os
+from pathlib import Path
 import re
+import shutil
 import structlog
 import sys
 import traceback
@@ -28,6 +30,7 @@ import traceback
 from airflow.models.taskinstance import TaskInstance
 from airflow.providers.amazon.aws.hooks.logs import AwsLogsHook
 from airflow.providers.amazon.aws.utils import datetime_to_epoch_utc_ms
+from airflow.configuration import conf
 from airflow.sdk.types import RuntimeTaskInstanceProtocol as RuntimeTI
 from airflow.utils.helpers import parse_template_string, render_template
 from airflow.utils.log.file_task_handler import LogMessages, LogSourceInfo, LogMetadata
@@ -677,9 +680,43 @@ class CloudWatchRemoteTaskLogger(BaseLogHandler, LoggingMixin):
             self.handler.close()
 
     def upload(self, path: os.PathLike | str, ti: RuntimeTI):
-        # No-op, as we upload via the processor as we go
-        # But we need to give the handler time to finish off its business
+        # Logs are streamed to CloudWatch in real time via the processor, so there is
+        # no batch upload to do here. We still flush so the handler finishes emitting,
+        # then delete the local copy so it does not accumulate on the worker volume.
+        # MWAA never serves logs from the local file (read() resolves only from
+        # CloudWatch), so this delete loses nothing customer-visible.
         self.flush()
+        # When the handler is disabled, logs were not streamed to CloudWatch, so there
+        # is no remote copy; leave the local file alone in that case.
+        if not self.enabled:
+            return
+        try:
+            base = Path(conf.get("logging", "base_log_folder")).resolve()
+            raw = Path(path)
+            local_path = (raw if raw.is_absolute() else base / raw).resolve()
+            try:
+                local_path.relative_to(base)
+            except ValueError:
+                print(
+                    f"[upload] Skipping local log deletion: path {local_path} is "
+                    f"outside base_log_folder {base}"
+                )
+                return
+            parent = local_path.parent
+            if parent.exists():
+                shutil.rmtree(parent, ignore_errors=True)
+                if parent.exists():
+                    # rmtree(ignore_errors=True) swallows OSErrors, so a failed delete
+                    # surfaces here (dir still present) rather than via the except below.
+                    self.stats.incr(
+                        f"mwaa.logging.{CloudWatchRemoteTaskLogger.LOG_SOURCE}.local_log_delete_error", 1
+                    )
+                    print(f"[upload] Failed to delete local log dir: {parent}")
+        except Exception as e:
+            self.stats.incr(
+                f"mwaa.logging.{CloudWatchRemoteTaskLogger.LOG_SOURCE}.local_log_delete_error", 1
+            )
+            print(f"[upload] Unexpected error deleting local task log for {path}: {e}")
         return
 
     def _discover_triggerer_streams(self, base_stream_name: str) -> list[str]:
