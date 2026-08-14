@@ -10,6 +10,9 @@ updates:
   - package-ecosystem: "pip"
     directories:
       - "/images/airflow/*"
+      - "/tests/images/airflow/*"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 0
+    ignore:
+      - dependency-name: "*"
