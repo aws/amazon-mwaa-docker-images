@@ -555,12 +555,14 @@ class CloudWatchRemoteTaskLogger(BaseLogHandler, LoggingMixin):
                 )
                 return
             parent = local_path.parent
-            if parent == base:
-                # Refuse to delete base_log_folder itself; only remove a task
-                # subdirectory. The relative_to check above passes even when the
-                # log resolves directly under base, in which case rmtree(parent)
-                # would wipe every task's local logs on this worker.
-                print(f"[upload] Refusing to delete base_log_folder itself: {parent}")
+            if base not in parent.parents:
+                # Only delete a proper subdirectory of base_log_folder. This
+                # rejects a log that resolves to base itself (parent would be
+                # base.parent) and a log directly under base (parent == base), so
+                # rmtree can never touch base_log_folder or any directory above
+                # it. relative_to() above only proves local_path is inside base,
+                # not that its parent is strictly below base.
+                print(f"[upload] Refusing to delete non-subdirectory of base_log_folder: {parent}")
                 return
             if parent.exists():
                 shutil.rmtree(parent, ignore_errors=True)
