@@ -95,6 +95,12 @@ RUN chmod +x /bootstrap/02-airflow/001-install-required-pip-packages.sh
 USER airflow
 RUN /bootstrap/02-airflow/001-install-required-pip-packages.sh
 
+USER root
+COPY ./bootstrap/02-airflow/002-vendor-monaco-editor.sh /bootstrap/02-airflow/002-vendor-monaco-editor.sh
+RUN chmod +x /bootstrap/02-airflow/002-vendor-monaco-editor.sh
+USER airflow
+RUN /bootstrap/02-airflow/002-vendor-monaco-editor.sh
+
 # Revert the PATH and user.
 ENV PATH=${PATH_DEFAULT}
 USER root
