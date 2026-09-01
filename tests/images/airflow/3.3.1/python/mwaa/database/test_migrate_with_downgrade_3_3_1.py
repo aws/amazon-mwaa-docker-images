@@ -251,3 +251,124 @@ def test_iam_fallback_succeeds_and_applies_grants():
 
     # Reached the role query via the IAM engine.
     assert any("current_user" in s for s in _executed_statements(conn))
+
+
+# --- Downgrade path tests (_check_downgrade_db) ---
+
+
+def test_downgrade_to_2_11_2_triggers_compat_fixes():
+    """Downgrading 3.3.1 -> 2.11.2 must run serialization fix, FAB downgrade,
+    and FAB sequence defaults since 2.11.2 is in the compat-fix set."""
+    env = {
+        **_BASE_ENV,
+        "AIRFLOW_VERSION": _AIRFLOW_VERSION,
+        "MWAA__DB__AIRFLOW_TARGET_VERSION": "2.11.2",
+    }
+    with patch.dict("os.environ", env):
+        module = _load_module()
+
+        with patch.object(module, "_fix_deferred_task_serialization") as mock_fix_serde, \
+             patch.object(module, "_downgrade_fab_db") as mock_fab_down, \
+             patch.object(module, "_fix_fab_sequence_defaults") as mock_fab_seq, \
+             patch.object(module, "airflow_db_command") as mock_db_cmd:
+            module._check_downgrade_db()
+
+        mock_fix_serde.assert_called_once()
+        mock_db_cmd.downgrade.assert_called_once()
+        mock_fab_down.assert_called_once()
+        mock_fab_seq.assert_called_once()
+
+
+def test_downgrade_to_2_11_0_triggers_compat_fixes():
+    """Downgrading 3.3.1 -> 2.11.0 must also trigger the compat fixes."""
+    env = {
+        **_BASE_ENV,
+        "AIRFLOW_VERSION": _AIRFLOW_VERSION,
+        "MWAA__DB__AIRFLOW_TARGET_VERSION": "2.11.0",
+    }
+    with patch.dict("os.environ", env):
+        module = _load_module()
+
+        with patch.object(module, "_fix_deferred_task_serialization") as mock_fix_serde, \
+             patch.object(module, "_downgrade_fab_db") as mock_fab_down, \
+             patch.object(module, "_fix_fab_sequence_defaults") as mock_fab_seq, \
+             patch.object(module, "airflow_db_command") as mock_db_cmd:
+            module._check_downgrade_db()
+
+        mock_fix_serde.assert_called_once()
+        mock_fab_down.assert_called_once()
+        mock_fab_seq.assert_called_once()
+
+
+def test_downgrade_to_3_0_6_triggers_compat_fixes():
+    """Downgrading 3.3.1 -> 3.0.6 must also trigger the compat fixes."""
+    env = {
+        **_BASE_ENV,
+        "AIRFLOW_VERSION": _AIRFLOW_VERSION,
+        "MWAA__DB__AIRFLOW_TARGET_VERSION": "3.0.6",
+    }
+    with patch.dict("os.environ", env):
+        module = _load_module()
+
+        with patch.object(module, "_fix_deferred_task_serialization") as mock_fix_serde, \
+             patch.object(module, "_downgrade_fab_db") as mock_fab_down, \
+             patch.object(module, "_fix_fab_sequence_defaults") as mock_fab_seq, \
+             patch.object(module, "airflow_db_command") as mock_db_cmd:
+            module._check_downgrade_db()
+
+        mock_fix_serde.assert_called_once()
+        mock_fab_down.assert_called_once()
+        mock_fab_seq.assert_called_once()
+
+
+def test_downgrade_to_3_2_1_skips_compat_fixes():
+    """Downgrading 3.3.1 -> 3.2.1 should NOT trigger compat fixes since
+    3.2.1 is not in the compat-fix set."""
+    env = {
+        **_BASE_ENV,
+        "AIRFLOW_VERSION": _AIRFLOW_VERSION,
+        "MWAA__DB__AIRFLOW_TARGET_VERSION": "3.2.1",
+    }
+    with patch.dict("os.environ", env):
+        module = _load_module()
+
+        with patch.object(module, "_fix_deferred_task_serialization") as mock_fix_serde, \
+             patch.object(module, "_downgrade_fab_db") as mock_fab_down, \
+             patch.object(module, "_fix_fab_sequence_defaults") as mock_fab_seq, \
+             patch.object(module, "airflow_db_command") as mock_db_cmd:
+            module._check_downgrade_db()
+
+        mock_fix_serde.assert_not_called()
+        mock_fab_down.assert_not_called()
+        mock_fab_seq.assert_not_called()
+        mock_db_cmd.downgrade.assert_called_once()
+
+
+def test_check_downgrade_db_noop_when_no_target_version():
+    """No MWAA__DB__AIRFLOW_TARGET_VERSION means no downgrade at all."""
+    env = {**_BASE_ENV, "AIRFLOW_VERSION": _AIRFLOW_VERSION}
+    # Ensure the target version key is absent
+    env.pop("MWAA__DB__AIRFLOW_TARGET_VERSION", None)
+    with patch.dict("os.environ", env, clear=False):
+        module = _load_module()
+
+        with patch.object(module, "airflow_db_command") as mock_db_cmd:
+            module._check_downgrade_db()
+
+        mock_db_cmd.downgrade.assert_not_called()
+
+
+def test_check_downgrade_db_noop_when_target_is_higher():
+    """Target version >= current version means no downgrade."""
+    env = {
+        **_BASE_ENV,
+        "AIRFLOW_VERSION": _AIRFLOW_VERSION,
+        "MWAA__DB__AIRFLOW_TARGET_VERSION": "3.4.0",
+    }
+    with patch.dict("os.environ", env):
+        module = _load_module()
+
+        with patch.object(module, "airflow_db_command") as mock_db_cmd:
+            module._check_downgrade_db()
+
+        mock_db_cmd.downgrade.assert_not_called()
