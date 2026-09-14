@@ -227,10 +227,51 @@ def test_core_config_with_api_url_and_fernet(env_helper):
     assert result["AIRFLOW__CORE__EXECUTION_API_SERVER_URL"] == \
         "https://api.example.com/execution"
     
-def test_core_config_multi_team_always_false():
-    """MULTI_TEAM must always be False and present in essential config (not overridable)."""
+def test_core_config_multi_team_defaults_to_false(env_helper):
+    """MULTI_TEAM defaults to False when USE_MULTI_TEAM is absent."""
+    env_helper.delete(["USE_MULTI_TEAM"])
+
     result = _get_essential_airflow_core_config()
+
     assert result["AIRFLOW__CORE__MULTI_TEAM"] == "False"
+
+
+@pytest.mark.parametrize("enabled_value", ["true", "True", "TRUE", "tRuE"])
+def test_core_config_multi_team_enabled(env_helper, enabled_value):
+    """MULTI_TEAM is True when the control plane enables the multi-team gate."""
+    env_helper.set({"USE_MULTI_TEAM": enabled_value})
+
+    result = _get_essential_airflow_core_config()
+
+    assert result["AIRFLOW__CORE__MULTI_TEAM"] == "True"
+
+
+@pytest.mark.parametrize(
+    "disabled_value", ["false", "False", "FALSE", "", " true", "yes", "1", "0", "None"]
+)
+def test_core_config_multi_team_disabled_or_malformed(env_helper, disabled_value):
+    """Anything other than a case-insensitive "true" keeps MULTI_TEAM explicitly False."""
+    env_helper.set({"USE_MULTI_TEAM": disabled_value})
+
+    result = _get_essential_airflow_core_config()
+
+    assert result["AIRFLOW__CORE__MULTI_TEAM"] == "False"
+
+
+@pytest.mark.parametrize("enabled_value", [None, "false", "true"])
+def test_core_config_multi_team_key_always_present(env_helper, enabled_value):
+    """
+    The key must always be emitted so that essential config keeps overriding any
+    customer-supplied core.multi_team in MWAA__CORE__CUSTOM_AIRFLOW_CONFIGS.
+    """
+    if enabled_value is None:
+        env_helper.delete(["USE_MULTI_TEAM"])
+    else:
+        env_helper.set({"USE_MULTI_TEAM": enabled_value})
+
+    result = _get_essential_airflow_core_config()
+
+    assert "AIRFLOW__CORE__MULTI_TEAM" in result
 
 
 def test_core_config_invalid_fernet(env_helper):

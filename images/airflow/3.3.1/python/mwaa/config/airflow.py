@@ -129,13 +129,11 @@ def _get_essential_airflow_core_config() -> Dict[str, str]:
                 "Invalid value for fernet secret. Value not printed for security reasons.",
             )
 
+    multi_team_enabled = os.environ.get("USE_MULTI_TEAM", "").lower() == "true"
+
     return {
         "AIRFLOW__CORE__LOAD_EXAMPLES": "False",
-        # MWAA does not support Multi-Team Deployments (introduced in Airflow 3.2.0).
-        # Enabling this would break IAM-based auth, CeleryExecutor management, and
-        # environment-level secrets/connections/pools. Block until MWAA explicitly
-        # supports multi-team.
-        "AIRFLOW__CORE__MULTI_TEAM": "False",
+        "AIRFLOW__CORE__MULTI_TEAM": "True" if multi_team_enabled else "False",
         **api_server_url,
         **fernet_key,
     }
