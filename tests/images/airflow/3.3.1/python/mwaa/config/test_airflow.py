@@ -22,7 +22,8 @@ from mwaa.config.airflow import (
     _get_opinionated_airflow_secrets_config,
     _get_opinionated_airflow_usage_data_config,
     _get_essential_airflow_webserver_config,
-    _get_essential_airflow_triggerer_config
+    _get_essential_airflow_triggerer_config,
+    _is_valid_linux_folder_name,
 )
 
 # ---------------------------
@@ -282,6 +283,134 @@ def test_core_config_invalid_fernet(env_helper):
     result = _get_essential_airflow_core_config()
 
     assert "AIRFLOW__CORE__FERNET_KEY" not in result
+
+
+# ---------------------------------------------
+# _is_valid_linux_folder_name Tests
+# ---------------------------------------------
+@pytest.mark.parametrize("name", [
+    "team1",
+    "team_a",
+    "Team-Name_123",
+    "a",
+    " leading-space-ok-here",   # spaces are legal on Linux filesystems
+    "name with spaces",
+    "team.name",                # a dot inside the name is fine
+    ".hidden",                  # leading dot (not "." itself) is a valid hidden dir
+])
+def test_is_valid_linux_folder_name_valid(name):
+    assert _is_valid_linux_folder_name(name) is True
+
+
+@pytest.mark.parametrize("name", [
+    "",                 # empty
+    ".",                # current-dir reference
+    "..",               # parent-dir reference (path traversal)
+    "a/b",              # contains path separator
+    "/absolute",        # contains path separator
+    "team/",            # trailing separator
+    "bad\x00name",      # NUL byte
+])
+def test_is_valid_linux_folder_name_invalid(name):
+    assert _is_valid_linux_folder_name(name) is False
+
+
+# ---------------------------------------------
+# Multi-Team DAGS_FOLDER / DAG bundle config Tests
+# ---------------------------------------------
+def test_dags_folder_default_when_multi_team_disabled(env_helper):
+    """Without multi-team, DAGS_FOLDER stays at the plain /usr/local/airflow/dags root."""
+    env_helper.delete(["USE_MULTI_TEAM", "TEAM_NAMES"])
+
+    result = _get_essential_airflow_core_config()
+
+    assert result["AIRFLOW__CORE__DAGS_FOLDER"] == "/usr/local/airflow/dags"
+    assert "AIRFLOW__DAG_PROCESSOR__DAG_BUNDLE_CONFIG_LIST" not in result
+
+
+def test_dags_folder_global_subfolder_when_multi_team_enabled(env_helper):
+    """With multi-team enabled, global DAGs move to the global-dags subfolder."""
+    env_helper.set({"USE_MULTI_TEAM": "true"})
+    env_helper.delete(["TEAM_NAMES"])
+
+    result = _get_essential_airflow_core_config()
+
+    assert result["AIRFLOW__CORE__DAGS_FOLDER"] == "/usr/local/airflow/dags/global-dags"
+    # No TEAM_NAMES -> no bundle config emitted.
+    assert "AIRFLOW__DAG_PROCESSOR__DAG_BUNDLE_CONFIG_LIST" not in result
+
+
+def test_dag_bundle_config_absent_when_disabled_even_with_team_names(env_helper):
+    """TEAM_NAMES alone (multi-team disabled) must not produce a bundle config."""
+    env_helper.set({"USE_MULTI_TEAM": "false", "TEAM_NAMES": "team1,team2"})
+
+    result = _get_essential_airflow_core_config()
+
+    assert result["AIRFLOW__CORE__DAGS_FOLDER"] == "/usr/local/airflow/dags"
+    assert "AIRFLOW__DAG_PROCESSOR__DAG_BUNDLE_CONFIG_LIST" not in result
+
+
+def test_dag_bundle_config_built_for_teams(env_helper):
+    """Multi-team + TEAM_NAMES yields one LocalDagBundle per team, sorted-key JSON."""
+    env_helper.set({"USE_MULTI_TEAM": "true", "TEAM_NAMES": "team1,team2"})
+
+    result = _get_essential_airflow_core_config()
+
+    assert result["AIRFLOW__CORE__DAGS_FOLDER"] == "/usr/local/airflow/dags/global-dags"
+
+    bundle_config = json.loads(result["AIRFLOW__DAG_PROCESSOR__DAG_BUNDLE_CONFIG_LIST"])
+    assert bundle_config == [
+        {
+            "name": "team_team1",
+            "classpath": "airflow.dag_processing.bundles.local.LocalDagBundle",
+            "kwargs": {"path": "/usr/local/airflow/dags/per-team-dags/team1"},
+            "team_name": "team1",
+        },
+        {
+            "name": "team_team2",
+            "classpath": "airflow.dag_processing.bundles.local.LocalDagBundle",
+            "kwargs": {"path": "/usr/local/airflow/dags/per-team-dags/team2"},
+            "team_name": "team2",
+        },
+    ]
+
+
+def test_dag_bundle_config_trims_and_ignores_empty_team_names(env_helper):
+    """Whitespace is trimmed and empty entries (extra/trailing commas) are dropped."""
+    env_helper.set({"USE_MULTI_TEAM": "true", "TEAM_NAMES": " team1 , ,team2, "})
+
+    result = _get_essential_airflow_core_config()
+
+    bundle_config = json.loads(result["AIRFLOW__DAG_PROCESSOR__DAG_BUNDLE_CONFIG_LIST"])
+    team_names = [bundle["team_name"] for bundle in bundle_config]
+    assert team_names == ["team1", "team2"]
+    for bundle in bundle_config:
+        assert bundle["kwargs"]["path"] == f"/usr/local/airflow/dags/per-team-dags/{bundle['team_name']}"
+
+
+def test_dag_bundle_config_absent_when_team_names_all_blank(env_helper):
+    """A TEAM_NAMES made up only of separators/blanks yields no bundle config."""
+    env_helper.set({"USE_MULTI_TEAM": "true", "TEAM_NAMES": " , , "})
+
+    result = _get_essential_airflow_core_config()
+
+    assert "AIRFLOW__DAG_PROCESSOR__DAG_BUNDLE_CONFIG_LIST" not in result
+
+
+def test_dag_bundle_config_raises_on_invalid_team_name(env_helper):
+    """An invalid folder-name team (path separator) raises ValueError."""
+    env_helper.set({"USE_MULTI_TEAM": "true", "TEAM_NAMES": "team1,bad/team"})
+
+    with pytest.raises(ValueError, match="not permitted in folder names"):
+        _get_essential_airflow_core_config()
+
+
+def test_dag_bundle_config_raises_on_path_traversal_team_name(env_helper):
+    """A '..' team name (path traversal attempt) raises ValueError."""
+    env_helper.set({"USE_MULTI_TEAM": "true", "TEAM_NAMES": ".."})
+
+    with pytest.raises(ValueError, match="not permitted in folder names"):
+        _get_essential_airflow_core_config()
 
 
 # ---------------------------------

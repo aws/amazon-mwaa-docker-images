@@ -100,6 +100,8 @@ def _get_essential_airflow_executor_config(executor_type: str) -> Dict[str, str]
         case _:
             raise ValueError(f"Executor type {executor_type} is not supported.")
 
+def _is_valid_linux_folder_name(name: str) -> bool:
+    return bool(name) and name not in (".", "..") and "/" not in name and "\x00" not in name
 
 def _get_essential_airflow_core_config() -> Dict[str, str]:
     """
@@ -131,9 +133,35 @@ def _get_essential_airflow_core_config() -> Dict[str, str]:
 
     multi_team_enabled = os.environ.get("USE_MULTI_TEAM", "").lower() == "true"
 
+    default_dags_folder = "/usr/local/airflow/dags"
+    dags_folder = f"{default_dags_folder}/global-dags" if multi_team_enabled else default_dags_folder
+
+    teams_config = None
+    if multi_team_enabled and os.environ.get("TEAM_NAMES"):
+        team_names = [name.strip() for name in os.environ.get("TEAM_NAMES", "").split(",") if name.strip()]
+        teams_root_folder = f"{default_dags_folder}/per-team-dags"
+
+        # Team name validation happens in Control Plane, but let's validate here too just in case.
+        invalid_folder_team_names = [name for name in team_names if not _is_valid_linux_folder_name(name)]
+        if len(invalid_folder_team_names) > 0:
+            raise ValueError("Team names contain characters not permitted in folder names: "
+                             + ", ".join(invalid_folder_team_names))
+
+        if len(team_names) > 0:
+            # as per https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/multi-team.html#dag-bundle-to-team-association
+            teams_config = [{"name": f"team_{team}",
+                             "classpath": "airflow.dag_processing.bundles.local.LocalDagBundle",
+                             "kwargs": {"path": f"{teams_root_folder}/{team}"},
+                             "team_name": team,
+                             } for team in team_names]
+    dag_bundle_config_list = {} if not teams_config \
+        else {"AIRFLOW__DAG_PROCESSOR__DAG_BUNDLE_CONFIG_LIST": json.dumps(teams_config, sort_keys=True)}
+
     return {
         "AIRFLOW__CORE__LOAD_EXAMPLES": "False",
         "AIRFLOW__CORE__MULTI_TEAM": "True" if multi_team_enabled else "False",
+        "AIRFLOW__CORE__DAGS_FOLDER": dags_folder,
+        **dag_bundle_config_list,
         **api_server_url,
         **fernet_key,
     }
