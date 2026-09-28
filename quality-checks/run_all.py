@@ -17,7 +17,11 @@ def prefix_output(file: str, process: subprocess.Popen) -> None:  # type: ignore
     if not process.stdout:  # type: ignore
         raise RuntimeError("Process doesn't have an stdout stream.")
     for line in process.stdout:  # type: ignore
-        print(f"[{file}] {line.decode().strip()}")  # type: ignore
+        # Quality checks can emit arbitrary bytes, e.g. TruffleHog echoes raw
+        # matches straight out of binary files such as .pyc. Decoding strictly
+        # would raise UnicodeDecodeError and abort the entire run, so replace
+        # undecodable bytes instead of failing.
+        print(f"[{file}] {line.decode(errors='replace').strip()}")  # type: ignore
 
 
 def verify_in_repo_root() -> None:
