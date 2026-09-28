@@ -5825,10 +5825,10 @@ Copyright 2013-2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 /usr/local/airflow/.local/lib/python3.12/site-packages/boto3-1.43.56.dist-info/NOTICE
 
 boto3-stubs
-1.43.78
+1.43.103
 MIT
 https://github.com/youtype/mypy_boto3_builder
-/usr/local/airflow/.local/lib/python3.12/site-packages/boto3_stubs-1.43.78.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/boto3_stubs-1.43.103.dist-info/licenses/LICENSE
 MIT License
 
 Copyright (c) 2026 Vlad Emelianov
@@ -9699,10 +9699,10 @@ UNKNOWN
 UNKNOWN
 
 mypy-boto3-logs
-1.43.66
+1.43.82
 MIT
 https://github.com/youtype/mypy_boto3_builder
-/usr/local/airflow/.local/lib/python3.12/site-packages/mypy_boto3_logs-1.43.66.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/mypy_boto3_logs-1.43.82.dist-info/licenses/LICENSE
 MIT License
 
 Copyright (c) 2026 Vlad Emelianov
@@ -12952,10 +12952,10 @@ UNKNOWN
 UNKNOWN
 
 psycopg2
-2.9.12
+2.9.13
 GNU Library or Lesser General Public License (LGPL)
 https://psycopg.org/
-/usr/local/airflow/.local/lib/python3.12/site-packages/psycopg2-2.9.12.dist-info/licenses/LICENSE
+/usr/local/airflow/.local/lib/python3.12/site-packages/psycopg2-2.9.13.dist-info/licenses/LICENSE
 psycopg2 and the LGPL
 ---------------------
 
@@ -13104,9 +13104,9 @@ UNKNOWN
 UNKNOWN
 
 pycurl
-7.47.0
+7.48.0
 LGPL-2.1-only OR MIT
-http://pycurl.io/
+https://pycurl.github.io/
 /usr/local/airflow/.local/lib/python3.12/site-packages/../../../share/doc/pycurl/COPYING-LGPL
                   GNU LESSER GENERAL PUBLIC LICENSE
                        Version 2.1, February 1999
