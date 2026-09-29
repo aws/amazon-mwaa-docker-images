@@ -457,8 +457,9 @@ class AirflowDbReachableCondition(ProcessCondition):
             # try connection to the RDS metadata db and run a test query
             with self.engine.connect() as connection:  # type: ignore
                 connection.execute(text("SELECT 1"))  # type: ignore
+                user = connection.execute(text("SELECT current_user;")).scalar()  # Check current_user to ensure RDS IAM is working
             healthy = True
-            message = "Successfully connected to database."
+            message = f"Successfully connected to database as user: {user}"
             logger.info(message)
         except Exception as ex:
             healthy = False
