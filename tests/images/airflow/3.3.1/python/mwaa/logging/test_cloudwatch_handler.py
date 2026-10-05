@@ -321,9 +321,12 @@ def test_cloudwatch_remote_task_logger_upload_deletes_local_log(tmp_path):
     assert not os.path.exists(parent)
 
 
-def test_cloudwatch_remote_task_logger_upload_disabled_keeps_local_log(tmp_path):
-    """When the handler is disabled, logs were not streamed to CloudWatch, so the
-    local copy must NOT be deleted."""
+def test_cloudwatch_remote_task_logger_upload_disabled_deletes_local_log(tmp_path):
+    """When task logging is disabled the local copy must still be deleted.
+
+    read() never serves the local file, so keeping it only accumulates on the
+    worker volume until the disk fills and tasks fail with ENOSPC.
+    """
     base = str(tmp_path)
     log_file = _write_af3_task_log(base)
     logger = _make_task_logger(enabled=False)
@@ -336,7 +339,8 @@ def test_cloudwatch_remote_task_logger_upload_disabled_keeps_local_log(tmp_path)
 
     assert result is None
     logger.handler.flush.assert_called_once()
-    assert os.path.exists(log_file)
+    assert not os.path.exists(log_file)
+    assert not os.path.exists(os.path.dirname(log_file))
 
 
 def test_cloudwatch_remote_task_logger_upload_missing_dir_is_noop(tmp_path):
