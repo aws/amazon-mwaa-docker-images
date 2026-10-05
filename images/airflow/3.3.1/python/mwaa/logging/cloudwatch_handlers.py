@@ -537,11 +537,13 @@ class CloudWatchRemoteTaskLogger(BaseLogHandler, LoggingMixin):
         # then delete the local copy so it does not accumulate on the worker volume.
         # MWAA never serves logs from the local file (read() resolves only from
         # CloudWatch), so this delete loses nothing customer-visible.
+        #
+        # This applies whether or not task logging is enabled. When it is disabled there
+        # is no remote copy, but the local file is still unreadable (read() never falls
+        # back to it), so keeping it only fills the worker disk until tasks fail with
+        # ENOSPC. This handler is only installed when a task log group ARN is configured
+        # (see _configure_remote_task_logging), so local-only setups never reach here.
         self.flush()
-        # When the handler is disabled, logs were not streamed to CloudWatch, so there
-        # is no remote copy; leave the local file alone in that case.
-        if not self.enabled:
-            return
         try:
             base = Path(conf.get("logging", "base_log_folder")).resolve()
             raw = Path(path)
