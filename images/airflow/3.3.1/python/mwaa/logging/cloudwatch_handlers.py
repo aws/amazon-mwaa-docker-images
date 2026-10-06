@@ -395,6 +395,12 @@ class CloudWatchRemoteTaskLogger(BaseLogHandler, LoggingMixin):
             handlers. And only the processor attribute from the remote logging class is loaded into the Structlog
             logger used for task logging.
         """
+        if not self.enabled:
+            # Task logging is disabled: install no processor, so nothing is sent to
+            # CloudWatch, either directly or through Fluent Bit. The Task SDK skips an
+            # empty tuple, and no handler is created, so flush() and close() no-op.
+            return ()
+
         import structlog.stdlib
         from airflow.sdk.log import relative_path_from_logger
 
@@ -538,11 +544,12 @@ class CloudWatchRemoteTaskLogger(BaseLogHandler, LoggingMixin):
         # MWAA never serves logs from the local file (read() resolves only from
         # CloudWatch), so this delete loses nothing customer-visible.
         #
-        # This applies whether or not task logging is enabled. When it is disabled there
-        # is no remote copy, but the local file is still unreadable (read() never falls
-        # back to it), so keeping it only fills the worker disk until tasks fail with
-        # ENOSPC. This handler is only installed when a task log group ARN is configured
-        # (see _configure_remote_task_logging), so local-only setups never reach here.
+        # This applies whether or not task logging is enabled. When it is disabled,
+        # processors installs nothing, so there is no remote copy, but the local file is
+        # still unreadable (read() never falls back to it), so keeping it only fills the
+        # worker disk until tasks fail with ENOSPC. This handler is only installed when
+        # a task log group ARN is configured (see _configure_remote_task_logging), so
+        # local-only setups never reach here.
         self.flush()
         try:
             base = Path(conf.get("logging", "base_log_folder")).resolve()

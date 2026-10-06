@@ -252,6 +252,30 @@ def test_cloudwatch_remote_task_logger_processors_property(mock_boto3_client, mo
     assert callable(processors[0])
 
 
+@pytest.mark.parametrize('non_critical_logging', ['true', 'false'])
+def test_cloudwatch_remote_task_logger_processors_disabled_installs_nothing(
+    non_critical_logging, mock_boto3_client, mock_fluent, mock_watchtower
+):
+    """With task logging disabled, processors must install nothing and create no
+    handler on either the Fluent Bit or the watchtower path, so no task logs are
+    sent to CloudWatch."""
+    with patch.dict(os.environ, {'USE_NON_CRITICAL_LOGGING': non_critical_logging}, clear=True):
+        import mwaa.logging.cloudwatch_handlers
+        importlib.reload(mwaa.logging.cloudwatch_handlers)
+
+        logger = CloudWatchRemoteTaskLogger(
+            log_group_arn='arn:aws:logs:us-west-2:123456789012:log-group:test-Task',
+            kms_key_arn=None,
+            enabled=False,
+            log_level='INFO'
+        )
+
+        assert logger.processors == ()
+        assert logger.handler is None
+        assert not mock_fluent.called
+        assert not mock_watchtower.called
+
+
 def test_cloudwatch_remote_task_logger_emit_is_noop():
     """Test that emit() is a no-op for CloudWatchRemoteTaskLogger."""
     logger = CloudWatchRemoteTaskLogger(
