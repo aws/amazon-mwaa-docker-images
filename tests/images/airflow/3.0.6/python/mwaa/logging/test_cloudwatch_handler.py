@@ -20,7 +20,8 @@ from mwaa.logging.cloudwatch_handlers import (
     CloudWatchRemoteTaskLogger,
     SubprocessLogHandler,
     DagProcessorManagerLogHandler,
-    DagProcessingLogHandler
+    DagProcessingLogHandler,
+    TASK_LOGGING_DISABLED_MESSAGE,
 )
 
 print(BaseLogHandler.__init__.__code__.co_varnames)
@@ -825,6 +826,73 @@ def test_read_with_no_triggerer_streams(mock_boto3_client):
 
         for msg in messages:
             assert "triggerer" not in _get_event_text(msg).lower()
+
+
+@pytest.mark.parametrize(
+    "enabled, error_code, expect_disabled_message",
+    [
+        (False, "ResourceNotFoundException", True),
+        (False, "AccessDeniedException", False),
+        (True, "ResourceNotFoundException", False),
+        (False, None, False),
+    ],
+)
+def test_read_missing_stream_when_disabled_shows_disabled_message(
+    mock_boto3_client, enabled, error_code, expect_disabled_message
+):
+    """Only a missing stream on a disabled logger gets the disabled message; other errors stay raw."""
+    from botocore.exceptions import ClientError
+
+    with patch('mwaa.logging.cloudwatch_handlers.AwsLogsHook') as mock_hook_class:
+        mock_hook = Mock()
+        mock_hook_class.return_value = mock_hook
+        mock_hook.get_log_events.side_effect = (
+            ClientError({"Error": {"Code": error_code, "Message": "boom"}}, "GetLogEvents")
+            if error_code
+            else Exception("connection reset")
+        )
+        mock_hook.conn.describe_log_streams.return_value = {'logStreams': []}
+        logger = CloudWatchRemoteTaskLogger(
+            log_group_arn='arn:aws:logs:us-west-2:123456789012:log-group:test-Task',
+            kms_key_arn=None,
+            enabled=enabled,
+            log_level='INFO'
+        )
+
+        messages, _ = logger.read(_make_task_instance_mock(), 1)
+
+    texts = [msg if isinstance(msg, str) else msg.event for msg in messages]
+    if expect_disabled_message:
+        assert texts == [TASK_LOGGING_DISABLED_MESSAGE]
+    else:
+        assert TASK_LOGGING_DISABLED_MESSAGE not in texts
+        assert any((error_code or "connection reset") in text for text in texts)
+
+
+def test_read_disabled_still_returns_logs_from_existing_stream(mock_boto3_client):
+    """Logs written while task logging was enabled stay readable after it is disabled."""
+    with patch('mwaa.logging.cloudwatch_handlers.AwsLogsHook') as mock_hook_class:
+        mock_hook = Mock()
+        mock_hook_class.return_value = mock_hook
+        mock_hook.get_log_events.return_value = [
+            {
+                'timestamp': int(datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc).timestamp() * 1000),
+                'message': '{"event": "written while enabled", "level": "info"}'
+            }
+        ]
+        mock_hook.conn.describe_log_streams.return_value = {'logStreams': []}
+        logger = CloudWatchRemoteTaskLogger(
+            log_group_arn='arn:aws:logs:us-west-2:123456789012:log-group:test-Task',
+            kms_key_arn=None,
+            enabled=False,
+            log_level='INFO'
+        )
+
+        messages, _ = logger.read(_make_task_instance_mock(), 1)
+
+    texts = [msg if isinstance(msg, str) else msg.event for msg in messages]
+    assert "written while enabled" in texts
+    assert TASK_LOGGING_DISABLED_MESSAGE not in texts
 
 
 def test_read_with_one_triggerer_stream(mock_boto3_client):

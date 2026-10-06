@@ -128,6 +128,19 @@ _PATTERNS = [
 # fmt: on
 
 
+TASK_LOGGING_DISABLED_MESSAGE = (
+    "No log was recorded for this task try because task logging is disabled. "
+    "Logs from task runs while task logging was enabled are still shown. "
+    "Enable task logging to record logs for future task runs."
+)
+
+
+def _is_resource_not_found(e: Exception) -> bool:
+    """Return True if e is a CloudWatch Logs ResourceNotFoundException (botocore ClientError)."""
+    response = getattr(e, "response", None) or {}
+    return response.get("Error", {}).get("Code") == "ResourceNotFoundException"
+
+
 class BaseLogHandler(logging.Handler):
     """Shared functionality across our internal CloudWatch log handlers."""
 
@@ -697,12 +710,17 @@ class CloudWatchRemoteTaskLogger(BaseLogHandler, LoggingMixin):
                 for log in self.get_cloudwatch_logs(relative_path, ti)
             ]
         except Exception as e:
-            messages = [
-                StructuredLogMessage(
-                    event=f"Failed to read remote log from Cloudwatch log_group: {self.log_group_arn} log_stream: {relative_path}"
-                ),
-                StructuredLogMessage(event=str(e)),
-            ]
+            if not self.enabled and _is_resource_not_found(e):
+                # Task logging is disabled, so processors sent nothing and this try has
+                # no stream. Say so instead of surfacing a CloudWatch not-found error.
+                messages = [StructuredLogMessage(event=TASK_LOGGING_DISABLED_MESSAGE)]
+            else:
+                messages = [
+                    StructuredLogMessage(
+                        event=f"Failed to read remote log from Cloudwatch log_group: {self.log_group_arn} log_stream: {relative_path}"
+                    ),
+                    StructuredLogMessage(event=str(e)),
+                ]
             logs = []
 
         return messages, logs
