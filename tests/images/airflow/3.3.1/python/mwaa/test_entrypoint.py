@@ -218,6 +218,25 @@ async def test_main_migrate_db(mock_environ, mock_db_utils):
 
 
 @pytest.mark.asyncio
+async def test_main_package_requirements(mock_environ, mock_db_utils):
+    """Test main function with package-requirements command"""
+    test_args = ['script.py', 'package-requirements']
+    with patch.dict(os.environ, mock_environ), \
+            patch.object(sys, 'argv', test_args), \
+            patch('mwaa.entrypoint.setup_environment_variables') as mock_setup_env, \
+            patch('mwaa.utils.user_requirements.package_user_requirements') as mock_package_req, \
+            patch('mwaa.entrypoint.install_user_requirements') as mock_install_req, \
+            patch('mwaa.entrypoint.execute_command') as mock_execute_command:
+        mock_setup_env.return_value = mock_environ
+
+        await main()
+
+        mock_package_req.assert_called_once_with(mock_environ)
+        mock_install_req.assert_not_called()
+        mock_execute_command.assert_not_called()
+
+
+@pytest.mark.asyncio
 async def test_main_missing_arguments():
     """Test main function with missing arguments"""
     test_args = ['script.py']
