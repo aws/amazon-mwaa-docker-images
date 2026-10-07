@@ -128,6 +128,19 @@ _PATTERNS = [
 # fmt: on
 
 
+TASK_LOGGING_DISABLED_MESSAGE = (
+    "No log was recorded for this task try because task logging is disabled. "
+    "Logs from task runs while task logging was enabled are still shown. "
+    "Enable task logging to record logs for future task runs."
+)
+
+
+def _is_resource_not_found(e: Exception) -> bool:
+    """Return True if e is a CloudWatch Logs ResourceNotFoundException (botocore ClientError)."""
+    response = getattr(e, "response", None) or {}
+    return response.get("Error", {}).get("Code") == "ResourceNotFoundException"
+
+
 class BaseLogHandler(logging.Handler):
     """Shared functionality across our internal CloudWatch log handlers."""
 
@@ -546,6 +559,12 @@ class CloudWatchRemoteTaskLogger(BaseLogHandler, LoggingMixin):
             handlers. And only the processor attribute from the remote logging class is loaded into the Structlog
             logger used for task logging.
         """
+        if not self.enabled:
+            # Task logging is disabled: install no processor, so nothing is sent to
+            # CloudWatch, either directly or through Fluent Bit. The Task SDK skips an
+            # empty tuple, and no handler is created, so flush() and close() no-op.
+            return ()
+
         import structlog.stdlib
         from airflow.sdk.log import relative_path_from_logger
 
@@ -686,11 +705,12 @@ class CloudWatchRemoteTaskLogger(BaseLogHandler, LoggingMixin):
         # MWAA never serves logs from the local file (read() resolves only from
         # CloudWatch), so this delete loses nothing customer-visible.
         #
-        # This applies whether or not task logging is enabled. When it is disabled there
-        # is no remote copy, but the local file is still unreadable (read() never falls
-        # back to it), so keeping it only fills the worker disk until tasks fail with
-        # ENOSPC. This handler is only installed when a task log group ARN is configured
-        # (see _configure_remote_task_logging), so local-only setups never reach here.
+        # This applies whether or not task logging is enabled. When it is disabled,
+        # processors installs nothing, so there is no remote copy, but the local file is
+        # still unreadable (read() never falls back to it), so keeping it only fills the
+        # worker disk until tasks fail with ENOSPC. This handler is only installed when
+        # a task log group ARN is configured (see _configure_remote_task_logging), so
+        # local-only setups never reach here.
         self.flush()
         try:
             base = Path(conf.get("logging", "base_log_folder")).resolve()
@@ -827,7 +847,12 @@ class CloudWatchRemoteTaskLogger(BaseLogHandler, LoggingMixin):
             ]
         except Exception as e:
             logs = None
-            messages.append(str(e))
+            if not self.enabled and _is_resource_not_found(e):
+                # Task logging is disabled, so processors sent nothing and this try has
+                # no stream. Say so instead of surfacing a CloudWatch not-found error.
+                messages = [TASK_LOGGING_DISABLED_MESSAGE]
+            else:
+                messages.append(str(e))
 
         return messages, logs or []
 
