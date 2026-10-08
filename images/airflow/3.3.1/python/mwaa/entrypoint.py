@@ -68,6 +68,7 @@ from mwaa.config.sqs import (
     get_sqs_queue_name,
     should_create_queue,
 )
+from mwaa.database.manage_teams import reconcile_teams
 from mwaa.utils.cmd import run_command
 from mwaa.utils.dblock import with_db_lock
 from mwaa.utils.user_requirements import install_user_requirements
@@ -263,6 +264,7 @@ async def main() -> None:
 
     if command == "migrate-db":
         await airflow_db_migrate(environ)
+        await reconcile_teams(environ)
         print("Finished running db validations")
         return
 

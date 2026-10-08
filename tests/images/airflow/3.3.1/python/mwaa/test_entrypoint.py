@@ -331,3 +331,23 @@ def test_fix_shared_log_volume_permissions_dag_processor_dir_failure(mock_enviro
          patch('os.makedirs', side_effect=OSError('Read-only file system')):
         # Should not raise — just logs a warning
         entrypoint._fix_shared_log_volume_permissions()
+
+
+# ------------------------
+# migrate-db team wiring
+# ------------------------
+@pytest.mark.asyncio
+async def test_main_migrate_db_reconciles_teams(mock_environ, mock_db_utils):
+    """migrate-db command runs team reconciliation after the DB migration."""
+    test_args = ['script.py', 'migrate-db']
+    with patch.dict(os.environ, mock_environ), \
+            patch.object(sys, 'argv', test_args), \
+            patch('mwaa.entrypoint.setup_environment_variables') as mock_setup_env, \
+            patch('mwaa.entrypoint.airflow_db_migrate') as mock_db_migrate, \
+            patch('mwaa.entrypoint.reconcile_teams') as mock_reconcile:
+        mock_setup_env.return_value = mock_environ
+
+        await main()
+
+        mock_db_migrate.assert_called_once()
+        mock_reconcile.assert_called_once()
