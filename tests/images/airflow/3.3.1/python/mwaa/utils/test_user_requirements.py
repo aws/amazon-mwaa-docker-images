@@ -1,10 +1,13 @@
 # test_user_requirements.py
 import pytest
 import os
+import zipfile
+from pathlib import Path
 from unittest.mock import patch, mock_open, MagicMock
 
 from mwaa.utils.user_requirements import (
     install_user_requirements,
+    package_user_requirements,
     _read_requirements_file,
     _requirements_has_constraints,
     USER_REQUIREMENTS_MAX_INSTALL_TIME
@@ -195,3 +198,68 @@ async def test_install_user_requirements_command_types(mock_environ):
             await install_user_requirements(cmd, mock_environ)
 
             assert mock_subprocess.call_args[1]['friendly_name'] == f"{cmd}_requirements"
+
+
+# ------------------------
+# package_user_requirements
+# ------------------------
+def _package_environ(airflow_home, requirements_file):
+    return {
+        "AIRFLOW_HOME": str(airflow_home),
+        "MWAA__CORE__REQUIREMENTS_PATH": str(requirements_file),
+    }
+
+
+def test_package_user_requirements_bundles_downloads(tmp_path):
+    """Downloaded packages are zipped and the requirements are rewritten for offline install"""
+    requirements_dir = tmp_path / "requirements"
+    requirements_dir.mkdir()
+    requirements_file = requirements_dir / "requirements.txt"
+    requirements_file.write_text("requests==2.32.3\nsgmllib3k==1.0.0")
+    stale_downloads_dir = requirements_dir / "downloads"
+    stale_downloads_dir.mkdir()
+    (stale_downloads_dir / "stale-0.1-py3-none-any.whl").write_text("stale")
+
+    def fake_pip_download(args, env):
+        downloads_dir = Path(args[args.index("-d") + 1])
+        (downloads_dir / "requests-2.32.3-py3-none-any.whl").write_text("wheel")
+        (downloads_dir / "sgmllib3k-1.0.0.tar.gz").write_text("sdist")
+        return MagicMock(returncode=0)
+
+    with patch('mwaa.utils.user_requirements.sp.run', side_effect=fake_pip_download):
+        package_user_requirements(_package_environ(tmp_path, requirements_file))
+
+    with zipfile.ZipFile(requirements_dir / "plugins.zip") as plugins_zip:
+        assert sorted(plugins_zip.namelist()) == [
+            "requests-2.32.3-py3-none-any.whl",
+            "sgmllib3k-1.0.0.tar.gz",
+        ]
+    assert (requirements_dir / "packaged_requirements.txt").read_text() == (
+        f"--no-index\n--find-links {tmp_path / 'plugins'}\n"
+        "requests==2.32.3\nsgmllib3k==1.0.0\n"
+    )
+
+
+def test_package_user_requirements_writes_nothing_when_download_fails(tmp_path):
+    """A failed pip download leaves no plugins.zip or packaged requirements behind"""
+    requirements_dir = tmp_path / "requirements"
+    requirements_dir.mkdir()
+    requirements_file = requirements_dir / "requirements.txt"
+    requirements_file.write_text("package-that-does-not-exist==0.0.0")
+
+    with patch('mwaa.utils.user_requirements.sp.run', return_value=MagicMock(returncode=1)):
+        package_user_requirements(_package_environ(tmp_path, requirements_file))
+
+    assert not (requirements_dir / "plugins.zip").exists()
+    assert not (requirements_dir / "packaged_requirements.txt").exists()
+
+
+def test_package_user_requirements_skips_missing_requirements_file(tmp_path):
+    """Without a requirements file nothing is downloaded or written"""
+    missing_requirements_file = tmp_path / "requirements" / "requirements.txt"
+
+    with patch('mwaa.utils.user_requirements.sp.run') as mock_run:
+        package_user_requirements(_package_environ(tmp_path, missing_requirements_file))
+
+    mock_run.assert_not_called()
+    assert not (tmp_path / "requirements").exists()
