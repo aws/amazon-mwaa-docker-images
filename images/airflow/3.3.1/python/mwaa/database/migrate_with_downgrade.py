@@ -21,6 +21,7 @@ from mwaa.config.rds_iam_credentials import (
     is_using_rds_proxy,
     use_iam_credentials,
 )
+from mwaa.database.default_connections import create_default_connections
 from mwaa.utils.db_retry import with_db_retry, MAINTENANCE_ENGINE_KWARGS
 from mwaa.utils.dblock import with_db_lock
 from airflow.cli.commands import db_command as airflow_db_command
@@ -455,10 +456,20 @@ def _check_downgrade_db():
             _fix_fab_sequence_defaults()
 
 
+def _create_default_connections():
+    # A failure here only means a default connection is missing, which can be created by hand, so
+    # it must not fail the migration and with it the environment.
+    try:
+        create_default_connections()
+    except Exception as e:
+        logger.warning("Error while creating the default connections, skipping. %s", e)
+
+
 def _main():
     _verify_environ()
     _ensure_rds_iam_user()
     _migrate_db()
+    _create_default_connections()
 
 
 if __name__ == "__main__":
