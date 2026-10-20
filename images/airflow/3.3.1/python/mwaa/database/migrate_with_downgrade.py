@@ -8,8 +8,10 @@ connect to the meta database, thus all configurations need to be set.
 """
 
 from argparse import Namespace
+from datetime import datetime, timezone
 from packaging.version import Version
 from sqlalchemy import create_engine, text
+import json
 import logging
 import logging.config
 import os
@@ -24,6 +26,7 @@ from mwaa.config.rds_iam_credentials import (
 from mwaa.database.default_connections import create_default_connections
 from mwaa.utils.db_retry import with_db_retry, MAINTENANCE_ENGINE_KWARGS
 from mwaa.utils.dblock import with_db_lock
+from mwaa.utils.plogs import generate_plog
 from airflow.cli.commands import db_command as airflow_db_command
 
 DB_IAM_USERNAME = "airflow_user"
@@ -463,6 +466,27 @@ def _create_default_connections():
         create_default_connections()
     except Exception as e:
         logger.warning("Error while creating the default connections, skipping. %s", e)
+        _report_default_connections_error()
+
+
+def _report_default_connections_error():
+    # migrate-db has no sidecar for StatsD, so print the metric in the sidecar's plog format.
+    # StatisticValues, not Value, is what the service's processor reads.
+    metric_data = [
+        {
+            "MetricName": "DefaultConnectionsCreationError",
+            "Dimensions": [{"Name": "AirflowComponent", "Value": "MigrateDb"}],
+            "Timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "StatisticValues": {"SampleCount": 1, "Sum": 1, "Minimum": 1, "Maximum": 1},
+            "Unit": "Count",
+        }
+    ]
+    # Unlike normal logs, plogs are ingested by the service, so 'print' them.
+    print(
+        generate_plog(
+            "AirflowMetricsLogsProcessor", f"Metric data: {json.dumps(metric_data)}"
+        )
+    )
 
 
 def _main():
