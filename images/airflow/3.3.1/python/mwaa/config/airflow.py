@@ -397,10 +397,21 @@ def _get_mwaa_cloudwatch_integration_config() -> Dict[str, str]:
                     f"result in metrics misconfiguration."
                 )
 
+    # In multi-team mode, Airflow tags team-owned resources' metrics with team_name, but plain
+    # StatsD drops tags. Send them in the InfluxDB format, which the sidecar's CloudWatch agent
+    # parses into per-team metrics, and block every tag except team_name.
+    multi_team_enabled = os.environ.get("USE_MULTI_TEAM", "").lower() == "true"
+    team_tags_config = {
+        "AIRFLOW__METRICS__STATSD_INFLUXDB_ENABLED": "True",
+        # Regexes matched against each tag key; a match blocks the tag.
+        "AIRFLOW__METRICS__STATSD_DISABLED_TAGS": r"^(?!team_name$).*",
+    } if multi_team_enabled else {}
+
     return {
         # We don't allow the user to change the metrics configuration as that can break
         # the integration with CloudWatch Metrics.
         **metrics_defaults,
+        **team_tags_config,
         "AIRFLOW__METRICS__STATSD_ON": "True",
         "AIRFLOW__METRICS__STATSD_HOST": "localhost",
         "AIRFLOW__METRICS__STATSD_PORT": "8125",
