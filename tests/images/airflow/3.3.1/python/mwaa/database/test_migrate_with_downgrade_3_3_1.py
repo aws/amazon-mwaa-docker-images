@@ -372,3 +372,54 @@ def test_check_downgrade_db_noop_when_target_is_higher():
             module._check_downgrade_db()
 
         mock_db_cmd.downgrade.assert_not_called()
+
+
+def test_default_connection_failure_does_not_fail_migration():
+    """A failure to create default connections is logged, not raised."""
+    with patch.dict("os.environ", _BASE_ENV):
+        module = _load_module()
+
+        with patch.object(
+            module,
+            "create_default_connections",
+            side_effect=Exception("db unavailable"),
+        ) as create, patch.object(module.logger, "warning") as warning:
+            module._create_default_connections()
+
+        create.assert_called_once_with()
+        warning.assert_called_once()
+
+
+def test_default_connections_are_created_without_warning():
+    """The success path calls create_default_connections and logs nothing."""
+    with patch.dict("os.environ", _BASE_ENV):
+        module = _load_module()
+
+        with patch.object(module, "create_default_connections") as create, \
+                patch.object(module.logger, "warning") as warning:
+            module._create_default_connections()
+
+        create.assert_called_once_with()
+        warning.assert_not_called()
+
+
+def test_main_creates_default_connections_after_migrating():
+    """_main runs the migration before creating the default connections."""
+    with patch.dict("os.environ", _BASE_ENV):
+        module = _load_module()
+
+        calls = MagicMock()
+        with patch.object(module, "_verify_environ", calls.verify), \
+                patch.object(module, "_ensure_rds_iam_user", calls.ensure_user), \
+                patch.object(module, "_migrate_db", calls.migrate), \
+                patch.object(
+                    module, "_create_default_connections", calls.create_connections
+                ):
+            module._main()
+
+        assert [c[0] for c in calls.mock_calls] == [
+            "verify",
+            "ensure_user",
+            "migrate",
+            "create_connections",
+        ]
