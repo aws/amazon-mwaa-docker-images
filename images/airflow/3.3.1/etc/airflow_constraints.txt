@@ -100,7 +100,7 @@ anyio==4.14.2
 apache-airflow-providers-airbyte==6.0.1
 apache-airflow-providers-akeyless==0.3.0
 apache-airflow-providers-alibaba==3.4.0
-apache-airflow-providers-amazon==9.34.0
+apache-airflow-providers-amazon==9.38.0
 apache-airflow-providers-apache-cassandra==3.9.5
 apache-airflow-providers-apache-drill==3.3.3
 apache-airflow-providers-apache-druid==4.5.2
@@ -126,7 +126,7 @@ apache-airflow-providers-cloudant==4.3.5
 apache-airflow-providers-cncf-kubernetes==10.21.0
 apache-airflow-providers-cohere==1.6.7
 apache-airflow-providers-common-ai==0.7.0
-apache-airflow-providers-common-compat==1.18.0
+apache-airflow-providers-common-compat==1.22.0
 apache-airflow-providers-common-io==1.8.0
 apache-airflow-providers-common-messaging==2.0.4
 apache-airflow-providers-common-sql==2.1.0
