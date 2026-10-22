@@ -295,15 +295,32 @@ def _get_essential_airflow_auth_config() -> Dict[str, str]:
     }
 
 def _get_essential_airflow_api_auth_config() -> Dict[str, str]:
-
     """
     Retrieve the environment variables for Airflow's "api_auth" configuration section.
+
+    The JWT signing secret is sourced from MWAA__WEBSERVER__SECRET, which is provisioned
+    only to the webserver container. This ensures the secret is never present in the worker
+    runtime, preventing DAG code from reading it and forging session tokens.
+
+    Components that lack MWAA__WEBSERVER__SECRET (worker, triggerer) will have no
+    AIRFLOW__API_AUTH__JWT_SECRET set. That is intentional — those components neither
+    sign nor verify user-facing _token session JWTs.
 
     :returns A dictionary containing the environment variables.
     """
     api_config: Dict[str, str] = {}
-    api_config["AIRFLOW__API_AUTH__JWT_SECRET"] = os.environ.get("MWAA__CORE__FERNET_KEY")
-    api_config["AIRFLOW__API_AUTH__JWT_ALGORITHM"] = "HS256"
+    webserver_secret_json = os.environ.get("MWAA__WEBSERVER__SECRET")
+    if webserver_secret_json:
+        try:
+            api_config["AIRFLOW__API_AUTH__JWT_SECRET"] = json.loads(
+                webserver_secret_json
+            )["secret_key"]
+            api_config["AIRFLOW__API_AUTH__JWT_ALGORITHM"] = "HS256"
+        except (json.JSONDecodeError, KeyError):
+            logger.error(
+                "Invalid value for the webserver secret key used for API auth JWT. "
+                "Value not printed for security reasons.",
+            )
 
     return api_config
 
