@@ -809,6 +809,93 @@ def test_cloudwatch_metrics_customer_config_write(monkeypatch, env_helper, tmp_p
     assert (tmp_path / "metrics_block_list.txt").exists()
     assert (tmp_path / "metrics_allow_list.txt").exists()
 
+
+def _mock_metrics_section(monkeypatch):
+    from mwaa.config import airflow
+
+    monkeypatch.setattr(
+        airflow.conf,
+        "getsection",
+        lambda section: {"statsd_influxdb_enabled": "False", "statsd_disabled_tags": "job_id,run_id"},
+    )
+    monkeypatch.setattr(
+        airflow.conf,
+        "get_default_value",
+        lambda section, option: {"statsd_influxdb_enabled": "False", "statsd_disabled_tags": "job_id,run_id"}[option],
+    )
+
+
+@pytest.mark.parametrize("multi_team_value", ["false", "", None])
+def test_cloudwatch_metrics_tags_not_sent_without_multi_team(env_helper, monkeypatch, multi_team_value):
+    """Without multi-team, the Airflow defaults apply and tags aren't sent."""
+    _get_mwaa_cloudwatch_integration_config.cache_clear()
+    env_helper.set({"MWAA__CLOUDWATCH_METRICS_INTEGRATION__ENABLED": "true"})
+    if multi_team_value is None:
+        env_helper.delete(["USE_MULTI_TEAM"])
+    else:
+        env_helper.set({"USE_MULTI_TEAM": multi_team_value})
+    _mock_metrics_section(monkeypatch)
+
+    result = _get_mwaa_cloudwatch_integration_config()
+
+    assert result["AIRFLOW__METRICS__STATSD_INFLUXDB_ENABLED"] == "False"
+    assert result["AIRFLOW__METRICS__STATSD_DISABLED_TAGS"] == "job_id,run_id"
+
+
+def test_cloudwatch_metrics_team_name_tag_sent_with_multi_team(env_helper, monkeypatch):
+    """With multi-team, tags are sent in the InfluxDB format and only team_name is allowed."""
+    _get_mwaa_cloudwatch_integration_config.cache_clear()
+    env_helper.set({
+        "MWAA__CLOUDWATCH_METRICS_INTEGRATION__ENABLED": "true",
+        "USE_MULTI_TEAM": "true",
+    })
+    _mock_metrics_section(monkeypatch)
+
+    result = _get_mwaa_cloudwatch_integration_config()
+
+    assert result["AIRFLOW__METRICS__STATSD_INFLUXDB_ENABLED"] == "True"
+    assert result["AIRFLOW__METRICS__STATSD_DISABLED_TAGS"] == r"^(?!team_name$).*"
+
+
+@pytest.mark.parametrize(
+    "validators_module",
+    [
+        # Airflow core and the Task SDK (workers) vendor separate copies of the validators.
+        "airflow._shared.observability.metrics.validators",
+        "airflow.sdk._shared.observability.metrics.validators",
+    ],
+)
+@pytest.mark.parametrize(
+    "tag_key, blocked",
+    [
+        ("team_name", False),
+        ("dag_id", True),
+        ("task_id", True),
+        ("pool_name", True),
+        ("run_type", True),
+        ("team_name_suffix", True),
+        ("my_team_name", True),
+    ],
+)
+def test_cloudwatch_metrics_disabled_tags_only_allow_team_name(
+    env_helper, monkeypatch, validators_module, tag_key, blocked
+):
+    """Airflow's tag block list validator lets only the team_name tag through."""
+    import importlib
+
+    PatternBlockListValidator = importlib.import_module(validators_module).PatternBlockListValidator
+
+    _get_mwaa_cloudwatch_integration_config.cache_clear()
+    env_helper.set({
+        "MWAA__CLOUDWATCH_METRICS_INTEGRATION__ENABLED": "true",
+        "USE_MULTI_TEAM": "true",
+    })
+    _mock_metrics_section(monkeypatch)
+    disabled_tags = _get_mwaa_cloudwatch_integration_config()["AIRFLOW__METRICS__STATSD_DISABLED_TAGS"]
+
+    # PatternBlockListValidator.test returns True when the tag is allowed.
+    assert PatternBlockListValidator(disabled_tags).test(tag_key) is not blocked
+
 # --------------------------------------------
 # Essential Airflow Scheduler Config Tests 
 # --------------------------------------------
