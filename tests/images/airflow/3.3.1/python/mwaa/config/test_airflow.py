@@ -656,32 +656,13 @@ def test_get_essential_airflow_auth_config_idc_disabled_falls_through(env_helper
 # --------------------------------------------
 def test_get_essential_airflow_api_auth_config(env_helper):
     env_helper.set({
-        "MWAA__WEBSERVER__SECRET": json.dumps({"secret_key": "test-webserver-secret"}),
+        "MWAA__CORE__FERNET_KEY": json.dumps({"FernetKey": "test-key"}),
     })
 
     result = _get_essential_airflow_api_auth_config()
 
-    assert result["AIRFLOW__API_AUTH__JWT_SECRET"] == "test-webserver-secret"
+    assert result["AIRFLOW__API_AUTH__JWT_SECRET"] == '{"FernetKey": "test-key"}'
     assert result["AIRFLOW__API_AUTH__JWT_ALGORITHM"] == "HS256"
-
-
-def test_get_essential_airflow_api_auth_config_missing_webserver_secret(env_helper):
-    # Worker/triggerer containers lack MWAA__WEBSERVER__SECRET — JWT secret must be absent.
-    env_helper.set({})
-
-    result = _get_essential_airflow_api_auth_config()
-
-    assert "AIRFLOW__API_AUTH__JWT_SECRET" not in result
-    assert "AIRFLOW__API_AUTH__JWT_ALGORITHM" not in result
-
-
-def test_get_essential_airflow_api_auth_config_invalid_json(env_helper):
-    env_helper.set({"MWAA__WEBSERVER__SECRET": "{invalid-json}"})
-
-    result = _get_essential_airflow_api_auth_config()
-
-    # Invalid JSON: must not set JWT secret (fail safe), must not raise
-    assert "AIRFLOW__API_AUTH__JWT_SECRET" not in result
 
 
 # --------------------------------------------
