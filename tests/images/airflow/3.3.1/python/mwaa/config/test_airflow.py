@@ -654,14 +654,28 @@ def test_get_essential_airflow_auth_config_idc_disabled_falls_through(env_helper
 # --------------------------------------------
 # Essential Airflow API Auth Config Tests 
 # --------------------------------------------
-def test_get_essential_airflow_api_auth_config(env_helper):
+def test_get_essential_airflow_api_auth_config_uses_webserver_secret(env_helper):
+    """When MWAA__WEBSERVER__SECRET is set, JWT secret is sourced from its secret_key field."""
+    env_helper.set({
+        "MWAA__CORE__FERNET_KEY": json.dumps({"FernetKey": "test-fernet-key"}),
+        "MWAA__WEBSERVER__SECRET": json.dumps({"secret_key": "test-webserver-secret-key"}),
+    })
+
+    result = _get_essential_airflow_api_auth_config()
+
+    assert result["AIRFLOW__API_AUTH__JWT_SECRET"] == "test-webserver-secret-key"
+    assert result["AIRFLOW__API_AUTH__JWT_ALGORITHM"] == "HS256"
+
+
+def test_get_essential_airflow_api_auth_config_falls_back_to_fernet(env_helper):
+    """When MWAA__WEBSERVER__SECRET is absent, JWT secret falls back to the Fernet key."""
     env_helper.set({
         "MWAA__CORE__FERNET_KEY": json.dumps({"FernetKey": "test-key"}),
     })
 
     result = _get_essential_airflow_api_auth_config()
 
-    assert result["AIRFLOW__API_AUTH__JWT_SECRET"] == '{"FernetKey": "test-key"}'
+    assert result["AIRFLOW__API_AUTH__JWT_SECRET"] == json.dumps({"FernetKey": "test-key"})
     assert result["AIRFLOW__API_AUTH__JWT_ALGORITHM"] == "HS256"
 
 

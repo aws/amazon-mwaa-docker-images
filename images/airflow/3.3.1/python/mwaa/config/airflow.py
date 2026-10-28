@@ -299,10 +299,31 @@ def _get_essential_airflow_api_auth_config() -> Dict[str, str]:
     """
     Retrieve the environment variables for Airflow's "api_auth" configuration section.
 
+    Sources AIRFLOW__API_AUTH__JWT_SECRET from MWAA__WEBSERVER__SECRET["secret_key"].
+    MWAA__WEBSERVER__SECRET is injected into the webserver and scheduler containers
+    only. In Airflow 3 the dag-processor is a mandatory standalone process in its own
+    container; MWAA controls its env, so it does not receive MWAA__WEBSERVER__SECRET.
+    Workers also never receive it, preventing DAG task code from reading the key and
+    forging workload tokens.
+
     :returns A dictionary containing the environment variables.
     """
+    import json as _json
+
     api_config: Dict[str, str] = {}
-    api_config["AIRFLOW__API_AUTH__JWT_SECRET"] = os.environ.get("MWAA__CORE__FERNET_KEY")
+    webserver_secret_json = os.environ.get("MWAA__WEBSERVER__SECRET")
+    if webserver_secret_json:
+        try:
+            parsed = _json.loads(webserver_secret_json)
+            secret_key = parsed.get("secret_key") if isinstance(parsed, dict) else None
+            if secret_key:
+                api_config["AIRFLOW__API_AUTH__JWT_SECRET"] = secret_key
+        except Exception:
+            pass  # fall through to Fernet fallback
+    if "AIRFLOW__API_AUTH__JWT_SECRET" not in api_config:
+        # Fallback: use Fernet key so scheduler can still sign task tokens if
+        # MWAA__WEBSERVER__SECRET is absent (e.g. non-IDC environments).
+        api_config["AIRFLOW__API_AUTH__JWT_SECRET"] = os.environ.get("MWAA__CORE__FERNET_KEY")
     api_config["AIRFLOW__API_AUTH__JWT_ALGORITHM"] = "HS256"
 
     return api_config
