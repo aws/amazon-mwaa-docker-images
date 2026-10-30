@@ -10,6 +10,13 @@ jobs:
     name: Quality Checks Job
     runs-on: ubuntu-latest
 
+    env:
+      # pyright-python downloads Node.js through nodeenv. Without a version,
+      # nodeenv resolves "latest" to the first entry of nodejs.org's release
+      # index, which can be a pre-release (e.g. 27.0.0-alpha) that nodeenv
+      # cannot parse. Use the current LTS release instead.
+      PYRIGHT_PYTHON_NODE_VERSION: lts
+
     container:
       image: public.ecr.aws/amazonlinux/amazonlinux:2023
 
