@@ -334,7 +334,13 @@ class Subprocess:
                 f"respond to SIGTERM after {sigterm_patience_interval_secs} "
                 "seconds. Sending SIGKILL..."
             )
-            os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+            try:
+                os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+            except ProcessLookupError:
+                module_logger.info(
+                    f"Process group for {self} not found when sending SIGKILL. "
+                    "The process has already exited; skipping the kill."
+                )
             action_taken = "killed"
 
         module_logger.info(

@@ -391,6 +391,78 @@ def test_get_essential_airflow_auth_config(env_helper, auth_env, expected_config
     assert result == expected_config
 
 
+def test_get_essential_airflow_auth_config_idc_sm_creds(env_helper):
+    """IDC mode with Secrets Manager ARN sets MwaaAuthManager."""
+    env_helper.set({
+        "IDC_AUTH_ENABLED": "true",
+        "IDC_CLIENT_SECRET_ARN": "arn:aws:secretsmanager:us-east-1:123456789012:secret:idc-creds",
+        "IDC_START_URL": "https://d-test.awsapps.com/start",
+        "IDC_IDENTITY_STORE_ID": "d-test123",
+    })
+
+    result = _get_essential_airflow_auth_config()
+
+    assert result == {
+        "AIRFLOW__CORE__AUTH_MANAGER": "aws_mwaa.auth_manager.MwaaAuthManager",
+    }
+
+
+def test_get_essential_airflow_auth_config_idc_direct_creds(env_helper):
+    """IDC mode with direct client ID/secret sets MwaaAuthManager."""
+    env_helper.set({
+        "IDC_AUTH_ENABLED": "true",
+        "IDC_CLIENT_ID": "test-client-id",
+        "IDC_CLIENT_SECRET": "test-client-secret",
+        "IDC_START_URL": "https://d-test.awsapps.com/start",
+        "IDC_IDENTITY_STORE_ID": "d-test123",
+    })
+
+    result = _get_essential_airflow_auth_config()
+
+    assert result == {
+        "AIRFLOW__CORE__AUTH_MANAGER": "aws_mwaa.auth_manager.MwaaAuthManager",
+    }
+
+
+def test_get_essential_airflow_auth_config_idc_missing_creds_raises(env_helper):
+    """IDC mode without any client credentials raises EnvironmentError."""
+    env_helper.set({
+        "IDC_AUTH_ENABLED": "true",
+        "IDC_START_URL": "https://d-test.awsapps.com/start",
+        "IDC_IDENTITY_STORE_ID": "d-test123",
+    })
+
+    with pytest.raises(EnvironmentError, match="IDC client credentials"):
+        _get_essential_airflow_auth_config()
+
+
+def test_get_essential_airflow_auth_config_idc_missing_required_vars_raises(env_helper):
+    """IDC mode without required vars raises EnvironmentError listing missing vars."""
+    env_helper.set({
+        "IDC_AUTH_ENABLED": "true",
+        "IDC_CLIENT_SECRET_ARN": "arn:aws:secretsmanager:us-east-1:123456789012:secret:idc-creds",
+        # IDC_START_URL and IDC_IDENTITY_STORE_ID intentionally omitted
+    })
+
+    with pytest.raises(EnvironmentError, match="IDC_START_URL"):
+        _get_essential_airflow_auth_config()
+
+
+def test_get_essential_airflow_auth_config_idc_disabled_falls_through(env_helper):
+    """IDC_AUTH_ENABLED=false falls through to mwaa-iam / FabAuthManager."""
+    env_helper.set({
+        "IDC_AUTH_ENABLED": "false",
+        "MWAA__CORE__AUTH_TYPE": "mwaa-iam",
+    })
+
+    result = _get_essential_airflow_auth_config()
+
+    assert result == {
+        "AIRFLOW__CORE__AUTH_MANAGER":
+            "airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager",
+    }
+
+
 # --------------------------------------------
 # Essential Airflow API Auth Config Tests 
 # --------------------------------------------

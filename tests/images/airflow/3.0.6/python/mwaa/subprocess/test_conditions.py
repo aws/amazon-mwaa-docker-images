@@ -25,27 +25,31 @@ def airflow_db_condition():
 # Test Cases
 # ------------------------
 def test_airflow_db_reachable_condition_success(airflow_db_condition, mock_db_connection):
-    """Test successful database connection"""
+    """Test successful database connection with current_user query"""
     mock_connection, mock_engine = mock_db_connection
 
-    # Mock the SELECT 1 query
-    mock_connection.execute.return_value = MagicMock()
+    # Mock the SELECT 1 and SELECT current_user queries
+    mock_connection.execute.side_effect = [
+        MagicMock(),  # SELECT 1 result
+        MagicMock(scalar=lambda: "test_user"),  # SELECT current_user result
+    ]
 
     airflow_db_condition.engine = mock_engine
 
     with patch('mwaa.subprocess.conditions.logger') as mock_logger:
         response = airflow_db_condition._check(ProcessStatus.RUNNING)
 
-    # Verify query was executed
-    assert mock_connection.execute.call_count == 1
-    mock_connection.execute.assert_called_with("SELECT 1")
+    # Verify both queries were executed
+    assert mock_connection.execute.call_count == 2
+    mock_connection.execute.assert_any_call("SELECT 1")
+    mock_connection.execute.assert_any_call("SELECT current_user;")
 
     # Verify response
     assert response.successful is True
-    assert "Successfully connected to database." in response.message
+    assert "Successfully connected to database as user: test_user" in response.message
 
     # Verify logging
-    mock_logger.info.assert_called_with("Successfully connected to database.")
+    mock_logger.info.assert_called_with("Successfully connected to database as user: test_user")
 
 
 def test_airflow_db_reachable_condition_failure(airflow_db_condition, mock_db_connection):

@@ -21,11 +21,13 @@
     Optional subcommand to run instead of the default stack:
       test-requirements   — validates requirements.txt installation
       test-startup-script — validates the user startup script
+      package-requirements — bundles requirements into a plugins.zip for offline install
 
 .EXAMPLE
     .\run.ps1
     .\run.ps1 -Command test-requirements
     .\run.ps1 -Command test-startup-script
+    .\run.ps1 -Command package-requirements
 #>
 
 param(
@@ -234,7 +236,7 @@ New-LogGroupIfNotExists -Component "Worker"        -LogEnabled $env:MWAA__LOGGIN
 # ---------------------------------------------------------------------------
 # Launch
 # ---------------------------------------------------------------------------
-if ($Command -eq "test-requirements" -or $Command -eq "test-startup-script") {
+if ($Command -eq "test-requirements" -or $Command -eq "test-startup-script" -or $Command -eq "package-requirements") {
     & $ContainerRuntime compose -f docker-compose-test-commands.yaml up $Command --abort-on-container-exit
 } else {
     & $ContainerRuntime compose up

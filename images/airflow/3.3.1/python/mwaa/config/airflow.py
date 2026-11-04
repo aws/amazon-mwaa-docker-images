@@ -100,6 +100,8 @@ def _get_essential_airflow_executor_config(executor_type: str) -> Dict[str, str]
         case _:
             raise ValueError(f"Executor type {executor_type} is not supported.")
 
+def _is_valid_linux_folder_name(name: str) -> bool:
+    return bool(name) and name not in (".", "..") and "/" not in name and "\x00" not in name
 
 def _get_essential_airflow_core_config() -> Dict[str, str]:
     """
@@ -129,13 +131,40 @@ def _get_essential_airflow_core_config() -> Dict[str, str]:
                 "Invalid value for fernet secret. Value not printed for security reasons.",
             )
 
+    multi_team_enabled = os.environ.get("USE_MULTI_TEAM", "").lower() == "true"
+
+    default_dags_folder = "/usr/local/airflow/dags"
+    dags_folder = f"{default_dags_folder}/global-dags" if multi_team_enabled else default_dags_folder
+
+    teams_config = None
+    if multi_team_enabled and os.environ.get("TEAM_NAMES"):
+        team_names = [name.strip() for name in os.environ.get("TEAM_NAMES", "").split(",") if name.strip()]
+        teams_root_folder = f"{default_dags_folder}/per-team-dags"
+
+        invalid_folder_team_names = [name for name in team_names if not _is_valid_linux_folder_name(name)]
+        if len(invalid_folder_team_names) > 0:
+            raise ValueError("Team names contain characters not permitted in folder names: "
+                             + ", ".join(invalid_folder_team_names))
+
+        if len(team_names) > 0:
+            # as per https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/multi-team.html#dag-bundle-to-team-association
+            teams_config = [{"name": f"team_{team}",
+                             "classpath": "airflow.dag_processing.bundles.local.LocalDagBundle",
+                             "kwargs": {"path": f"{teams_root_folder}/{team}"},
+                             "team_name": team,
+                             } for team in team_names]
+            teams_config.append({"name": f"shared_dags",
+                                 "classpath": "airflow.dag_processing.bundles.local.LocalDagBundle",
+                                 "kwargs": {"path": f"{dags_folder}"}})
+    dag_bundle_config_list = {} if not teams_config \
+        else {"AIRFLOW__DAG_PROCESSOR__DAG_BUNDLE_CONFIG_LIST": json.dumps(teams_config, sort_keys=True)}
+    logger.debug(f"AIRFLOW__DAG_PROCESSOR__DAG_BUNDLE_CONFIG_LIST: {dag_bundle_config_list}")
+
     return {
         "AIRFLOW__CORE__LOAD_EXAMPLES": "False",
-        # MWAA does not support Multi-Team Deployments (introduced in Airflow 3.2.0).
-        # Enabling this would break IAM-based auth, CeleryExecutor management, and
-        # environment-level secrets/connections/pools. Block until MWAA explicitly
-        # supports multi-team.
-        "AIRFLOW__CORE__MULTI_TEAM": "False",
+        "AIRFLOW__CORE__MULTI_TEAM": "True" if multi_team_enabled else "False",
+        "AIRFLOW__CORE__DAGS_FOLDER": dags_folder,
+        **dag_bundle_config_list,
         **api_server_url,
         **fernet_key,
     }
@@ -218,9 +247,44 @@ def _get_opinionated_airflow_db_config() -> Dict[str, str]:
     }
 
 def _get_essential_airflow_auth_config() -> Dict[str, str]:
+    idc_auth_enabled = os.environ.get("IDC_AUTH_ENABLED", "").lower() == "true"
+
+    if idc_auth_enabled:
+        # IDC mode: user has explicitly opted in via IDC_AUTH_ENABLED=true.
+        # Console/API/SDK is responsible for ensuring all required vars are set before
+        # calling UpdateEnvironment. If any are missing here, it indicates an internal
+        # error — fail loudly rather than silently falling back to V1.
+
+        # Client credentials: production uses IDC_CLIENT_SECRET_ARN (Secrets Manager ARN);
+        # dev/test may use IDC_CLIENT_ID + IDC_CLIENT_SECRET directly.
+        has_sm_creds = bool(os.environ.get("IDC_CLIENT_SECRET_ARN"))
+        has_direct_creds = bool(os.environ.get("IDC_CLIENT_ID")) and bool(os.environ.get("IDC_CLIENT_SECRET"))
+        if not has_sm_creds and not has_direct_creds:
+            raise EnvironmentError(
+                "IDC_AUTH_ENABLED=true but IDC client credentials are not configured. "
+                "Set either IDC_CLIENT_SECRET_ARN, or both IDC_CLIENT_ID and IDC_CLIENT_SECRET."
+            )
+
+        _IDC_REQUIRED_VARS = [
+            "IDC_START_URL",
+            "IDC_IDENTITY_STORE_ID",
+        ]
+        missing = [v for v in _IDC_REQUIRED_VARS if not os.environ.get(v)]
+        if missing:
+            raise EnvironmentError(
+                f"IDC_AUTH_ENABLED=true but required IDC configuration variables are not set: {missing}."
+            )
+        # MwaaAuthManager is the sole auth manager. Device code is the only login path.
+        # IAM authorization enforced via CheckAuthorization endpoint.
+        return {
+            "AIRFLOW__CORE__AUTH_MANAGER": "aws_mwaa.auth_manager.MwaaAuthManager",
+        }
+
+    # V1 default: FabAuthManager, V1 SSO flow, allow-all authorization.
+    # Used when customer has not opted into IDC (IDC_AUTH_ENABLED is false or unset).
     if os.environ.get("MWAA__CORE__AUTH_TYPE", "").lower() == "mwaa-iam":
         return {
-            "AIRFLOW__CORE__AUTH_MANAGER": "airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager"
+            "AIRFLOW__CORE__AUTH_MANAGER": "airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager",
         }
     # Use default SimpleAuthManager for development. By setting all admins to true, any user/pwd can be used to login.
     # SIMPLE_AUTH_MANAGER_USERS is in username:role format. Set SIMPLE_AUTH_MANAGER_ALL_ADMINS=false to have dedicated
@@ -333,10 +397,21 @@ def _get_mwaa_cloudwatch_integration_config() -> Dict[str, str]:
                     f"result in metrics misconfiguration."
                 )
 
+    # In multi-team mode, Airflow tags team-owned resources' metrics with team_name, but plain
+    # StatsD drops tags. Send them in the InfluxDB format, which the sidecar's CloudWatch agent
+    # parses into per-team metrics, and block every tag except team_name.
+    multi_team_enabled = os.environ.get("USE_MULTI_TEAM", "").lower() == "true"
+    team_tags_config = {
+        "AIRFLOW__METRICS__STATSD_INFLUXDB_ENABLED": "True",
+        # Regexes matched against each tag key; a match blocks the tag.
+        "AIRFLOW__METRICS__STATSD_DISABLED_TAGS": r"^(?!team_name$).*",
+    } if multi_team_enabled else {}
+
     return {
         # We don't allow the user to change the metrics configuration as that can break
         # the integration with CloudWatch Metrics.
         **metrics_defaults,
+        **team_tags_config,
         "AIRFLOW__METRICS__STATSD_ON": "True",
         "AIRFLOW__METRICS__STATSD_HOST": "localhost",
         "AIRFLOW__METRICS__STATSD_PORT": "8125",

@@ -21,6 +21,7 @@ from mwaa.utils.dblock import with_db_lock
 from mwaa.config.airflow_rds_iam_patch import is_using_rds_proxy
 from mwaa.utils.get_rds_iam_credentials import RDSIAMCredentialProvider
 from airflow.cli.commands import db_command as airflow_db_command
+from airflow.utils.db import _REVISION_HEADS_MAP
 
 DB_IAM_USERNAME = "airflow_user"
 DB_ADMIN_USERNAME = "adminuser"
@@ -133,22 +134,95 @@ def _migrate_db():
         airflow_db_command.migratedb(args)
         logging.info("The database is now migrated.")
 
+def _resolve_target_revision(version: str) -> str:
+    """
+    Return the Alembic head revision for ``version``.
+
+    ``_REVISION_HEADS_MAP`` records the head at each Airflow version that introduced a
+    migration, so it is a sparse encoding of half-open intervals: the head for any
+    version V is the entry for the greatest mapped version <= V.
+
+    This is a backport of the resolver Airflow ships in 3.x
+    (``airflow.cli.commands.db_command._get_version_revision``), which walks the map
+    downwards and returns the first entry below the target. The 2.x resolver still
+    present in this image (``db_command.get_version_revision``) instead decrements only
+    the patch component, so it can never step back to an earlier minor: any ``x.y.0``
+    release absent from the map walks into negative patch numbers and resolves to
+    ``None``, making ``db downgrade --to-version`` abort with
+    ``SystemExit: Downgrading to version <v> is not supported.`` before it touches the
+    database. 2.11.0 is exactly that case -- no 2.11.x release introduced a migration,
+    so the map tops out at 2.10.3 and has no 2.11.x key.
+
+    Deviation from upstream: upstream relies on the map already being in ascending
+    insertion order, and its own docstring notes that this is never checked. We sort
+    explicitly by version instead, which removes that unchecked assumption.
+    """
+    candidates = [v for v in _REVISION_HEADS_MAP if Version(v) <= Version(version)]
+    if not candidates:
+        raise RuntimeError(
+            f"No Alembic revision mapping at or below Airflow {version}; the lowest "
+            f"mapped version is {min(_REVISION_HEADS_MAP, key=Version)}."
+        )
+    return _REVISION_HEADS_MAP[max(candidates, key=Version)]
+
+
+def _current_db_heads() -> set[str]:
+    """
+    Return the Alembic head(s) the metadata database is currently at.
+
+    Uses Airflow's own configured engine so that we observe exactly the database and
+    connection that ``airflow_db_command.downgrade`` will operate on, rather than
+    opening a second connection that may authenticate differently. Safe to call from
+    ``_check_downgrade_db`` because ``_migrate_db`` has already run
+    ``check_migrations``, which initialises and exercises ``settings.engine``.
+
+    Returns a set, mirroring ``check_migrations``, so a database sitting at multiple
+    heads is handled rather than silently reduced to one.
+    """
+    from airflow import settings
+    from alembic.migration import MigrationContext
+
+    with settings.engine.connect() as conn:
+        return set(MigrationContext.configure(conn).get_current_heads())
+
+
 def _check_downgrade_db():
     target_version = os.environ.get("MWAA__DB__AIRFLOW_TARGET_VERSION", None)
     current_version = os.environ.get("AIRFLOW_VERSION", None)
-    if target_version and current_version and Version(target_version) < Version(current_version):
-        logging.info(f"Downgrading the database to {target_version}. Downgrading...")
-        args = Namespace(
-                from_revision=None,
-                from_version=None,
-                reserialize_dags=False,
-                show_sql_only=None,
-                to_revision=None,
-                to_version=target_version,
-                use_migration_files=None,
-                yes=True,
-            )
-        airflow_db_command.downgrade(args)
+    if not (target_version and current_version):
+        return
+    if Version(target_version) >= Version(current_version):
+        return
+
+    to_revision = _resolve_target_revision(target_version)
+
+    # Skip only when the resolved revisions are equal. Never infer "nothing to do"
+    # from the version numbers themselves: most Airflow minors carry more than one
+    # entry in _REVISION_HEADS_MAP, so two releases sharing a minor can still differ
+    # in schema. 2.10.3 -> 2.10.1, for example, has to revert 5f2621c13b39.
+    db_heads = _current_db_heads()
+    if db_heads == {to_revision}:
+        logging.info(
+            f"Airflow {target_version} resolves to Alembic revision {to_revision}, "
+            f"which the metadata database is already at. No downgrade required."
+        )
+        return
+
+    logging.info(
+        f"Downgrading the database to {target_version} (Alembic revision "
+        f"{to_revision}, from {sorted(db_heads)}). Downgrading..."
+    )
+    args = Namespace(
+            from_revision=None,
+            from_version=None,
+            reserialize_dags=False,
+            show_sql_only=None,
+            to_revision=to_revision,
+            to_version=None,
+            use_migration_files=None,
+            yes=True,
+        )
+    airflow_db_command.downgrade(args)
 
 
 def _main():

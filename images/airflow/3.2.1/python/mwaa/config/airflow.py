@@ -218,9 +218,44 @@ def _get_opinionated_airflow_db_config() -> Dict[str, str]:
     }
 
 def _get_essential_airflow_auth_config() -> Dict[str, str]:
+    idc_auth_enabled = os.environ.get("IDC_AUTH_ENABLED", "").lower() == "true"
+
+    if idc_auth_enabled:
+        # IDC mode: user has explicitly opted in via IDC_AUTH_ENABLED=true.
+        # Console/API/SDK is responsible for ensuring all required vars are set before
+        # calling UpdateEnvironment. If any are missing here, it indicates an internal
+        # error — fail loudly rather than silently falling back to V1.
+
+        # Client credentials: production uses IDC_CLIENT_SECRET_ARN (Secrets Manager ARN);
+        # dev/test may use IDC_CLIENT_ID + IDC_CLIENT_SECRET directly.
+        has_sm_creds = bool(os.environ.get("IDC_CLIENT_SECRET_ARN"))
+        has_direct_creds = bool(os.environ.get("IDC_CLIENT_ID")) and bool(os.environ.get("IDC_CLIENT_SECRET"))
+        if not has_sm_creds and not has_direct_creds:
+            raise EnvironmentError(
+                "IDC_AUTH_ENABLED=true but IDC client credentials are not configured. "
+                "Set either IDC_CLIENT_SECRET_ARN, or both IDC_CLIENT_ID and IDC_CLIENT_SECRET."
+            )
+
+        _IDC_REQUIRED_VARS = [
+            "IDC_START_URL",
+            "IDC_IDENTITY_STORE_ID",
+        ]
+        missing = [v for v in _IDC_REQUIRED_VARS if not os.environ.get(v)]
+        if missing:
+            raise EnvironmentError(
+                f"IDC_AUTH_ENABLED=true but required IDC configuration variables are not set: {missing}."
+            )
+        # MwaaAuthManager is the sole auth manager. Device code is the only login path.
+        # IAM authorization enforced via CheckAuthorization endpoint.
+        return {
+            "AIRFLOW__CORE__AUTH_MANAGER": "aws_mwaa.auth_manager.MwaaAuthManager",
+        }
+
+    # V1 default: FabAuthManager, V1 SSO flow, allow-all authorization.
+    # Used when customer has not opted into IDC (IDC_AUTH_ENABLED is false or unset).
     if os.environ.get("MWAA__CORE__AUTH_TYPE", "").lower() == "mwaa-iam":
         return {
-            "AIRFLOW__CORE__AUTH_MANAGER": "airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager"
+            "AIRFLOW__CORE__AUTH_MANAGER": "airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager",
         }
     # Use default SimpleAuthManager for development. By setting all admins to true, any user/pwd can be used to login.
     # SIMPLE_AUTH_MANAGER_USERS is in username:role format. Set SIMPLE_AUTH_MANAGER_ALL_ADMINS=false to have dedicated

@@ -29,9 +29,23 @@ check_dir() {
     # shellcheck source=/dev/null
     source "${venv_dir}/bin/activate"
 
+    # Build the list of paths to exclude from the scan. Virtual environments are
+    # created in-tree by ./create_venvs.py and hold thousands of third-party
+    # packages, so scanning them yields only false positives from other people's
+    # code (example.com URIs, test fixtures, ...) while taking minutes. Bytecode
+    # caches are excluded too: TruffleHog can't decompress some .pyc files
+    # ("error reading chunk") and echoes raw non-UTF-8 bytes for matches it does
+    # find. Both are git-ignored, so neither is repository content.
+    EXCLUDE_FILE=$(mktemp)
+    cat > "$EXCLUDE_FILE" <<'EOF'
+(^|/)\.venv/
+(^|/)venv/
+(^|/)__pycache__/
+EOF
+
     # Run TruffleHog to scan for secrets
     echo "Running TruffleHog to scan for secrets..."
-    if ! (trufflehog filesystem "${dir}"); then
+    if ! (trufflehog filesystem "${dir}" --exclude-paths "$EXCLUDE_FILE"); then
         echo "TruffleHog detected potential secrets."
         status=1
     else

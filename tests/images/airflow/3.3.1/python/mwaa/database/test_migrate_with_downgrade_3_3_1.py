@@ -10,8 +10,10 @@ both module shapes route through: 3.0.6 builds the engine in an inline
 ``_create_engine_with_retry()``.
 """
 
+import json
 import os
 import types
+from datetime import datetime
 
 import pytest
 from unittest.mock import MagicMock, patch
@@ -251,3 +253,196 @@ def test_iam_fallback_succeeds_and_applies_grants():
 
     # Reached the role query via the IAM engine.
     assert any("current_user" in s for s in _executed_statements(conn))
+
+
+# --- Downgrade path tests (_check_downgrade_db) ---
+
+
+def test_downgrade_to_2_11_2_triggers_compat_fixes():
+    """Downgrading 3.3.1 -> 2.11.2 must run serialization fix, FAB downgrade,
+    and FAB sequence defaults since 2.11.2 is in the compat-fix set."""
+    env = {
+        **_BASE_ENV,
+        "AIRFLOW_VERSION": _AIRFLOW_VERSION,
+        "MWAA__DB__AIRFLOW_TARGET_VERSION": "2.11.2",
+    }
+    with patch.dict("os.environ", env):
+        module = _load_module()
+
+        with patch.object(module, "_fix_deferred_task_serialization") as mock_fix_serde, \
+             patch.object(module, "_downgrade_fab_db") as mock_fab_down, \
+             patch.object(module, "_fix_fab_sequence_defaults") as mock_fab_seq, \
+             patch.object(module, "airflow_db_command") as mock_db_cmd:
+            module._check_downgrade_db()
+
+        mock_fix_serde.assert_called_once()
+        mock_db_cmd.downgrade.assert_called_once()
+        mock_fab_down.assert_called_once()
+        mock_fab_seq.assert_called_once()
+
+
+def test_downgrade_to_2_11_0_triggers_compat_fixes():
+    """Downgrading 3.3.1 -> 2.11.0 must also trigger the compat fixes."""
+    env = {
+        **_BASE_ENV,
+        "AIRFLOW_VERSION": _AIRFLOW_VERSION,
+        "MWAA__DB__AIRFLOW_TARGET_VERSION": "2.11.0",
+    }
+    with patch.dict("os.environ", env):
+        module = _load_module()
+
+        with patch.object(module, "_fix_deferred_task_serialization") as mock_fix_serde, \
+             patch.object(module, "_downgrade_fab_db") as mock_fab_down, \
+             patch.object(module, "_fix_fab_sequence_defaults") as mock_fab_seq, \
+             patch.object(module, "airflow_db_command") as mock_db_cmd:
+            module._check_downgrade_db()
+
+        mock_fix_serde.assert_called_once()
+        mock_fab_down.assert_called_once()
+        mock_fab_seq.assert_called_once()
+
+
+def test_downgrade_to_3_0_6_triggers_compat_fixes():
+    """Downgrading 3.3.1 -> 3.0.6 must also trigger the compat fixes."""
+    env = {
+        **_BASE_ENV,
+        "AIRFLOW_VERSION": _AIRFLOW_VERSION,
+        "MWAA__DB__AIRFLOW_TARGET_VERSION": "3.0.6",
+    }
+    with patch.dict("os.environ", env):
+        module = _load_module()
+
+        with patch.object(module, "_fix_deferred_task_serialization") as mock_fix_serde, \
+             patch.object(module, "_downgrade_fab_db") as mock_fab_down, \
+             patch.object(module, "_fix_fab_sequence_defaults") as mock_fab_seq, \
+             patch.object(module, "airflow_db_command") as mock_db_cmd:
+            module._check_downgrade_db()
+
+        mock_fix_serde.assert_called_once()
+        mock_fab_down.assert_called_once()
+        mock_fab_seq.assert_called_once()
+
+
+def test_downgrade_to_3_2_1_skips_compat_fixes():
+    """Downgrading 3.3.1 -> 3.2.1 should NOT trigger compat fixes since
+    3.2.1 is not in the compat-fix set."""
+    env = {
+        **_BASE_ENV,
+        "AIRFLOW_VERSION": _AIRFLOW_VERSION,
+        "MWAA__DB__AIRFLOW_TARGET_VERSION": "3.2.1",
+    }
+    with patch.dict("os.environ", env):
+        module = _load_module()
+
+        with patch.object(module, "_fix_deferred_task_serialization") as mock_fix_serde, \
+             patch.object(module, "_downgrade_fab_db") as mock_fab_down, \
+             patch.object(module, "_fix_fab_sequence_defaults") as mock_fab_seq, \
+             patch.object(module, "airflow_db_command") as mock_db_cmd:
+            module._check_downgrade_db()
+
+        mock_fix_serde.assert_not_called()
+        mock_fab_down.assert_not_called()
+        mock_fab_seq.assert_not_called()
+        mock_db_cmd.downgrade.assert_called_once()
+
+
+def test_check_downgrade_db_noop_when_no_target_version():
+    """No MWAA__DB__AIRFLOW_TARGET_VERSION means no downgrade at all."""
+    env = {**_BASE_ENV, "AIRFLOW_VERSION": _AIRFLOW_VERSION}
+    # Ensure the target version key is absent
+    env.pop("MWAA__DB__AIRFLOW_TARGET_VERSION", None)
+    with patch.dict("os.environ", env, clear=False):
+        module = _load_module()
+
+        with patch.object(module, "airflow_db_command") as mock_db_cmd:
+            module._check_downgrade_db()
+
+        mock_db_cmd.downgrade.assert_not_called()
+
+
+def test_check_downgrade_db_noop_when_target_is_higher():
+    """Target version >= current version means no downgrade."""
+    env = {
+        **_BASE_ENV,
+        "AIRFLOW_VERSION": _AIRFLOW_VERSION,
+        "MWAA__DB__AIRFLOW_TARGET_VERSION": "3.4.0",
+    }
+    with patch.dict("os.environ", env):
+        module = _load_module()
+
+        with patch.object(module, "airflow_db_command") as mock_db_cmd:
+            module._check_downgrade_db()
+
+        mock_db_cmd.downgrade.assert_not_called()
+
+
+def _printed_metric(capsys):
+    """Return the metric datum from the printed metric plog."""
+    plog = json.loads(capsys.readouterr().out)
+    assert plog["signature"] == "mwaa_plog_v1"
+    assert plog["logsProcessorName"] == "AirflowMetricsLogsProcessor"
+    prefix = "Metric data: "
+    assert plog["message"].startswith(prefix)
+    [datum] = json.loads(plog["message"][len(prefix):])
+    return datum
+
+
+def test_default_connection_failure_does_not_fail_migration(capsys):
+    """A failure to create default connections is logged and counted, not raised."""
+    with patch.dict("os.environ", _BASE_ENV):
+        module = _load_module()
+
+        with patch.object(
+            module,
+            "create_default_connections",
+            side_effect=Exception("db unavailable"),
+        ) as create, patch.object(module.logger, "warning") as warning:
+            module._create_default_connections()
+
+        create.assert_called_once_with()
+        warning.assert_called_once()
+        datum = _printed_metric(capsys)
+        assert datum["MetricName"] == "DefaultConnectionsCreationError"
+        assert datum["Dimensions"] == [{"Name": "AirflowComponent", "Value": "MigrateDb"}]
+        assert datum["StatisticValues"] == {
+            "SampleCount": 1, "Sum": 1, "Minimum": 1, "Maximum": 1
+        }
+        assert "Value" not in datum
+        # The processor parses the timestamp as an ISO-8601 instant in UTC.
+        datetime.strptime(datum["Timestamp"], "%Y-%m-%dT%H:%M:%SZ")
+
+
+def test_default_connections_are_created_without_warning(capsys):
+    """The success path logs and publishes nothing."""
+    with patch.dict("os.environ", _BASE_ENV):
+        module = _load_module()
+
+        with patch.object(module, "create_default_connections") as create, \
+                patch.object(module.logger, "warning") as warning:
+            module._create_default_connections()
+
+        create.assert_called_once_with()
+        warning.assert_not_called()
+        assert capsys.readouterr().out == ""
+
+
+def test_main_creates_default_connections_after_migrating():
+    """_main runs the migration before creating the default connections."""
+    with patch.dict("os.environ", _BASE_ENV):
+        module = _load_module()
+
+        calls = MagicMock()
+        with patch.object(module, "_verify_environ", calls.verify), \
+                patch.object(module, "_ensure_rds_iam_user", calls.ensure_user), \
+                patch.object(module, "_migrate_db", calls.migrate), \
+                patch.object(
+                    module, "_create_default_connections", calls.create_connections
+                ):
+            module._main()
+
+        assert [c[0] for c in calls.mock_calls] == [
+            "verify",
+            "ensure_user",
+            "migrate",
+            "create_connections",
+        ]

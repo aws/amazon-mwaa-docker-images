@@ -19,7 +19,9 @@ from functools import cached_property
 import logging
 import json
 import os
+from pathlib import Path
 import re
+import shutil
 import structlog
 import sys
 import traceback
@@ -28,6 +30,7 @@ import traceback
 from airflow.models.taskinstance import TaskInstance
 from airflow.providers.amazon.aws.hooks.logs import AwsLogsHook
 from airflow.providers.amazon.aws.utils import datetime_to_epoch_utc_ms
+from airflow.sdk.configuration import conf
 from airflow.sdk.types import RuntimeTaskInstanceProtocol as RuntimeTI
 from airflow.utils.helpers import parse_template_string, render_template
 from airflow.utils.log.file_task_handler import LogMetadata, StructuredLogMessage
@@ -123,6 +126,19 @@ _PATTERNS = [
     (re.compile( r"Job .+ was killed before it finished (likely due to running out of memory)"), "JobKilled"),
 ]
 # fmt: on
+
+
+TASK_LOGGING_DISABLED_MESSAGE = (
+    "No log was recorded for this task try because task logging is disabled. "
+    "Logs from task runs while task logging was enabled are still shown. "
+    "Enable task logging to record logs for future task runs."
+)
+
+
+def _is_resource_not_found(e: Exception) -> bool:
+    """Return True if e is a CloudWatch Logs ResourceNotFoundException (botocore ClientError)."""
+    response = getattr(e, "response", None) or {}
+    return response.get("Error", {}).get("Code") == "ResourceNotFoundException"
 
 
 class BaseLogHandler(logging.Handler):
@@ -392,6 +408,12 @@ class CloudWatchRemoteTaskLogger(BaseLogHandler, LoggingMixin):
             handlers. And only the processor attribute from the remote logging class is loaded into the Structlog
             logger used for task logging.
         """
+        if not self.enabled:
+            # Task logging is disabled: install no processor, so nothing is sent to
+            # CloudWatch, either directly or through Fluent Bit. The Task SDK skips an
+            # empty tuple, and no handler is created, so flush() and close() no-op.
+            return ()
+
         import structlog.stdlib
         from airflow.sdk.log import relative_path_from_logger
 
@@ -529,9 +551,55 @@ class CloudWatchRemoteTaskLogger(BaseLogHandler, LoggingMixin):
             self.handler.close()
 
     def upload(self, path: os.PathLike | str, ti: RuntimeTI):
-        # No-op, as we upload via the processor as we go
-        # But we need to give the handler time to finish off its business
+        # Logs are streamed to CloudWatch in real time via the processor, so there is
+        # no batch upload to do here. We still flush so the handler finishes emitting,
+        # then delete the local copy so it does not accumulate on the worker volume.
+        # MWAA never serves logs from the local file (read() resolves only from
+        # CloudWatch), so this delete loses nothing customer-visible.
+        #
+        # This applies whether or not task logging is enabled. When it is disabled,
+        # processors installs nothing, so there is no remote copy, but the local file is
+        # still unreadable (read() never falls back to it), so keeping it only fills the
+        # worker disk until tasks fail with ENOSPC. This handler is only installed when
+        # a task log group ARN is configured (see _configure_remote_task_logging), so
+        # local-only setups never reach here.
         self.flush()
+        try:
+            base = Path(conf.get("logging", "base_log_folder")).resolve()
+            raw = Path(path)
+            local_path = (raw if raw.is_absolute() else base / raw).resolve()
+            try:
+                local_path.relative_to(base)
+            except ValueError:
+                print(
+                    f"[upload] Skipping local log deletion: path {local_path} is "
+                    f"outside base_log_folder {base}"
+                )
+                return
+            parent = local_path.parent
+            if base not in parent.parents:
+                # Only delete a proper subdirectory of base_log_folder. This
+                # rejects a log that resolves to base itself (parent would be
+                # base.parent) and a log directly under base (parent == base), so
+                # rmtree can never touch base_log_folder or any directory above
+                # it. relative_to() above only proves local_path is inside base,
+                # not that its parent is strictly below base.
+                print(f"[upload] Refusing to delete non-subdirectory of base_log_folder: {parent}")
+                return
+            if parent.exists():
+                shutil.rmtree(parent, ignore_errors=True)
+                if parent.exists():
+                    # rmtree(ignore_errors=True) swallows OSErrors, so a failed delete
+                    # surfaces here (dir still present) rather than via the except below.
+                    self.stats.incr(
+                        f"mwaa.logging.{CloudWatchRemoteTaskLogger.LOG_SOURCE}.local_log_delete_error", 1
+                    )
+                    print(f"[upload] Failed to delete local log dir: {parent}")
+        except Exception as e:
+            self.stats.incr(
+                f"mwaa.logging.{CloudWatchRemoteTaskLogger.LOG_SOURCE}.local_log_delete_error", 1
+            )
+            print(f"[upload] Unexpected error deleting local task log for {path}: {e}")
         return
 
     def _discover_triggerer_streams(self, base_stream_name: str) -> list[str]:
@@ -642,12 +710,17 @@ class CloudWatchRemoteTaskLogger(BaseLogHandler, LoggingMixin):
                 for log in self.get_cloudwatch_logs(relative_path, ti)
             ]
         except Exception as e:
-            messages = [
-                StructuredLogMessage(
-                    event=f"Failed to read remote log from Cloudwatch log_group: {self.log_group_arn} log_stream: {relative_path}"
-                ),
-                StructuredLogMessage(event=str(e)),
-            ]
+            if not self.enabled and _is_resource_not_found(e):
+                # Task logging is disabled, so processors sent nothing and this try has
+                # no stream. Say so instead of surfacing a CloudWatch not-found error.
+                messages = [StructuredLogMessage(event=TASK_LOGGING_DISABLED_MESSAGE)]
+            else:
+                messages = [
+                    StructuredLogMessage(
+                        event=f"Failed to read remote log from Cloudwatch log_group: {self.log_group_arn} log_stream: {relative_path}"
+                    ),
+                    StructuredLogMessage(event=str(e)),
+                ]
             logs = []
 
         return messages, logs

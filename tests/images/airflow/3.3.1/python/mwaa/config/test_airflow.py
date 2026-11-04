@@ -22,7 +22,8 @@ from mwaa.config.airflow import (
     _get_opinionated_airflow_secrets_config,
     _get_opinionated_airflow_usage_data_config,
     _get_essential_airflow_webserver_config,
-    _get_essential_airflow_triggerer_config
+    _get_essential_airflow_triggerer_config,
+    _is_valid_linux_folder_name,
 )
 
 # ---------------------------
@@ -227,10 +228,51 @@ def test_core_config_with_api_url_and_fernet(env_helper):
     assert result["AIRFLOW__CORE__EXECUTION_API_SERVER_URL"] == \
         "https://api.example.com/execution"
     
-def test_core_config_multi_team_always_false():
-    """MULTI_TEAM must always be False and present in essential config (not overridable)."""
+def test_core_config_multi_team_defaults_to_false(env_helper):
+    """MULTI_TEAM defaults to False when USE_MULTI_TEAM is absent."""
+    env_helper.delete(["USE_MULTI_TEAM"])
+
     result = _get_essential_airflow_core_config()
+
     assert result["AIRFLOW__CORE__MULTI_TEAM"] == "False"
+
+
+@pytest.mark.parametrize("enabled_value", ["true", "True", "TRUE", "tRuE"])
+def test_core_config_multi_team_enabled(env_helper, enabled_value):
+    """MULTI_TEAM is True when the control plane enables the multi-team gate."""
+    env_helper.set({"USE_MULTI_TEAM": enabled_value})
+
+    result = _get_essential_airflow_core_config()
+
+    assert result["AIRFLOW__CORE__MULTI_TEAM"] == "True"
+
+
+@pytest.mark.parametrize(
+    "disabled_value", ["false", "False", "FALSE", "", " true", "yes", "1", "0", "None"]
+)
+def test_core_config_multi_team_disabled_or_malformed(env_helper, disabled_value):
+    """Anything other than a case-insensitive "true" keeps MULTI_TEAM explicitly False."""
+    env_helper.set({"USE_MULTI_TEAM": disabled_value})
+
+    result = _get_essential_airflow_core_config()
+
+    assert result["AIRFLOW__CORE__MULTI_TEAM"] == "False"
+
+
+@pytest.mark.parametrize("enabled_value", [None, "false", "true"])
+def test_core_config_multi_team_key_always_present(env_helper, enabled_value):
+    """
+    The key must always be emitted so that essential config keeps overriding any
+    customer-supplied core.multi_team in MWAA__CORE__CUSTOM_AIRFLOW_CONFIGS.
+    """
+    if enabled_value is None:
+        env_helper.delete(["USE_MULTI_TEAM"])
+    else:
+        env_helper.set({"USE_MULTI_TEAM": enabled_value})
+
+    result = _get_essential_airflow_core_config()
+
+    assert "AIRFLOW__CORE__MULTI_TEAM" in result
 
 
 def test_core_config_invalid_fernet(env_helper):
@@ -241,6 +283,152 @@ def test_core_config_invalid_fernet(env_helper):
     result = _get_essential_airflow_core_config()
 
     assert "AIRFLOW__CORE__FERNET_KEY" not in result
+
+
+# ---------------------------------------------
+# _is_valid_linux_folder_name Tests
+# ---------------------------------------------
+@pytest.mark.parametrize("name", [
+    "team1",
+    "team_a",
+    "Team-Name_123",
+    "a",
+    " leading-space-ok-here",   # spaces are legal on Linux filesystems
+    "name with spaces",
+    "team.name",                # a dot inside the name is fine
+    ".hidden",                  # leading dot (not "." itself) is a valid hidden dir
+])
+def test_is_valid_linux_folder_name_valid(name):
+    assert _is_valid_linux_folder_name(name) is True
+
+
+@pytest.mark.parametrize("name", [
+    "",                 # empty
+    ".",                # current-dir reference
+    "..",               # parent-dir reference (path traversal)
+    "a/b",              # contains path separator
+    "/absolute",        # contains path separator
+    "team/",            # trailing separator
+    "bad\x00name",      # NUL byte
+])
+def test_is_valid_linux_folder_name_invalid(name):
+    assert _is_valid_linux_folder_name(name) is False
+
+
+# ---------------------------------------------
+# Multi-Team DAGS_FOLDER / DAG bundle config Tests
+# ---------------------------------------------
+def test_dags_folder_default_when_multi_team_disabled(env_helper):
+    """Without multi-team, DAGS_FOLDER stays at the plain /usr/local/airflow/dags root."""
+    env_helper.delete(["USE_MULTI_TEAM", "TEAM_NAMES"])
+
+    result = _get_essential_airflow_core_config()
+
+    assert result["AIRFLOW__CORE__DAGS_FOLDER"] == "/usr/local/airflow/dags"
+    assert "AIRFLOW__DAG_PROCESSOR__DAG_BUNDLE_CONFIG_LIST" not in result
+
+
+def test_dags_folder_global_subfolder_when_multi_team_enabled(env_helper):
+    """With multi-team enabled, global DAGs move to the global-dags subfolder."""
+    env_helper.set({"USE_MULTI_TEAM": "true"})
+    env_helper.delete(["TEAM_NAMES"])
+
+    result = _get_essential_airflow_core_config()
+
+    assert result["AIRFLOW__CORE__DAGS_FOLDER"] == "/usr/local/airflow/dags/global-dags"
+    # No TEAM_NAMES -> no bundle config emitted.
+    assert "AIRFLOW__DAG_PROCESSOR__DAG_BUNDLE_CONFIG_LIST" not in result
+
+
+def test_dag_bundle_config_absent_when_disabled_even_with_team_names(env_helper):
+    """TEAM_NAMES alone (multi-team disabled) must not produce a bundle config."""
+    env_helper.set({"USE_MULTI_TEAM": "false", "TEAM_NAMES": "team1,team2"})
+
+    result = _get_essential_airflow_core_config()
+
+    assert result["AIRFLOW__CORE__DAGS_FOLDER"] == "/usr/local/airflow/dags"
+    assert "AIRFLOW__DAG_PROCESSOR__DAG_BUNDLE_CONFIG_LIST" not in result
+
+
+def test_dag_bundle_config_built_for_teams(env_helper):
+    """Multi-team + TEAM_NAMES yields one LocalDagBundle per team plus a shared_dags bundle."""
+    env_helper.set({"USE_MULTI_TEAM": "true", "TEAM_NAMES": "team1,team2"})
+
+    result = _get_essential_airflow_core_config()
+
+    assert result["AIRFLOW__CORE__DAGS_FOLDER"] == "/usr/local/airflow/dags/global-dags"
+
+    bundle_config = json.loads(result["AIRFLOW__DAG_PROCESSOR__DAG_BUNDLE_CONFIG_LIST"])
+    team_bundles = [b for b in bundle_config if "team_name" in b]
+    assert team_bundles == [
+        {
+            "name": "team_team1",
+            "classpath": "airflow.dag_processing.bundles.local.LocalDagBundle",
+            "kwargs": {"path": "/usr/local/airflow/dags/per-team-dags/team1"},
+            "team_name": "team1",
+        },
+        {
+            "name": "team_team2",
+            "classpath": "airflow.dag_processing.bundles.local.LocalDagBundle",
+            "kwargs": {"path": "/usr/local/airflow/dags/per-team-dags/team2"},
+            "team_name": "team2",
+        },
+    ]
+
+
+def test_dag_bundle_config_includes_shared_dags_entry(env_helper):
+    """A shared_dags bundle pointing at the global-dags folder must always be present."""
+    env_helper.set({"USE_MULTI_TEAM": "true", "TEAM_NAMES": "team1,team2"})
+
+    result = _get_essential_airflow_core_config()
+
+    bundle_config = json.loads(result["AIRFLOW__DAG_PROCESSOR__DAG_BUNDLE_CONFIG_LIST"])
+    shared_bundles = [b for b in bundle_config if b.get("name") == "shared_dags"]
+    assert len(shared_bundles) == 1, "Expected exactly one shared_dags bundle"
+    assert shared_bundles[0] == {
+        "classpath": "airflow.dag_processing.bundles.local.LocalDagBundle",
+        "kwargs": {"path": "/usr/local/airflow/dags/global-dags"},
+        "name": "shared_dags",
+    }
+
+
+def test_dag_bundle_config_trims_and_ignores_empty_team_names(env_helper):
+    """Whitespace is trimmed and empty entries (extra/trailing commas) are dropped."""
+    env_helper.set({"USE_MULTI_TEAM": "true", "TEAM_NAMES": " team1 , ,team2, "})
+
+    result = _get_essential_airflow_core_config()
+
+    bundle_config = json.loads(result["AIRFLOW__DAG_PROCESSOR__DAG_BUNDLE_CONFIG_LIST"])
+    team_bundles = [b for b in bundle_config if "team_name" in b]
+    team_names = [b["team_name"] for b in team_bundles]
+    assert team_names == ["team1", "team2"]
+    for bundle in team_bundles:
+        assert bundle["kwargs"]["path"] == f"/usr/local/airflow/dags/per-team-dags/{bundle['team_name']}"
+
+
+def test_dag_bundle_config_absent_when_team_names_all_blank(env_helper):
+    """A TEAM_NAMES made up only of separators/blanks yields no bundle config."""
+    env_helper.set({"USE_MULTI_TEAM": "true", "TEAM_NAMES": " , , "})
+
+    result = _get_essential_airflow_core_config()
+
+    assert "AIRFLOW__DAG_PROCESSOR__DAG_BUNDLE_CONFIG_LIST" not in result
+
+
+def test_dag_bundle_config_raises_on_invalid_team_name(env_helper):
+    """An invalid folder-name team (path separator) raises ValueError."""
+    env_helper.set({"USE_MULTI_TEAM": "true", "TEAM_NAMES": "team1,bad/team"})
+
+    with pytest.raises(ValueError, match="not permitted in folder names"):
+        _get_essential_airflow_core_config()
+
+
+def test_dag_bundle_config_raises_on_path_traversal_team_name(env_helper):
+    """A '..' team name (path traversal attempt) raises ValueError."""
+    env_helper.set({"USE_MULTI_TEAM": "true", "TEAM_NAMES": ".."})
+
+    with pytest.raises(ValueError, match="not permitted in folder names"):
+        _get_essential_airflow_core_config()
 
 
 # ---------------------------------
@@ -391,6 +579,78 @@ def test_get_essential_airflow_auth_config(env_helper, auth_env, expected_config
     assert result == expected_config
 
 
+def test_get_essential_airflow_auth_config_idc_sm_creds(env_helper):
+    """IDC mode with Secrets Manager ARN sets MwaaAuthManager."""
+    env_helper.set({
+        "IDC_AUTH_ENABLED": "true",
+        "IDC_CLIENT_SECRET_ARN": "arn:aws:secretsmanager:us-east-1:123456789012:secret:idc-creds",
+        "IDC_START_URL": "https://d-test.awsapps.com/start",
+        "IDC_IDENTITY_STORE_ID": "d-test123",
+    })
+
+    result = _get_essential_airflow_auth_config()
+
+    assert result == {
+        "AIRFLOW__CORE__AUTH_MANAGER": "aws_mwaa.auth_manager.MwaaAuthManager",
+    }
+
+
+def test_get_essential_airflow_auth_config_idc_direct_creds(env_helper):
+    """IDC mode with direct client ID/secret sets MwaaAuthManager."""
+    env_helper.set({
+        "IDC_AUTH_ENABLED": "true",
+        "IDC_CLIENT_ID": "test-client-id",
+        "IDC_CLIENT_SECRET": "test-client-secret",
+        "IDC_START_URL": "https://d-test.awsapps.com/start",
+        "IDC_IDENTITY_STORE_ID": "d-test123",
+    })
+
+    result = _get_essential_airflow_auth_config()
+
+    assert result == {
+        "AIRFLOW__CORE__AUTH_MANAGER": "aws_mwaa.auth_manager.MwaaAuthManager",
+    }
+
+
+def test_get_essential_airflow_auth_config_idc_missing_creds_raises(env_helper):
+    """IDC mode without any client credentials raises EnvironmentError."""
+    env_helper.set({
+        "IDC_AUTH_ENABLED": "true",
+        "IDC_START_URL": "https://d-test.awsapps.com/start",
+        "IDC_IDENTITY_STORE_ID": "d-test123",
+    })
+
+    with pytest.raises(EnvironmentError, match="IDC client credentials"):
+        _get_essential_airflow_auth_config()
+
+
+def test_get_essential_airflow_auth_config_idc_missing_required_vars_raises(env_helper):
+    """IDC mode without required vars raises EnvironmentError listing missing vars."""
+    env_helper.set({
+        "IDC_AUTH_ENABLED": "true",
+        "IDC_CLIENT_SECRET_ARN": "arn:aws:secretsmanager:us-east-1:123456789012:secret:idc-creds",
+        # IDC_START_URL and IDC_IDENTITY_STORE_ID intentionally omitted
+    })
+
+    with pytest.raises(EnvironmentError, match="IDC_START_URL"):
+        _get_essential_airflow_auth_config()
+
+
+def test_get_essential_airflow_auth_config_idc_disabled_falls_through(env_helper):
+    """IDC_AUTH_ENABLED=false falls through to mwaa-iam / FabAuthManager."""
+    env_helper.set({
+        "IDC_AUTH_ENABLED": "false",
+        "MWAA__CORE__AUTH_TYPE": "mwaa-iam",
+    })
+
+    result = _get_essential_airflow_auth_config()
+
+    assert result == {
+        "AIRFLOW__CORE__AUTH_MANAGER":
+            "airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager",
+    }
+
+
 # --------------------------------------------
 # Essential Airflow API Auth Config Tests 
 # --------------------------------------------
@@ -529,6 +789,93 @@ def test_cloudwatch_metrics_customer_config_write(monkeypatch, env_helper, tmp_p
     assert (tmp_path / "statsd_on.txt").exists()
     assert (tmp_path / "metrics_block_list.txt").exists()
     assert (tmp_path / "metrics_allow_list.txt").exists()
+
+
+def _mock_metrics_section(monkeypatch):
+    from mwaa.config import airflow
+
+    monkeypatch.setattr(
+        airflow.conf,
+        "getsection",
+        lambda section: {"statsd_influxdb_enabled": "False", "statsd_disabled_tags": "job_id,run_id"},
+    )
+    monkeypatch.setattr(
+        airflow.conf,
+        "get_default_value",
+        lambda section, option: {"statsd_influxdb_enabled": "False", "statsd_disabled_tags": "job_id,run_id"}[option],
+    )
+
+
+@pytest.mark.parametrize("multi_team_value", ["false", "", None])
+def test_cloudwatch_metrics_tags_not_sent_without_multi_team(env_helper, monkeypatch, multi_team_value):
+    """Without multi-team, the Airflow defaults apply and tags aren't sent."""
+    _get_mwaa_cloudwatch_integration_config.cache_clear()
+    env_helper.set({"MWAA__CLOUDWATCH_METRICS_INTEGRATION__ENABLED": "true"})
+    if multi_team_value is None:
+        env_helper.delete(["USE_MULTI_TEAM"])
+    else:
+        env_helper.set({"USE_MULTI_TEAM": multi_team_value})
+    _mock_metrics_section(monkeypatch)
+
+    result = _get_mwaa_cloudwatch_integration_config()
+
+    assert result["AIRFLOW__METRICS__STATSD_INFLUXDB_ENABLED"] == "False"
+    assert result["AIRFLOW__METRICS__STATSD_DISABLED_TAGS"] == "job_id,run_id"
+
+
+def test_cloudwatch_metrics_team_name_tag_sent_with_multi_team(env_helper, monkeypatch):
+    """With multi-team, tags are sent in the InfluxDB format and only team_name is allowed."""
+    _get_mwaa_cloudwatch_integration_config.cache_clear()
+    env_helper.set({
+        "MWAA__CLOUDWATCH_METRICS_INTEGRATION__ENABLED": "true",
+        "USE_MULTI_TEAM": "true",
+    })
+    _mock_metrics_section(monkeypatch)
+
+    result = _get_mwaa_cloudwatch_integration_config()
+
+    assert result["AIRFLOW__METRICS__STATSD_INFLUXDB_ENABLED"] == "True"
+    assert result["AIRFLOW__METRICS__STATSD_DISABLED_TAGS"] == r"^(?!team_name$).*"
+
+
+@pytest.mark.parametrize(
+    "validators_module",
+    [
+        # Airflow core and the Task SDK (workers) vendor separate copies of the validators.
+        "airflow._shared.observability.metrics.validators",
+        "airflow.sdk._shared.observability.metrics.validators",
+    ],
+)
+@pytest.mark.parametrize(
+    "tag_key, blocked",
+    [
+        ("team_name", False),
+        ("dag_id", True),
+        ("task_id", True),
+        ("pool_name", True),
+        ("run_type", True),
+        ("team_name_suffix", True),
+        ("my_team_name", True),
+    ],
+)
+def test_cloudwatch_metrics_disabled_tags_only_allow_team_name(
+    env_helper, monkeypatch, validators_module, tag_key, blocked
+):
+    """Airflow's tag block list validator lets only the team_name tag through."""
+    import importlib
+
+    PatternBlockListValidator = importlib.import_module(validators_module).PatternBlockListValidator
+
+    _get_mwaa_cloudwatch_integration_config.cache_clear()
+    env_helper.set({
+        "MWAA__CLOUDWATCH_METRICS_INTEGRATION__ENABLED": "true",
+        "USE_MULTI_TEAM": "true",
+    })
+    _mock_metrics_section(monkeypatch)
+    disabled_tags = _get_mwaa_cloudwatch_integration_config()["AIRFLOW__METRICS__STATSD_DISABLED_TAGS"]
+
+    # PatternBlockListValidator.test returns True when the tag is allowed.
+    assert PatternBlockListValidator(disabled_tags).test(tag_key) is not blocked
 
 # --------------------------------------------
 # Essential Airflow Scheduler Config Tests 
