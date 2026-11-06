@@ -4,6 +4,7 @@ import json
 from unittest.mock import patch
 import pytest
 
+from .version_guard import assert_loaded_from_airflow_version
 from mwaa.config.airflow import (
     _get_essential_airflow_executor_config,
     _get_essential_airflow_core_config,
@@ -516,13 +517,65 @@ def test_get_user_airflow_config_empty_string(monkeypatch):
 # DB Config Tests
 # ---------------------------------
 def test_db_config(monkeypatch):
+    sync_uri = "postgresql+psycopg2://user:pw@host:5432/airflow?sslmode=require"
     monkeypatch.setattr(
-        'mwaa.config.airflow.get_db_connection_string', lambda: "postgres://db"
+        'mwaa.config.airflow.get_db_connection_string', lambda: sync_uri
     )
     result = _get_essential_airflow_db_config()
     assert result == {
-        "AIRFLOW__DATABASE__SQL_ALCHEMY_CONN": "postgres://db"
+        "AIRFLOW__DATABASE__SQL_ALCHEMY_CONN": sync_uri,
+        "AIRFLOW__DATABASE__SQL_ALCHEMY_CONN_ASYNC": (
+            "postgresql+asyncpg://user:pw@host:5432/airflow?ssl=require"
+        ),
     }
+
+
+@pytest.mark.parametrize(
+    ("sync_uri", "expected_drivername", "expected_query"),
+    [
+        (
+            "postgresql+psycopg2://u:pw@h:5432/db?sslmode=require",
+            "postgresql+asyncpg",
+            {"ssl": "require"},
+        ),
+        (
+            "postgresql://u:pw@h/db?sslmode=verify-full",
+            "postgresql+asyncpg",
+            {"ssl": "verify-full"},
+        ),
+        (
+            "postgresql+psycopg2://u:pw@h/db?sslmode=disable&application_name=x",
+            "postgresql+asyncpg",
+            {"ssl": "disable", "application_name": "x"},
+        ),
+        # No sslmode -> query left untouched.
+        ("postgresql+psycopg2://u:pw@h/db", "postgresql+asyncpg", {}),
+    ],
+)
+def test_get_async_conn_uri_from_sync(sync_uri, expected_drivername, expected_query):
+    from sqlalchemy.engine import make_url
+    from mwaa.config.airflow import _get_async_conn_uri_from_sync
+
+    url = make_url(_get_async_conn_uri_from_sync(sync_uri))
+    src = make_url(sync_uri)
+    assert url.drivername == expected_drivername
+    assert "sslmode" not in url.query
+    assert dict(url.query) == expected_query
+    assert (url.username, url.password, url.host, url.port, url.database) == (
+        src.username, src.password, src.host, src.port, src.database
+    )
+
+
+def test_get_async_conn_uri_preserves_special_char_password():
+    from sqlalchemy.engine import make_url
+    from mwaa.config.airflow import _get_async_conn_uri_from_sync
+
+    sync_uri = make_url("postgresql+psycopg2://u@h:5432/db?sslmode=require").set(
+        password="p:a/s%s?#"
+    ).render_as_string(hide_password=False)
+    url = make_url(_get_async_conn_uri_from_sync(sync_uri))
+    assert url.password == "p:a/s%s?#"
+    assert dict(url.query) == {"ssl": "require"}
 
 
 # ---------------------------------
@@ -1104,3 +1157,13 @@ def test_get_opinionated_airflow_config_merges(monkeypatch):
         "USAGE": "1",
         "DB": "1",
     }
+
+# ---------------------------------
+# Airflow Version Guard Tests
+# ---------------------------------
+@pytest.mark.parametrize("func_name", ["_translate_asyncpg_sslmode", "_get_async_conn_uri_from_sync"])
+def test_asyncpg_sslmode_translation_only_applies_to_airflow_3_3_1(func_name):
+    """The asyncpg sslmode -> ssl translation was written for Airflow 3.3.1."""
+    from mwaa.config import airflow
+
+    assert_loaded_from_airflow_version(getattr(airflow, func_name), "3.3.1")
