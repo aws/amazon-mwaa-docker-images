@@ -99,6 +99,25 @@ def _is_accessing_metadata_db(dialect, cargs, cparams) -> bool:
     )
 
 
+def _query_for_dialect(dialect, query) -> dict:
+    # NOTE: Applicable to Airflow 3.3.1. Review whether this is still needed for 3.4.0+
+    # (depends on how SQL_ALCHEMY_CONN_ASYNC and its driver are configured there). A
+    # unit test fails if this code is copied into another image version folder.
+    """Adapt the IAM URL's query params to the connecting dialect's driver.
+
+    The listener is registered on the ``Engine`` class, so it also fires for the
+    sync engine wrapped by Airflow's ``AsyncEngine`` (driven by
+    ``AIRFLOW__DATABASE__SQL_ALCHEMY_CONN_ASYNC``). The IAM URL is libpq-style
+    and carries ``sslmode``, which asyncpg does not accept: its ``connect()``
+    spells the option ``ssl`` (same mode strings) and raises ``TypeError`` on
+    ``sslmode``. libpq-based drivers (psycopg2, psycopg3) keep ``sslmode``.
+    """
+    params = dict(query)
+    if getattr(dialect, "driver", None) == "asyncpg" and "sslmode" in params:
+        params["ssl"] = params.pop("sslmode")
+    return params
+
+
 def install_rds_iam_patch() -> None:
     """Install the RDS IAM authentication patch if conditions are met.
 
@@ -152,7 +171,7 @@ def install_rds_iam_patch() -> None:
         for stale_key in ("dbname", "database", "username", "user", "password"):
             cparams.pop(stale_key, None)
         cparams.update(url.translate_connect_args(username="user"))
-        cparams.update(url.query)
+        cparams.update(_query_for_dialect(dialect, url.query))
 
     event.listen(Engine, "do_connect", patch_rds_iam_authentication)
     _patch_installed = True

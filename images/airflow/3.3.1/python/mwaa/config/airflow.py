@@ -9,6 +9,7 @@ import os
 
 # 3rd-party imports
 from airflow.configuration import conf
+from sqlalchemy.engine import make_url
 
 # Our imports
 from mwaa.config.database import get_db_connection_string
@@ -221,6 +222,53 @@ def get_user_airflow_config() -> Dict[str, str]:
 
     return {**airflow_config}
 
+def _translate_asyncpg_sslmode(async_uri: str) -> str:
+    # NOTE: Applicable to Airflow 3.3.1. Review whether this is still needed for 3.4.0+
+    # (upstream Airflow translates sslmode itself as of apache/airflow@45bad9f). A unit
+    # test fails if this code is copied into another image version folder.
+    """
+    Rename the libpq ``sslmode`` query param to asyncpg's ``ssl`` equivalent.
+
+    asyncpg has no ``sslmode`` connect arg. SQLAlchemy's asyncpg dialect passes URL
+    query params straight to ``asyncpg.connect()``, which spells the option ``ssl`` and
+    accepts the same libpq mode strings (``disable``/``prefer``/``require``/
+    ``verify-ca``/``verify-full``). Without this translation every async DB call raises
+    ``TypeError: connect() got an unexpected keyword argument 'sslmode'``.
+
+    Mirrors ``airflow.settings._translate_asyncpg_sslmode`` (apache/airflow@45bad9f).
+    https://github.com/apache/airflow/commit/45bad9f54ddb186ba75f7062a76c0770cc125f29
+
+    :param async_uri The asyncpg connection URI.
+
+    :returns The URI with ``sslmode`` renamed to ``ssl``.
+    """
+    url = make_url(async_uri)
+    if "sslmode" not in url.query:
+        return async_uri
+    query = dict(url.query)
+    query["ssl"] = query.pop("sslmode")
+    return url.set(query=query).render_as_string(hide_password=False)
+
+
+def _get_async_conn_uri_from_sync(sync_uri: str) -> str:
+    """
+    Derive the asyncpg connection URI from the sync Postgres connection URI.
+
+    Any explicit sync driver (e.g. ``+psycopg2``) is replaced with ``+asyncpg``, and
+    the libpq ``sslmode`` query param is translated to asyncpg's ``ssl``.
+
+    :param sync_uri The sync connection URI, e.g.
+      ``postgresql+psycopg2://user:pw@host:5432/db?sslmode=require``.
+
+    :returns The async connection URI, e.g.
+      ``postgresql+asyncpg://user:pw@host:5432/db?ssl=require``.
+    """
+    url = make_url(sync_uri)
+    async_uri = url.set(drivername=f"{url.get_backend_name()}+asyncpg").render_as_string(
+        hide_password=False
+    )
+    return _translate_asyncpg_sslmode(async_uri)
+
 
 def _get_essential_airflow_db_config() -> Dict[str, str]:
     """
@@ -231,6 +279,7 @@ def _get_essential_airflow_db_config() -> Dict[str, str]:
     conn_string = get_db_connection_string()
     return {
         "AIRFLOW__DATABASE__SQL_ALCHEMY_CONN": conn_string,
+        "AIRFLOW__DATABASE__SQL_ALCHEMY_CONN_ASYNC": _get_async_conn_uri_from_sync(conn_string),
     }
 
 def _get_opinionated_airflow_db_config() -> Dict[str, str]:

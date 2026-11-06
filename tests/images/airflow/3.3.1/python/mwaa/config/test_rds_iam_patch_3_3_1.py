@@ -1,6 +1,8 @@
 import pytest
 from unittest.mock import patch, MagicMock
 
+from .version_guard import assert_loaded_from_airflow_version
+
 
 def _reset_patch_state():
     """Reset the one-shot install flag so a test can install the patch again."""
@@ -494,6 +496,78 @@ def test_do_connect_listener_injects_the_token():
     # injection; only the aliased credential keys are replaced.
     assert cparams["connect_timeout"] == 15
     assert cparams["keepalives"] == 1
+    # psycopg2 (libpq) keeps sslmode.
+    assert cparams["sslmode"] == "require"
+    assert "ssl" not in cparams
+
+
+@pytest.mark.parametrize(
+    ("driver", "expected"),
+    [
+        ("asyncpg", {"ssl": "require", "application_name": "x"}),
+        ("psycopg2", {"sslmode": "require", "application_name": "x"}),
+        ("psycopg", {"sslmode": "require", "application_name": "x"}),
+        (None, {"sslmode": "require", "application_name": "x"}),
+    ],
+)
+def test_query_for_dialect(driver, expected):
+    from mwaa.config import rds_iam_patch as m
+
+    dialect = MagicMock(driver=driver) if driver else "postgresql"
+    query = {"sslmode": "require", "application_name": "x"}
+    assert m._query_for_dialect(dialect, query) == expected
+    # Input must not be mutated (url.query is immutable in SQLAlchemy).
+    assert query == {"sslmode": "require", "application_name": "x"}
+
+
+def test_do_connect_listener_translates_sslmode_for_asyncpg():
+    """The async engine (asyncpg) must receive 'ssl', never 'sslmode'."""
+    from mwaa.config import rds_iam_patch as m
+
+    captured = {}
+    env = {
+        "USE_IAM_CREDENTIALS": "true",
+        "MWAA__DB__POSTGRES_HOST": "proxy.rds.amazonaws.com",
+        "MWAA__DB__POSTGRES_PORT": "5432",
+        "MWAA__DB__POSTGRES_DB": "AirflowMetadata",
+        "MWAA__DB__POSTGRES_SSLMODE": "require",
+        "MWAA__DB__CREDENTIALS": '{"username": "airflow_user", "password": "pw"}',
+        "MWAA_AIRFLOW_COMPONENT": "scheduler",
+    }
+
+    with patch.dict("os.environ", env, clear=True), patch(
+        "sqlalchemy.event.listen", side_effect=lambda t, n, fn: captured.update(fn=fn)
+    ):
+        _reset_patch_state()
+        m.install_rds_iam_patch()
+
+    token_url = (
+        "postgresql+psycopg2://airflow_user:tok"
+        "@proxy.rds.amazonaws.com:5432/AirflowMetadata?sslmode=require"
+    )
+    # Shape produced by SQLAlchemy's asyncpg dialect from SQL_ALCHEMY_CONN_ASYNC.
+    cparams = {
+        "host": "proxy.rds.amazonaws.com",
+        "database": "AirflowMetadata",
+        "port": 5432,
+        "user": "airflow_user",
+        "password": "pw",
+        "ssl": "require",
+    }
+
+    with patch.dict("os.environ", env, clear=True), patch.object(
+        m.RDSIAMCredentialProvider, "get_token", return_value="tok"
+    ), patch.object(
+        m.RDSIAMCredentialProvider, "create_db_connection_url", return_value=token_url
+    ):
+        _clear_metadata_url_cache(m)
+        captured["fn"](MagicMock(driver="asyncpg"), None, [], cparams)
+
+    assert cparams["password"] == "tok"
+    assert cparams["database"] == "AirflowMetadata"
+    assert cparams["ssl"] == "require"
+    assert "sslmode" not in cparams
+    assert "dbname" not in cparams
 
 
 def test_do_connect_listener_ignores_other_databases():
@@ -610,3 +684,10 @@ def test_install_resolves_metadata_url_eagerly():
                 },
             )
             mock_conn_string.assert_called_once()
+
+
+def test_query_for_dialect_only_applies_to_airflow_3_3_1():
+    """The asyncpg sslmode -> ssl translation in the IAM listener was written for Airflow 3.3.1."""
+    from mwaa.config import rds_iam_patch as m
+
+    assert_loaded_from_airflow_version(m._query_for_dialect, "3.3.1")
