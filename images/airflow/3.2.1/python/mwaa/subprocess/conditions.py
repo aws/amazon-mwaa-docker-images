@@ -162,6 +162,10 @@ class ProcessCondition:
 
 SIDECAR_DEFAULT_HEALTH_PORT = 8200
 SOCKET_BUFFER_SIZE = 1024
+# Upper bound on the number of queued health messages drained in a single check. The
+# kernel receive buffer holds a few hundred datagrams at most, so this is only a guard
+# against a misbehaving sender flooding the port and starving the condition loop.
+MAX_HEALTH_MESSAGES_PER_CHECK = 10000
 
 
 # Socket timeout. Wait time upon receiving a message from sidecar.
@@ -241,6 +245,46 @@ class SidecarHealthCondition(ProcessCondition):
             )
         )
 
+    def _read_latest_status(self) -> str:
+        """
+        Drain every datagram queued on the socket and return the newest status.
+
+        The sidecar can send more than one health datagram per minute (telegraf flushes
+        both on its flush interval and whenever its metric batch fills up), while this
+        condition only runs once every 60 seconds. Reading a single datagram per check
+        therefore lets stale statuses pile up in the kernel receive buffer, and a Red
+        status can sit behind hours of old "Healthy" messages. Draining the socket and
+        acting on the last datagram keeps the check in sync with the sidecar regardless
+        of its send rate.
+
+        The first read blocks for up to _SOCKET_TIMEOUT_SECONDS and raises
+        socket.timeout if nothing arrives; the remaining reads are non-blocking.
+
+        :returns The newest status string received from the sidecar.
+        """
+        assert self.socket is not None
+        status, _ = self.socket.recvfrom(SOCKET_BUFFER_SIZE)
+        latest = status.decode("utf-8")
+        drained = 1
+        self.socket.setblocking(False)
+        try:
+            while drained < MAX_HEALTH_MESSAGES_PER_CHECK:
+                try:
+                    status, _ = self.socket.recvfrom(SOCKET_BUFFER_SIZE)
+                except BlockingIOError:
+                    break
+                latest = status.decode("utf-8")
+                drained += 1
+        finally:
+            # Restore the blocking-with-timeout mode used by the first read.
+            self.socket.settimeout(_SOCKET_TIMEOUT_SECONDS)
+        if drained > 1:
+            logger.info(
+                f"Drained {drained} health messages from the sidecar; acting on the "
+                f"latest one: {latest}"
+            )
+        return latest
+
     @throttle(seconds=60, instance_level_throttling=True) # avoid excessive calls to process conditions
     def _check(self, process_status: ProcessStatus) -> ProcessConditionResponse:
         """
@@ -253,8 +297,7 @@ class SidecarHealthCondition(ProcessCondition):
                 "Unexpected error: socket object and start time shouldn't be None."
             )
         try:
-            status, _ = self.socket.recvfrom(SOCKET_BUFFER_SIZE)
-            status = status.decode("utf-8")
+            status = self._read_latest_status()
             match status.lower():
                 case "red":
                     response = ProcessConditionResponse(

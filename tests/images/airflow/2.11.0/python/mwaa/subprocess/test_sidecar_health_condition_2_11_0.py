@@ -323,3 +323,146 @@ def test_healthy_resets_timer_preventing_threshold_trigger(mock_logger, mock_tim
         sidecar_condition_with_threshold, ProcessStatus.RUNNING
     )
     assert response.successful is True
+
+
+# ------------------------
+# Test: Draining the UDP backlog (act on the newest datagram)
+# ------------------------
+def _datagrams(*statuses):
+    """Build a recvfrom side_effect: the given statuses, then an empty socket."""
+    return [(s.encode("utf-8"), ("127.0.0.1", 8200)) for s in statuses] + [BlockingIOError()]
+
+
+@patch('mwaa.subprocess.conditions.time')
+@patch('mwaa.subprocess.conditions.logger')
+def test_drain_backlog_acts_on_latest_red(mock_logger, mock_time, sidecar_condition):
+    """A Red queued behind hundreds of stale Healthy datagrams must be acted on now."""
+    mock_time.time.return_value = 2000.0
+    sidecar_condition.socket.recvfrom.side_effect = _datagrams(*(["Healthy"] * 300), "Red")
+
+    with patch('builtins.print'):
+        response = sidecar_condition._check.__wrapped__(sidecar_condition, ProcessStatus.RUNNING)
+
+    assert response.successful is False
+    assert "Status received from sidecar: Red" in response.message
+    # 300 Healthy + 1 Red + 1 BlockingIOError
+    assert sidecar_condition.socket.recvfrom.call_count == 302
+    # Drained message mentions how many datagrams were consumed and the final status.
+    drained_logs = [c for c in mock_logger.info.call_args_list if "Drained 301" in str(c)]
+    assert drained_logs, mock_logger.info.call_args_list
+    assert "Red" in str(drained_logs[0])
+
+
+@patch('mwaa.subprocess.conditions.time')
+@patch('mwaa.subprocess.conditions.logger')
+def test_drain_backlog_latest_healthy_wins_over_earlier_red(mock_logger, mock_time, sidecar_condition):
+    """Red followed by Healthy means the component recovered: stay up and reset the timer."""
+    mock_time.time.return_value = 2000.0
+    sidecar_condition.socket.recvfrom.side_effect = _datagrams("Red", "Red", "Healthy")
+
+    response = sidecar_condition._check.__wrapped__(sidecar_condition, ProcessStatus.RUNNING)
+
+    assert response.successful is True
+    assert "Status received from sidecar: Healthy" in response.message
+    assert sidecar_condition.last_healthy_time == 2000.0
+    assert sidecar_condition.socket.recvfrom.call_count == 4
+
+
+@patch('mwaa.subprocess.conditions.time')
+@patch('mwaa.subprocess.conditions.logger')
+def test_drain_backlog_latest_yellow_does_not_reset_healthy_timer(mock_logger, mock_time, sidecar_condition):
+    """Only the newest datagram counts: an older Healthy must not update last_healthy_time."""
+    mock_time.time.return_value = 2000.0
+    sidecar_condition.socket.recvfrom.side_effect = _datagrams("Healthy", "Yellow")
+
+    response = sidecar_condition._check.__wrapped__(sidecar_condition, ProcessStatus.RUNNING)
+
+    assert response.successful is True
+    assert "Status received from sidecar: Yellow" in response.message
+    assert sidecar_condition.last_healthy_time == 1000.0
+
+
+@patch('mwaa.subprocess.conditions.time')
+@patch('mwaa.subprocess.conditions.logger')
+def test_drain_single_datagram_does_not_log_drained(mock_logger, mock_time, sidecar_condition):
+    """With exactly one datagram queued, behaviour and logging are unchanged."""
+    mock_time.time.return_value = 2000.0
+    sidecar_condition.socket.recvfrom.side_effect = _datagrams("Healthy")
+
+    response = sidecar_condition._check.__wrapped__(sidecar_condition, ProcessStatus.RUNNING)
+
+    assert response.successful is True
+    assert sidecar_condition.socket.recvfrom.call_count == 2
+    assert not [c for c in mock_logger.info.call_args_list if "Drained" in str(c)]
+
+
+@patch('mwaa.subprocess.conditions.time')
+@patch('mwaa.subprocess.conditions.logger')
+def test_drain_restores_socket_timeout(mock_logger, mock_time, sidecar_condition):
+    """The socket is switched to non-blocking for the drain and back to the 1s timeout afterwards."""
+    mock_time.time.return_value = 2000.0
+    sidecar_condition.socket.recvfrom.side_effect = _datagrams("Healthy", "Healthy")
+
+    sidecar_condition._check.__wrapped__(sidecar_condition, ProcessStatus.RUNNING)
+
+    sidecar_condition.socket.setblocking.assert_called_once_with(False)
+    sidecar_condition.socket.settimeout.assert_called_once_with(1)
+    # Order: first blocking read, then setblocking(False), drain reads, then settimeout(1).
+    names = [c[0] for c in sidecar_condition.socket.mock_calls]
+    assert names.index("recvfrom") < names.index("setblocking") < names.index("settimeout")
+
+
+@patch('mwaa.subprocess.conditions.time')
+@patch('mwaa.subprocess.conditions.logger')
+def test_drain_timeout_on_first_read_keeps_assume_healthy_path(mock_logger, mock_time, sidecar_condition):
+    """A timeout on the first (blocking) read still goes down the existing 'assuming healthy' path."""
+    mock_time.time.return_value = 1400.0
+    sidecar_condition.socket.recvfrom.side_effect = socket.timeout("timed out")
+
+    response = sidecar_condition._check.__wrapped__(sidecar_condition, ProcessStatus.RUNNING)
+
+    assert response.successful is True
+    assert "timed out" in response.message.lower()
+    # Never entered the drain loop, so the socket mode was not touched.
+    sidecar_condition.socket.setblocking.assert_not_called()
+    mock_logger.error.assert_called()
+
+
+@patch('mwaa.subprocess.conditions.logger')
+def test_check_is_throttled_to_once_per_minute(mock_logger):
+    """_check (the decorated method) runs at most once per 60s per instance."""
+    condition = SidecarHealthCondition(
+        airflow_component="scheduler",
+        container_start_time=time.time(),
+    )
+    condition.socket = MagicMock()
+    condition.socket.recvfrom.side_effect = _datagrams("Healthy") + _datagrams("Red")
+
+    first = condition._check(ProcessStatus.RUNNING)
+    second = condition._check(ProcessStatus.RUNNING)
+
+    assert first is not None and first.successful is True
+    # The second call within the same minute is throttled and does not read the socket.
+    assert second is None
+    assert condition.socket.recvfrom.call_count == 2
+
+
+@patch('mwaa.subprocess.conditions.time')
+@patch('mwaa.subprocess.conditions.logger')
+def test_drain_stops_at_max_messages_per_check(mock_logger, mock_time, sidecar_condition):
+    """A sender flooding the port cannot keep the condition in the drain loop forever."""
+    from mwaa.subprocess.conditions import MAX_HEALTH_MESSAGES_PER_CHECK
+
+    mock_time.time.return_value = 2000.0
+    # Far more datagrams queued than the bound; the socket never reports empty.
+    sidecar_condition.socket.recvfrom.side_effect = _datagrams(
+        *(["Healthy"] * (MAX_HEALTH_MESSAGES_PER_CHECK + 50))
+    )
+
+    with patch('builtins.print'):
+        response = sidecar_condition._check.__wrapped__(sidecar_condition, ProcessStatus.RUNNING)
+
+    assert response.successful is True
+    assert sidecar_condition.socket.recvfrom.call_count == MAX_HEALTH_MESSAGES_PER_CHECK
+    sidecar_condition.socket.settimeout.assert_called_once_with(1)
+    assert [c for c in mock_logger.info.call_args_list if f"Drained {MAX_HEALTH_MESSAGES_PER_CHECK}" in str(c)]
