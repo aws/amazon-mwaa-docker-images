@@ -310,3 +310,70 @@ def test_fix_shared_log_volume_permissions_dag_processor_dir_failure(mock_enviro
          patch('os.makedirs', side_effect=OSError('Read-only file system')):
         # Should not raise — just prints a warning
         entrypoint._fix_shared_log_volume_permissions()
+
+
+# ------------------------
+# Test commands
+# ------------------------
+def test_test_commands_are_available_commands():
+    """The test commands are accepted commands and exit without the unhealthy wait."""
+    assert set(entrypoint.TEST_COMMANDS) == {"test-requirements", "test-startup-script"}
+    assert set(entrypoint.TEST_COMMANDS) <= set(entrypoint.AVAILABLE_COMMANDS)
+
+
+@pytest.mark.asyncio
+async def test_main_test_startup_script_returns_after_the_script(mock_environ, mock_db_utils, capsys):
+    """test-startup-script stops once the startup script has run."""
+    with patch.dict(os.environ, mock_environ), \
+            patch.object(sys, 'argv', ['script.py', 'test-startup-script']), \
+            patch('mwaa.entrypoint.setup_environment_variables', return_value=mock_environ) as mock_setup_env, \
+            patch('mwaa.entrypoint.install_user_requirements') as mock_install_req, \
+            patch('mwaa.entrypoint.create_queue') as mock_create_queue, \
+            patch('mwaa.entrypoint.execute_command') as mock_execute:
+        await main()
+    mock_setup_env.assert_called_once()
+    mock_install_req.assert_not_called()
+    mock_create_queue.assert_not_called()
+    mock_execute.assert_not_called()
+    assert "Finished testing startup script" in capsys.readouterr().out
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("installed", [True, False])
+async def test_main_test_requirements_exit_code(mock_environ, mock_db_utils, installed, capsys):
+    """test-requirements returns normally on success and exits 2 when the install fails."""
+    with patch.dict(os.environ, mock_environ), \
+            patch.object(sys, 'argv', ['script.py', 'test-requirements']), \
+            patch('mwaa.entrypoint.setup_environment_variables', return_value=mock_environ), \
+            patch('mwaa.entrypoint.install_user_requirements', new=AsyncMock(return_value=installed)), \
+            patch('mwaa.entrypoint.create_queue') as mock_create_queue:
+        if installed:
+            await main()
+        else:
+            with pytest.raises(SystemExit) as exit_info:
+                await main()
+            assert exit_info.value.code == 2
+    mock_create_queue.assert_not_called()
+    expected = "Finished testing requirements" if installed else "Requirements installation failed"
+    assert expected in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("command", ["test-requirements", "test-startup-script"])
+def test_fatal_error_in_a_test_command_exits_without_waiting(command):
+    """Test commands exit 1 at once instead of sleeping through the health check grace period."""
+    with patch.object(sys, 'argv', ['script.py', command]), \
+            patch('mwaa.entrypoint._mark_as_unhealthy') as mock_unhealthy:
+        with pytest.raises(SystemExit) as exit_info:
+            entrypoint._handle_fatal_error(RuntimeError("boom"))
+    assert exit_info.value.code == 1
+    mock_unhealthy.assert_not_called()
+
+
+def test_fatal_error_in_a_production_command_marks_the_container_unhealthy():
+    """Production commands keep marking the container unhealthy before exiting."""
+    with patch.object(sys, 'argv', ['script.py', 'scheduler']), \
+            patch('mwaa.entrypoint._mark_as_unhealthy') as mock_unhealthy:
+        with pytest.raises(SystemExit) as exit_info:
+            entrypoint._handle_fatal_error(RuntimeError("boom"))
+    assert exit_info.value.code == 1
+    mock_unhealthy.assert_called_once_with()

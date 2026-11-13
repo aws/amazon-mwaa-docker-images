@@ -196,6 +196,7 @@ For details on installing Python depedencies, and optionally bundling wheel file
 ```bash
 ./run.sh test-requirements
 ```
+- The command exits 0 when the requirements install (or there are none) and 2 when they fail to install.
 
 #### Package requirements
 
@@ -216,6 +217,7 @@ For details on installing Python depedencies, and optionally bundling wheel file
 ```bash
 ./run.sh  test-startup-script
 ```
+- The command exits 0 after the script runs. It exits 1 only if the script times out or its environment variables can't be read. MWAA doesn't treat errors from commands inside the script as fatal, so check the output for them.
 
 #### Reset database
 

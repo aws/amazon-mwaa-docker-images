@@ -138,6 +138,10 @@ class Subprocess:
 
         self.start_time: float | None = None
         self.process: Popen[Any] | None = None
+        # The exit code of the process once it has finished. Unlike `process`, which
+        # is cleared on shutdown, it stays available after start() returns. None means
+        # the process never started or has not finished.
+        self.returncode: int | None = None
         self.log_thread: Thread | None = None
 
         self.is_shut_down = False
@@ -365,6 +369,8 @@ class Subprocess:
 
         if self.process and self.process_status == ProcessStatus.RUNNING:
             self._shutdown_python_subprocess(self.process)
+        if self.process is not None and self.process.returncode is not None:
+            self.returncode = self.process.returncode
         self.process = None
 
         for condition in self.conditions:

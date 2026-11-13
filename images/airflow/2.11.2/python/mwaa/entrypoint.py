@@ -142,6 +142,13 @@ AVAILABLE_COMMANDS = [
     "package-requirements",
 ]
 
+# Commands that only check customer inputs locally. They never start Airflow, and a
+# fatal error ends them right away instead of waiting out the health check grace period.
+TEST_COMMANDS = ["test-requirements", "test-startup-script"]
+
+# Exit code of test-requirements when the requirements fail to install.
+EXIT_REQUIREMENTS_FAILED = 2
+
 # Save the start time of the container. This is used later to with the sidecar
 # monitoring because we need to have a grace period before we start reporting timeouts
 # related to sidecar endpoint not reporting health messages.
@@ -237,6 +244,22 @@ def _create_queue_with_db_lock_mutex():
             raise e
 
 
+def _handle_fatal_error(ex: Exception) -> None:
+    """
+    Log a fatal entrypoint error and exit with code 1.
+
+    Production commands first mark the container unhealthy and wait out the health
+    check grace period. Test commands exit right away.
+
+    :param ex: The exception that ended the entrypoint.
+    """
+    logger.error("Fatal error in entrypoint: %s", str(ex), exc_info=True)
+    if len(sys.argv) > 1 and sys.argv[1] in TEST_COMMANDS:
+        sys.exit(1)
+    _mark_as_unhealthy()
+    sys.exit(1)
+
+
 async def main() -> None:
     """Start execution of the script."""
     try:
@@ -261,6 +284,11 @@ async def main() -> None:
     executor_type = os.environ.get("MWAA__CORE__EXECUTOR_TYPE", "CeleryExecutor")
     environ = setup_environment_variables(command, executor_type)
 
+    if command == "test-startup-script":
+        # setup_environment_variables has already run the startup script.
+        print("Finished testing startup script")
+        return
+
     if command == "migrate-db":
         await airflow_db_migrate(environ)
         print("Finished running db validations")
@@ -272,9 +300,12 @@ async def main() -> None:
         print("Finished packaging requirements")
         return
 
-    await install_user_requirements(command, environ)
+    requirements_installed = await install_user_requirements(command, environ)
 
     if command == "test-requirements":
+        if not requirements_installed:
+            print("Requirements installation failed")
+            sys.exit(EXIT_REQUIREMENTS_FAILED)
         print("Finished testing requirements")
         return
 
@@ -293,9 +324,7 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except Exception as ex:
-        logger.error("Fatal error in entrypoint: %s", str(ex), exc_info=True)
-        _mark_as_unhealthy()
-        sys.exit(1)
+        _handle_fatal_error(ex)
 elif os.environ.get("MWAA__CORE__TESTING_MODE", "false") != "true":
     logger.error("This module cannot be imported.")
     sys.exit(1)

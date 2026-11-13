@@ -277,7 +277,24 @@ write_compose_env_file \
     PLATFORM \
     REGION
 
-if [ "$COMMAND" == "test-requirements" ] || [ "$COMMAND" == "test-startup-script" ] || [ "$COMMAND" == "package-requirements" ]; then
+if [ "$COMMAND" == "test-requirements" ] || [ "$COMMAND" == "test-startup-script" ]; then
+    COMPOSE=("$CONTAINER_RUNTIME" compose -f docker-compose-test-commands.yaml)
+    # --force-recreate starts a fresh container on every run, so packages and plugins
+    # installed by an earlier run can't change the result.
+    status=0
+    if [ "$CONTAINER_RUNTIME" == "finch" ]; then
+        # finch compose has no --exit-code-from, so read the exit code from the container.
+        # Remove the previous run's container first, so its exit code can't be read by mistake.
+        "${COMPOSE[@]}" rm -f -s "$COMMAND" >/dev/null 2>&1 || true
+        "${COMPOSE[@]}" up "$COMMAND" --abort-on-container-exit --force-recreate || true
+        container_id=$("${COMPOSE[@]}" ps -a -q "$COMMAND" | head -n 1)
+        status=$("$CONTAINER_RUNTIME" inspect --format '{{.State.ExitCode}}' "$container_id" 2>/dev/null) || status=1
+        [[ "$status" =~ ^[0-9]+$ ]] || status=1
+    else
+        "${COMPOSE[@]}" up "$COMMAND" --exit-code-from "$COMMAND" --force-recreate || status=$?
+    fi
+    exit "$status"
+elif [ "$COMMAND" == "package-requirements" ]; then
     $CONTAINER_RUNTIME compose -f docker-compose-test-commands.yaml up "$COMMAND" --abort-on-container-exit
 else
     $CONTAINER_RUNTIME compose up

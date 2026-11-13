@@ -195,3 +195,26 @@ async def test_install_user_requirements_command_types(mock_environ):
             await install_user_requirements(cmd, mock_environ)
 
             assert mock_subprocess.call_args[1]['friendly_name'] == f"{cmd}_requirements"
+
+
+@pytest.mark.asyncio
+async def test_install_user_requirements_returns_true_without_a_file():
+    """No requirements file counts as success."""
+    with patch.dict(os.environ, {}, clear=True):
+        assert await install_user_requirements("test-requirements", {}) is True
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("returncode,expected", [(0, True), (1, False), (-15, False), (None, False)])
+async def test_install_user_requirements_returns_the_pip_outcome(mock_environ, returncode, expected):
+    """The return value follows pip's exit code, read after Subprocess cleared its handle."""
+    with patch.dict(os.environ, mock_environ, clear=True), \
+            patch('os.path.isfile', return_value=True), \
+            patch('mwaa.utils.user_requirements._read_requirements_file', return_value="package1==1.0.0"), \
+            patch('mwaa.utils.user_requirements.Subprocess') as mock_subprocess:
+        mock_process = MagicMock()
+        mock_process.process = None
+        mock_process.returncode = returncode
+        mock_subprocess.return_value = mock_process
+
+        assert await install_user_requirements("test-requirements", mock_environ) is expected
