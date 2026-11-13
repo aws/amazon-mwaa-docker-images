@@ -43,6 +43,11 @@ fi
 FERNET_KEY=$(cat "${FERNET_KEY_FILE}")
 export FERNET_KEY
 
+# build.sh reads PLATFORM (for example linux/amd64). Run containers on the same platform.
+if [ -n "${PLATFORM:-}" ]; then
+    export DOCKER_DEFAULT_PLATFORM="$PLATFORM"
+fi
+
 # Build the Docker image
 ./build.sh $CONTAINER_RUNTIME
 
