@@ -126,7 +126,10 @@ def _get_sidecar_health_port():
 def _create_airflow_webserver_subprocesses(environ: Dict[str, str]):
     return [
         _create_airflow_subprocess(
-            ["api-server"],
+            # --proxy-headers trusts X-Forwarded-For from the ALB so that
+            # request.client.host reflects the real client IP rather than the
+            # load balancer's IP. Required for per-IP rate limiting in plugins.
+            ["api-server", "--proxy-headers"],
             environ=environ,
             logger_name=WEBSERVER_LOGGER_NAME,
             friendly_name="webserver",
