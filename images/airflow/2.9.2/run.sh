@@ -3,6 +3,95 @@ set -e
 
 COMMAND=$1
 
+# The test-command flags below set these. Ignore values inherited from the caller's shell.
+unset MWAA_TEST_DAGS_PATH MWAA_TEST_PLUGINS_PATH MWAA_TEST_REQUIREMENTS_DIR \
+    MWAA_TEST_REQUIREMENTS_FILE MWAA_TEST_STARTUP_SCRIPT_PATH MWAA_TEST_REPORT_PATH
+
+# Exit code for invalid command-line usage (EX_USAGE in sysexits.h).
+EX_USAGE=64
+
+usage_error() {
+    echo "ERROR: $1" >&2
+    echo "Usage:" >&2
+    echo "  ./run.sh test-dags [--dags <dir>] [--plugins <dir or plugins.zip>] [--requirements <file>] [--startup-script <file>] [--report <file>]" >&2
+    echo "  ./run.sh test-requirements [--requirements <file>]" >&2
+    echo "  ./run.sh test-startup-script [--startup-script <file>]" >&2
+    exit "$EX_USAGE"
+}
+
+# Print the absolute path of the existing folder $1.
+absolute_dir() {
+    (cd "$1" && pwd)
+}
+
+# Print the absolute path of $1, whose parent folder must exist.
+absolute_path() {
+    echo "$(absolute_dir "$(dirname "$1")")/$(basename "$1")"
+}
+
+# Exit with a usage error if compose can't mount the path $1.
+require_mountable() {
+    [[ "$1" != *:* ]] || usage_error "Paths that contain ':' can't be mounted: $1"
+}
+
+is_test_command() {
+    [ "$1" == "test-dags" ] || [ "$1" == "test-requirements" ] || [ "$1" == "test-startup-script" ]
+}
+
+# Input flags of the test commands. Each one sets a variable that
+# docker-compose-test-commands.yaml maps to a read-only volume. Unset variables fall
+# back to this folder's dags/, plugins/, requirements/ and startup/, as before.
+if is_test_command "$COMMAND"; then
+    shift
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --*=*) usage_error "Put a space between the option and its value: ${1%%=*} <value>" ;;
+        esac
+        [ $# -ge 2 ] || usage_error "$1 needs a value."
+        case "$COMMAND $1" in
+            "test-dags --dags")
+                [ -d "$2" ] || usage_error "--dags must be a folder: $2"
+                MWAA_TEST_DAGS_PATH=$(absolute_dir "$2")
+                require_mountable "$MWAA_TEST_DAGS_PATH"
+                export MWAA_TEST_DAGS_PATH
+                ;;
+            "test-dags --plugins")
+                if [ -d "$2" ] || { [ -f "$2" ] && [[ "$2" == *.zip ]]; }; then
+                    MWAA_TEST_PLUGINS_PATH=$(absolute_path "$2")
+                    require_mountable "$MWAA_TEST_PLUGINS_PATH"
+                    export MWAA_TEST_PLUGINS_PATH
+                else
+                    usage_error "--plugins must be a folder or a .zip file: $2"
+                fi
+                ;;
+            "test-dags --requirements" | "test-requirements --requirements")
+                [ -f "$2" ] || usage_error "--requirements must be a file: $2"
+                # Mount the file's folder, so -r and -c lines that name files next to it work.
+                MWAA_TEST_REQUIREMENTS_DIR=$(absolute_dir "$(dirname "$2")")
+                require_mountable "$MWAA_TEST_REQUIREMENTS_DIR"
+                MWAA_TEST_REQUIREMENTS_FILE=$(basename "$2")
+                export MWAA_TEST_REQUIREMENTS_DIR
+                ;;
+            "test-dags --startup-script" | "test-startup-script --startup-script")
+                [ -f "$2" ] || usage_error "--startup-script must be a file: $2"
+                MWAA_TEST_STARTUP_SCRIPT_PATH=$(absolute_path "$2")
+                require_mountable "$MWAA_TEST_STARTUP_SCRIPT_PATH"
+                export MWAA_TEST_STARTUP_SCRIPT_PATH
+                ;;
+            "test-dags --report")
+                [ -d "$(dirname "$2")" ] || usage_error "--report folder does not exist: $(dirname "$2")"
+                [ ! -d "$2" ] || usage_error "--report must be a file path, not a folder: $2"
+                MWAA_TEST_REPORT_PATH=$(absolute_path "$2")
+                require_mountable "$MWAA_TEST_REPORT_PATH"
+                ;;
+            *)
+                usage_error "Unknown option for $COMMAND: $1"
+                ;;
+        esac
+        shift 2
+    done
+fi
+
 # Check if 'podman' or 'finch' is available, otherwise use 'docker'
 if command -v finch &> /dev/null; then
     CONTAINER_RUNTIME="finch"
@@ -14,8 +103,8 @@ fi
 
 # PLATFORM (linux/amd64 or linux/arm64) is read by build.sh and by
 # docker-compose-test-commands.yaml. The full local stack runs on the host's platform.
-if [ -n "${PLATFORM:-}" ] && [ "$COMMAND" != "test-requirements" ] && [ "$COMMAND" != "test-startup-script" ] && [ "$COMMAND" != "package-requirements" ]; then
-    echo "ERROR: PLATFORM is only supported with test-requirements, test-startup-script and package-requirements." >&2
+if [ -n "${PLATFORM:-}" ] && [ "$COMMAND" != "test-dags" ] && [ "$COMMAND" != "test-requirements" ] && [ "$COMMAND" != "test-startup-script" ] && [ "$COMMAND" != "package-requirements" ]; then
+    echo "ERROR: PLATFORM is only supported with test-dags, test-requirements, test-startup-script and package-requirements." >&2
     exit 1
 fi
 
@@ -86,7 +175,7 @@ MWAA_LOCAL_RUNNER="true"
 export MWAA_LOCAL_RUNNER
 
 # MWAA Configuration
-MWAA__CORE__REQUIREMENTS_PATH="/usr/local/airflow/requirements/requirements.txt"
+MWAA__CORE__REQUIREMENTS_PATH="/usr/local/airflow/requirements/${MWAA_TEST_REQUIREMENTS_FILE:-requirements.txt}"
 MWAA__CORE__STARTUP_SCRIPT_PATH="/usr/local/airflow/startup/startup.sh"
 # Logging values derived from USE_CLOUDWATCH_LOGS.
 case "$USE_CLOUDWATCH_LOGS" in
@@ -212,6 +301,19 @@ create_log_group_if_not_exists "Task" "$MWAA__LOGGING__AIRFLOW_TASK_LOGS_ENABLED
 create_log_group_if_not_exists "WebServer" "$MWAA__LOGGING__AIRFLOW_WEBSERVER_LOGS_ENABLED"
 create_log_group_if_not_exists "Worker" "$MWAA__LOGGING__AIRFLOW_WORKER_LOGS_ENABLED"
 
+# test-dags writes its report through a bind mount. Set this before .env is written,
+# so every runtime mounts the same file.
+if [ "$COMMAND" == "test-dags" ]; then
+    # The container's airflow user writes the report in place. Create the file first,
+    # so the bind mount is a file and not a folder, and open it up only for this run.
+    MWAA_TEST_REPORT_PATH="${MWAA_TEST_REPORT_PATH:-$PWD/validation-report.json}"
+    export MWAA_TEST_REPORT_PATH
+    : > "$MWAA_TEST_REPORT_PATH"
+    chmod 666 "$MWAA_TEST_REPORT_PATH"
+    # Restore the mode however this script ends.
+    trap 'chmod 644 "$MWAA_TEST_REPORT_PATH" 2>/dev/null || true' EXIT
+fi
+
 # Write the values the compose files read to .env. finch compose runs inside the Finch VM and
 # only receives the AWS credentials from this shell, but it reads .env from this directory.
 # Docker and Podman read .env too, and the values exported in this shell take precedence, so
@@ -243,6 +345,11 @@ write_compose_env_file \
     AWS_SECRET_ACCESS_KEY \
     AWS_SESSION_TOKEN \
     FERNET_KEY \
+    MWAA_TEST_DAGS_PATH \
+    MWAA_TEST_PLUGINS_PATH \
+    MWAA_TEST_REPORT_PATH \
+    MWAA_TEST_REQUIREMENTS_DIR \
+    MWAA_TEST_STARTUP_SCRIPT_PATH \
     MWAA__CORE__KMS_KEY_ARN \
     MWAA__CORE__MWAA_SIGNAL_HANDLING_ENABLED \
     MWAA__CORE__REQUIREMENTS_PATH \
@@ -270,7 +377,7 @@ write_compose_env_file \
     MWAA__LOGGING__AIRFLOW_WORKER_LOG_LEVEL \
     PLATFORM
 
-if [ "$COMMAND" == "test-requirements" ] || [ "$COMMAND" == "test-startup-script" ]; then
+if is_test_command "$COMMAND"; then
     COMPOSE=("$CONTAINER_RUNTIME" compose -f docker-compose-test-commands.yaml)
     # --force-recreate starts a fresh container on every run, so packages and plugins
     # installed by an earlier run can't change the result.

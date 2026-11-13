@@ -38,9 +38,9 @@ python3 create_venvs.py --target <development | production> --version 3.0.6
 
    By default this runs fully locally (no AWS account needed): it builds the images, starts the containers, and writes logs inside the container at `/usr/local/airflow/logs/`. The web server is at `http://localhost:8080`.
 
-   To build an image for a different architecture than your host's, set `PLATFORM` to `linux/amd64` or `linux/arm64`, for example `PLATFORM=linux/amd64 ./build.sh docker` on an Apple Silicon host. `run.sh` passes `PLATFORM` to the build and to `test-requirements`, `test-startup-script` and `package-requirements`, for example `PLATFORM=linux/amd64 ./run.sh test-requirements`. The full local stack always runs on the host's architecture, so `run.sh` rejects `PLATFORM` for other commands. Without `PLATFORM`, images are built and run for the host's architecture. A cross-architecture build needs emulation (Docker Desktop includes it) and is several times slower.
+   To build an image for a different architecture than your host's, set `PLATFORM` to `linux/amd64` or `linux/arm64`, for example `PLATFORM=linux/amd64 ./build.sh docker` on an Apple Silicon host. `run.sh` passes `PLATFORM` to the build and to `test-dags`, `test-requirements`, `test-startup-script` and `package-requirements`, for example `PLATFORM=linux/amd64 ./run.sh test-requirements`. The full local stack always runs on the host's architecture, so `run.sh` rejects `PLATFORM` for other commands. Without `PLATFORM`, images are built and run for the host's architecture. A cross-architecture build needs emulation (Docker Desktop includes it) and is several times slower.
 
-   `run.sh` also writes the values its compose files read, including the AWS credentials and the Fernet key, to a `.env` file in the version directory, because `finch compose` runs inside the Finch virtual machine and doesn't see your shell's variables. The file is ignored by Git, readable only by you, and rewritten on every run, replacing any `.env` you keep there. Any `compose` command you run in that directory also uses it. With Finch on Apple Silicon, an amd64 build needs Rosetta: set `rosetta: true` in `~/.finch/finch.yaml` and recreate the virtual machine with `finch vm stop && finch vm remove && finch vm init`. Under Finch's default QEMU emulation, the Airflow 3.3.1 build fails in `002-install-duckdb-extensions.sh` with exit code 139. With Finch, `test-requirements` and `test-startup-script` need Finch 1.19.0 or later. Earlier versions can bundle a `finch compose` without the `--abort-on-container-exit` and `--force-recreate` options these commands use; check your version with `finch version`.
+   `run.sh` also writes the values its compose files read, including the AWS credentials and the Fernet key, to a `.env` file in the version directory, because `finch compose` runs inside the Finch virtual machine and doesn't see your shell's variables. The file is ignored by Git, readable only by you, and rewritten on every run, replacing any `.env` you keep there. Any `compose` command you run in that directory also uses it. With Finch on Apple Silicon, an amd64 build needs Rosetta: set `rosetta: true` in `~/.finch/finch.yaml` and recreate the virtual machine with `finch vm stop && finch vm remove && finch vm init`. Under Finch's default QEMU emulation, the Airflow 3.3.1 build fails in `002-install-duckdb-extensions.sh` with exit code 139. With Finch, `test-dags`, `test-requirements` and `test-startup-script` need Finch 1.19.0 or later. Earlier versions can bundle a `finch compose` without the `--abort-on-container-exit` and `--force-recreate` options these commands use; check your version with `finch version`.
 
    To publish logs to CloudWatch instead, set `ACCOUNT_ID`, `ENV_NAME`, and real AWS credentials in `run.sh`. `./run.sh` then creates and writes to these log groups (your credentials need permission to do so):
      - `{ENV_NAME}-DAGProcessing`
@@ -187,6 +187,8 @@ Each of the postfixes added to the image tag represents a certain build type, as
 
 ## Extra commands
 
+To check DAGs, plugins and requirements against a target Airflow version before an upgrade, see [Validate DAGs before an Amazon MWAA upgrade](#validate-dags-before-an-amazon-mwaa-upgrade).
+
 #### Requirements
 
 For details on installing Python depedencies, and optionally bundling wheel files, see the [Managing Python dependencies in requirements.txt](https://docs.aws.amazon.com/mwaa/latest/userguide/best-practices-dependencies.html#best-practices-dependencies-different-ways) in the Amazon MWAA user guide.  
@@ -222,6 +224,128 @@ For details on installing Python depedencies, and optionally bundling wheel file
 #### Reset database
 
 - If you encountered [the following error](https://issues.apache.org/jira/browse/AIRFLOW-3678): `process fails with "dag_stats_table already exists"`, you'll need to reset your database. You just need to restart your container by exiting and rerunning the `run.sh` script
+
+## Validate DAGs before an Amazon MWAA upgrade
+
+Use the image for the Airflow version you plan to upgrade to, and check your DAGs, plugins, requirements and startup script against it. The checks run locally. They don't need an AWS account or a metadata database.
+
+### Build the image once
+
+```bash
+cd images/airflow/<version>
+./build.sh docker   # or podman, or finch
+```
+
+The first build of one version took about 5 minutes on a 16-core x86_64 Linux host with a fast network. Expect longer on a laptop. Later builds reuse cached layers. `./run.sh` also runs `build.sh` before each command.
+
+To build for a different architecture than your host's, set `PLATFORM` to `linux/amd64` or `linux/arm64`, and use the same value for `run.sh`:
+
+```bash
+PLATFORM=linux/amd64 ./build.sh docker
+PLATFORM=linux/amd64 ./run.sh test-dags --dags ~/my-environment/dags
+```
+
+A cross-architecture build needs emulation (Docker Desktop includes it) and is several times slower. Use the architecture your environment uses when you validate requirements, because some packages ship different wheels per architecture.
+
+### Commands
+
+```bash
+./run.sh test-requirements [--requirements <file>]
+./run.sh test-startup-script [--startup-script <file>]
+./run.sh test-dags [--dags <dir>] [--plugins <dir or plugins.zip>] [--requirements <file>] [--startup-script <file>] [--report <file>]
+```
+
+Without flags, each command uses this version folder's `dags/`, `plugins/`, `requirements/requirements.txt` and `startup/startup.sh`. Paths may be relative to the current folder. Inputs are mounted read-only.
+
+- `--requirements` mounts the file's folder, so `-r` and `-c` lines that name files next to it keep working.
+- `--plugins` takes a folder or a `plugins.zip`. A zip is unzipped into the plugins folder, as MWAA does.
+- `--report` sets where the JSON report is written. The default is `./validation-report.json`. An existing file is overwritten.
+- Each run starts a fresh container, so packages and plugins from an earlier run don't carry over.
+
+`test-dags` does the following without starting Airflow or a database:
+
+1. Runs the startup script, if there is one.
+2. Copies or unzips the plugins.
+3. Installs the requirements, the same way `test-requirements` does.
+4. Loads the plugins, then parses each DAG file in its own process with Python's default warning filters, so deprecation warnings are shown.
+5. Writes the report and prints a summary.
+
+To see a report with problems in it, run the sample files in this repository from a version folder: `./run.sh test-dags --dags ../../../tests/fixtures/dag_validation/dags --plugins ../../../tests/fixtures/dag_validation/plugins`. It exits 1 and reports each problem.
+
+### Exit codes
+
+| Code | Meaning |
+|---|---|
+| 0 | Requirements installed (or there are none), every plugin loaded and every DAG file parsed. Warnings don't change the code. |
+| 1 | At least one DAG import error or plugin import error, or the check couldn't finish (see `error` in the report). |
+| 2 | The requirements failed to install. DAGs aren't parsed. |
+| 64 | `run.sh` got an unknown flag or a path that doesn't exist. Nothing ran. |
+
+`test-requirements` returns 0 or 2. `test-startup-script` returns 0 unless the script times out or its environment variables can't be read.
+
+### Report
+
+```json
+{
+  "schema_version": 1,
+  "airflow_version": "3.3.1",
+  "python_version": "3.12.16",
+  "error": null,
+  "parse_mode": "fork",
+  "requirements": {"status": "ok", "error": null},
+  "plugins": {"import_errors": [{"file": "bad_plugin.py", "error": "No module named 'missing_plugin_dependency'"}]},
+  "dags": [
+    {
+      "file": "old_import_dag.py",
+      "dag_ids": ["old_import_dag"],
+      "import_error": null,
+      "import_error_traceback": null,
+      "warnings": [
+        {
+          "category": "DeprecatedImportWarning",
+          "message": "The `airflow.operators.bash.BashOperator` attribute is deprecated. Please use `'airflow.providers.standard.operators.bash.BashOperator'`.",
+          "lineno": 5,
+          "location": "old_import_dag.py:5"
+        }
+      ]
+    }
+  ],
+  "summary": {"files": 1, "dags": 1, "import_errors": 0, "plugin_import_errors": 1, "warnings": 1}
+}
+```
+
+- `requirements.status` is `ok`, `failed`, or `skipped` (no requirements file, or the check stopped before installing).
+- `dags[].file` and `plugins.import_errors[].file` are relative to the DAGs and plugins folders.
+- `dags[].import_error` is the exception line. `import_error_traceback` has the full traceback.
+- `warnings[].lineno` is the line in the DAG file when the warning points at it, and `null` otherwise. `location` always shows where Python pointed, as `path:line`.
+- `parse_mode` is `fork`, or `subprocess` if more than one thread was running (for example because a plugin started one), which makes forking unsafe. Parsing is then slower but gives the same results.
+- Fields in `schema_version` 1 keep their names and meaning. New fields may be added.
+
+### What the check can't catch
+
+- Failures that only happen when a task runs, such as bad operator arguments, missing connections or variables, or provider behavior at run time.
+- Code that reaches the metadata database other than at parse time. A DAG file that queries the database while it's parsed fails here with an import error, because no database is running.
+- Files that DAG discovery skips. In safe mode (the default), Airflow only parses files that contain both `airflow` and `dag`, and only those files appear in the report.
+- Import-time warnings from modules that were imported before parsing started, for example helpers that a plugin imports.
+- Errors from commands in a startup script. MWAA doesn't treat them as fatal, so `test-startup-script` still returns 0. Read its output.
+- On Airflow 3.2 and later, warnings raised in a DAG file before it fails to import aren't reported, because Airflow's importer drops them.
+- Airflow configuration overrides from your environment aren't applied. The check uses this image's defaults, for example for `dag_discovery_safe_mode` and `dagbag_import_timeout`.
+- Files the container can't read. It runs as uid 1000, so DAG and plugin files must be readable by that user.
+
+### Troubleshooting
+
+- **A Docker Desktop pull hangs in a non-interactive shell.** A `credsStore` or `credHelpers` entry, or a hook, in `~/.docker/config.json` can wait for a prompt that never shows. Use a temporary config without them:
+  ```bash
+  export DOCKER_CONFIG="$(mktemp -d)"
+  echo '{}' > "$DOCKER_CONFIG/config.json"
+  # If `docker compose` is no longer found, link your CLI plugins:
+  ln -s ~/.docker/cli-plugins "$DOCKER_CONFIG/cli-plugins"
+  ```
+- **A build fails on `FROM localhost/...` or can't pull a `-base` image.** The derivative Dockerfiles start from the base image that `build.sh` builds and tags locally. Always build with `build.sh` (or `run.sh`), not with `docker build` on a single Dockerfile.
+- **A folder named `validation-report.json` appears.** Run the test commands through `run.sh`, not `docker compose` directly. `run.sh` creates the report file before the container starts; otherwise Docker creates a folder at that path.
+- **Apple Silicon.** A native build gives an arm64 image. To test against x86_64 packages, build and run with `PLATFORM=linux/amd64`, which uses emulation and is slower.
+- **Podman and Finch.** With Finch, `run.sh` reads the exit code from the stopped container, because `finch compose` has no `--exit-code-from`, and passes the flags' paths to `finch compose` through `.env`. Exit codes were verified with Docker Compose v2 and podman-compose. Finch was checked only with a stand-in for `finch compose`.
+- **Windows.** `run.ps1` and `build.ps1` don't have the new flags, `PLATFORM` or `test-dags` yet.
 
 ## Security
 

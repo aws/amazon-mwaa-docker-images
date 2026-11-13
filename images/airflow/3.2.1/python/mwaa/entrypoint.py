@@ -139,15 +139,13 @@ AVAILABLE_COMMANDS = [
     "spy",
     "test-requirements",
     "test-startup-script",
+    "test-dags",
     "package-requirements",
 ]
 
 # Commands that only check customer inputs locally. They never start Airflow, and a
 # fatal error ends them right away instead of waiting out the health check grace period.
-TEST_COMMANDS = ["test-requirements", "test-startup-script"]
-
-# Exit code of test-requirements when the requirements fail to install.
-EXIT_REQUIREMENTS_FAILED = 2
+TEST_COMMANDS = ["test-requirements", "test-startup-script", "test-dags"]
 
 # Save the start time of the container. This is used later to with the sidecar
 # monitoring because we need to have a grace period before we start reporting timeouts
@@ -290,6 +288,11 @@ async def main() -> None:
         print("Finished testing startup script")
         return
 
+    if command == "test-dags":
+        # Imported here so that production commands never load the validation package.
+        from mwaa.validation.run_dag_validation import run_dag_validation
+        sys.exit(await run_dag_validation(environ))
+
     if command == "migrate-db":
         await airflow_db_migrate(environ)
         print("Finished running db validations")
@@ -305,6 +308,8 @@ async def main() -> None:
 
     if command == "test-requirements":
         if not requirements_installed:
+            from mwaa.validation.report import EXIT_REQUIREMENTS_FAILED
+
             print("Requirements installation failed")
             sys.exit(EXIT_REQUIREMENTS_FAILED)
         print("Finished testing requirements")
