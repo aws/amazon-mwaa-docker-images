@@ -5,7 +5,6 @@ set -e
 source /bootstrap/common.sh
 
 verify_env_vars_exist \
-    BUILDARCH \
     MARIADB_DOWNLOAD_BASE_URL \
     MARIADB_DOWLOAD_URL_X86_SUFFIX \
     MARIADB_DOWLOAD_URL_ARM_SUFFIX \
@@ -23,8 +22,10 @@ verify_env_vars_exist \
 
 dnf install -y wget
 
-# Select the right RPMs based on the architecture.
-if [ "$BUILDARCH" == "arm64" ]; then
+# Select the right RPMs for the architecture this build step runs as. That is the
+# architecture of the image being built, also when cross-building under emulation.
+ARCH="$(uname -m)"
+if [ "$ARCH" == "aarch64" ]; then
     MARIADB_DOWNLOAD_FULL_BASE_URL="${MARIADB_DOWNLOAD_BASE_URL}${MARIADB_DOWLOAD_URL_ARM_SUFFIX}"
     MARIADB_RPM_COMMON="$MARIADB_RPM_COMMON_PREFIX$MARIADB_ARM_SUFFIX"
     MARIADB_RPM_DEVEL="$MARIADB_RPM_DEVEL_PREFIX$MARIADB_ARM_SUFFIX"
@@ -32,7 +33,7 @@ if [ "$BUILDARCH" == "arm64" ]; then
     MARIADB_RPM_COMMON_CHECKSUM="$MARIADB_RPM_COMMON_ARM_CHECKSUM"
     MARIADB_RPM_DEVEL_CHECKSUM="$MARIADB_RPM_DEVEL_ARM_CHECKSUM"
     MARIADB_RPM_SHARED_CHECKSUM="$MARIADB_RPM_SHARED_ARM_CHECKSUM"
-elif [ "$BUILDARCH" == "amd64" ]; then
+elif [ "$ARCH" == "x86_64" ]; then
     MARIADB_DOWNLOAD_FULL_BASE_URL="${MARIADB_DOWNLOAD_BASE_URL}${MARIADB_DOWLOAD_URL_X86_SUFFIX}"
     MARIADB_RPM_COMMON="$MARIADB_RPM_COMMON_PREFIX$MARIADB_X86_SUFFIX"
     MARIADB_RPM_DEVEL="$MARIADB_RPM_DEVEL_PREFIX$MARIADB_X86_SUFFIX"
@@ -41,7 +42,7 @@ elif [ "$BUILDARCH" == "amd64" ]; then
     MARIADB_RPM_DEVEL_CHECKSUM="$MARIADB_RPM_DEVEL_X86_CHECKSUM"
     MARIADB_RPM_SHARED_CHECKSUM="$MARIADB_RPM_SHARED_X86_CHECKSUM"
 else
-    echo "Unsupported architecture: $BUILDARCH"
+    echo "Unsupported architecture: ${ARCH}" >&2
     exit 1
 fi
 

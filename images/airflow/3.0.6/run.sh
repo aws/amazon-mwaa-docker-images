@@ -12,6 +12,13 @@ else
     CONTAINER_RUNTIME="docker"
 fi
 
+# PLATFORM (linux/amd64 or linux/arm64) is read by build.sh and by
+# docker-compose-test-commands.yaml. The full local stack runs on the host's platform.
+if [ -n "${PLATFORM:-}" ] && [ "$COMMAND" != "test-requirements" ] && [ "$COMMAND" != "test-startup-script" ] && [ "$COMMAND" != "package-requirements" ]; then
+    echo "ERROR: PLATFORM is only supported with test-requirements, test-startup-script and package-requirements." >&2
+    exit 1
+fi
+
 # Generate valid Fernet key as json
 generate_fernet_key() {
 
