@@ -15,11 +15,6 @@ ENV MWAA_HOME=/usr/local/mwaa
 ENV PYTHON_VERSION=3.12.16
 
 # We don't want those variables to stay in the final image, so we use ARG instead of ENV.
-# TARGETARCH is the architecture of the image being built and selects
-# architecture-specific packages. BUILDARCH is kept only as a fallback for builders
-# that pass it explicitly. BuildKit, buildah (Podman) and Finch set both.
-ARG TARGETARCH
-ARG BUILDARCH
 ARG AIRFLOW_USER_LOCAL_PATH=${AIRFLOW_USER_HOME}/.local
 ARG AIRFLOW_USER_LOCAL_BIN_PATH=${AIRFLOW_USER_LOCAL_PATH}/bin
 ARG AIRFLOW_USER_LOCAL_ETC_PATH=${AIRFLOW_USER_LOCAL_PATH}/etc

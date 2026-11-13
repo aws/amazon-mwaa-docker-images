@@ -38,7 +38,7 @@ python3 create_venvs.py --target <development | production> --version 3.0.6
 
    By default this runs fully locally (no AWS account needed): it builds the images, starts the containers, and writes logs inside the container at `/usr/local/airflow/logs/`. The web server is at `http://localhost:8080`.
 
-   To build and run an image for a different architecture than your host's, set `PLATFORM` to `linux/amd64` or `linux/arm64`, for example `PLATFORM=linux/amd64 ./run.sh` on an Apple Silicon host. `build.sh` reads the same variable. A cross-architecture build needs emulation (Docker Desktop includes it) and is several times slower.
+   To build an image for a different architecture than your host's, set `PLATFORM` to `linux/amd64` or `linux/arm64`, for example `PLATFORM=linux/amd64 ./build.sh docker` on an Apple Silicon host. `run.sh` passes `PLATFORM` to the build and to `test-requirements`, `test-startup-script` and `package-requirements`, for example `PLATFORM=linux/amd64 ./run.sh test-requirements`. The full local stack always runs on the host's architecture, so `run.sh` rejects `PLATFORM` for other commands. Without `PLATFORM`, images are built and run for the host's architecture. A cross-architecture build needs emulation (Docker Desktop includes it) and is several times slower.
 
    To publish logs to CloudWatch instead, set `ACCOUNT_ID`, `ENV_NAME`, and real AWS credentials in `run.sh`. `./run.sh` then creates and writes to these log groups (your credentials need permission to do so):
      - `{ENV_NAME}-DAGProcessing`
