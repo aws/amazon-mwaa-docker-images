@@ -280,7 +280,12 @@ if [ "$COMMAND" == "test-requirements" ] || [ "$COMMAND" == "test-startup-script
         # Remove the previous run's container first, so its exit code can't be read by mistake.
         "${COMPOSE[@]}" rm -f -s "$COMMAND" >/dev/null 2>&1 || true
         "${COMPOSE[@]}" up "$COMMAND" --abort-on-container-exit --force-recreate || true
-        container_id=$("${COMPOSE[@]}" ps -a -q "$COMMAND" | head -n 1)
+        container_id=$("${COMPOSE[@]}" ps -a -q "$COMMAND") || container_id=""
+        # More than one container means we can't tell which one just ran, so fail instead of guessing.
+        if [[ "$container_id" == *$'\n'* ]]; then
+            echo "ERROR: found more than one $COMMAND container, so its exit code is unknown." >&2
+            container_id=""
+        fi
         status=$("$CONTAINER_RUNTIME" inspect --format '{{.State.ExitCode}}' "$container_id" 2>/dev/null) || status=1
         [[ "$status" =~ ^[0-9]+$ ]] || status=1
     else
