@@ -4,6 +4,19 @@ set -e
 CONTAINER_RUNTIME=$1
 echo "Using $CONTAINER_RUNTIME runtime in build.sh"
 
+# Optional target platform, for example PLATFORM=linux/amd64 to build an amd64 image
+# on an arm64 host. Empty means the host's native platform.
+PLATFORM=${PLATFORM:-}
+PLATFORM_ARGS=()
+if [[ -n "$PLATFORM" ]]; then
+    if [[ "$PLATFORM" != "linux/amd64" && "$PLATFORM" != "linux/arm64" ]]; then
+        echo "ERROR: PLATFORM must be linux/amd64 or linux/arm64 (got \"$PLATFORM\")." >&2
+        exit 1
+    fi
+    PLATFORM_ARGS=(--platform "$PLATFORM")
+    echo "Building for platform $PLATFORM"
+fi
+
 # Check if GENERATE_BILL_OF_MATERIALS flag is set (default is False)
 GENERATE_BILL_OF_MATERIALS=${GENERATE_BILL_OF_MATERIALS:-"False"}
 echo "GENERATE_BILL_OF_MATERIALS is set to $GENERATE_BILL_OF_MATERIALS"
@@ -23,7 +36,7 @@ if [[ "$GENERATE_BILL_OF_MATERIALS" == "True" ]]; then
 fi
 
 # Build the base image.
-${CONTAINER_RUNTIME} build -f ./Dockerfiles/Dockerfile.base -t localhost/amazon-mwaa-docker-images/airflow:3.2.1-base ./
+${CONTAINER_RUNTIME} build "${PLATFORM_ARGS[@]}" -f ./Dockerfiles/Dockerfile.base -t localhost/amazon-mwaa-docker-images/airflow:3.2.1-base ./
 
 
 # Build the derivatives.
@@ -43,7 +56,7 @@ for dev in "True" "False"; do
         fi
 
         IMAGE_NAME="amazon-mwaa-docker-images/airflow:${tag_name}"
-        ${CONTAINER_RUNTIME} build -f "./Dockerfiles/${dockerfile_name}" -t "${IMAGE_NAME}" ./
+        ${CONTAINER_RUNTIME} build "${PLATFORM_ARGS[@]}" -f "./Dockerfiles/${dockerfile_name}" -t "${IMAGE_NAME}" ./
 
         # Now we copy the Bill of Materials from the Docker image into this
         # repository so it can be checked into source control for easy visibility.
