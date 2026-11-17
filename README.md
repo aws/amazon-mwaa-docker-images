@@ -40,7 +40,7 @@ python3 create_venvs.py --target <development | production> --version 3.0.6
 
    To build an image for a different architecture than your host's, set `PLATFORM` to `linux/amd64` or `linux/arm64`, for example `PLATFORM=linux/amd64 ./build.sh docker` on an Apple Silicon host. `run.sh` passes `PLATFORM` to the build and to `test-requirements`, `test-startup-script` and `package-requirements`, for example `PLATFORM=linux/amd64 ./run.sh test-requirements`. The full local stack always runs on the host's architecture, so `run.sh` rejects `PLATFORM` for other commands. Without `PLATFORM`, images are built and run for the host's architecture. A cross-architecture build needs emulation (Docker Desktop includes it) and is several times slower.
 
-   `run.sh` also writes the values its compose files read, including the AWS credentials and the Fernet key, to a `.env` file in the version directory, because `finch compose` runs inside the Finch virtual machine and doesn't see your shell's variables. The file is ignored by Git, readable only by you, and rewritten on every run, replacing any `.env` you keep there. Any `compose` command you run in that directory also uses it. With Finch on Apple Silicon, an amd64 build needs Rosetta: set `rosetta: true` in `~/.finch/finch.yaml` and recreate the virtual machine with `finch vm stop && finch vm remove && finch vm init`. Under Finch's default QEMU emulation, the Airflow 3.3.1 build fails in `002-install-duckdb-extensions.sh` with exit code 139.
+   `run.sh` also writes the values its compose files read, including the AWS credentials and the Fernet key, to a `.env` file in the version directory, because `finch compose` runs inside the Finch virtual machine and doesn't see your shell's variables. The file is ignored by Git, readable only by you, and rewritten on every run, replacing any `.env` you keep there. Any `compose` command you run in that directory also uses it. With Finch on Apple Silicon, an amd64 build needs Rosetta: set `rosetta: true` in `~/.finch/finch.yaml` and recreate the virtual machine with `finch vm stop && finch vm remove && finch vm init`. Under Finch's default QEMU emulation, the Airflow 3.3.1 build fails in `002-install-duckdb-extensions.sh` with exit code 139. With Finch, `test-requirements` and `test-startup-script` need Finch 1.19.0 or later. Earlier versions can bundle a `finch compose` without the `--abort-on-container-exit` and `--force-recreate` options these commands use; check your version with `finch version`.
 
    To publish logs to CloudWatch instead, set `ACCOUNT_ID`, `ENV_NAME`, and real AWS credentials in `run.sh`. `./run.sh` then creates and writes to these log groups (your credentials need permission to do so):
      - `{ENV_NAME}-DAGProcessing`
@@ -196,6 +196,7 @@ For details on installing Python depedencies, and optionally bundling wheel file
 ```bash
 ./run.sh test-requirements
 ```
+- The command exits 0 when the requirements install (or there are none) and 2 when they fail to install.
 
 #### Package requirements
 
@@ -216,6 +217,7 @@ For details on installing Python depedencies, and optionally bundling wheel file
 ```bash
 ./run.sh  test-startup-script
 ```
+- The command exits 0 after the script runs. It exits 1 only if the script times out or its environment variables can't be read. MWAA doesn't treat errors from commands inside the script as fatal, so check the output for them.
 
 #### Reset database
 

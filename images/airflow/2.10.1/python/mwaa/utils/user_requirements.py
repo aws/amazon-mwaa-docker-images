@@ -46,7 +46,7 @@ def _requirements_has_constraints(requirements_file: str):
     return False
 
 
-async def install_user_requirements(cmd: str, environ: dict[str, str]):
+async def install_user_requirements(cmd: str, environ: dict[str, str]) -> bool:
     """
     Install user requirements.
 
@@ -57,6 +57,10 @@ async def install_user_requirements(cmd: str, environ: dict[str, str]):
     the `MWAA__CORE__REQUIREMENTS_PATH` accordingly.
 
     :param environ: A dictionary containing the environment variables.
+
+    :returns: True if the requirements were installed or there is no requirements
+      file. False if pip exited with a non-zero code, was stopped by the timeout, or
+      did not start.
     """
     requirements_file = environ.get("MWAA__CORE__REQUIREMENTS_PATH")
     logger.info(f"MWAA__CORE__REQUIREMENTS_PATH = {requirements_file}")
@@ -104,6 +108,9 @@ async def install_user_requirements(cmd: str, environ: dict[str, str]):
             friendly_name=f"{logger_prefix}_requirements",
         )
         pip_process.start()
+        # Subprocess clears `process` when the process finishes, so the check below
+        # does not see pip's exit code. It is kept unchanged so production logs stay
+        # the same; callers that need the outcome use the return value.
         if pip_process.process and pip_process.process.returncode != 0:
             subprocess_logger.error(
                 "ERROR: pip installation exited with a non-zero error code. This could "
@@ -112,8 +119,10 @@ async def install_user_requirements(cmd: str, environ: dict[str, str]):
                 "version cannot be overridden by the customer as that can break our "
                 "setup. Please double check your requirements.txt file."
             )
+        return pip_process.returncode == 0
     else:
         logger.info("No user requirements to install.")
+        return True
 
 
 def package_user_requirements(environ: dict[str, str]):

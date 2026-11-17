@@ -45,11 +45,14 @@ services:
     <<: *airflow-common
     command: test-requirements
     container_name: mwaa-306-requirements
+    # Test commands run once; a restart would hide their exit code.
+    restart: "no"
 
   test-startup-script:
     <<: *airflow-common
     command: test-startup-script
     container_name: mwaa-306-startup-script
+    restart: "no"
 
   package-requirements:
     <<: *airflow-common
