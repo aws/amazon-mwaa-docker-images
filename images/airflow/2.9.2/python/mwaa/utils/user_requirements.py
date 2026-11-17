@@ -109,10 +109,7 @@ async def install_user_requirements(cmd: str, environ: dict[str, str]) -> bool:
             friendly_name=f"{logger_prefix}_requirements",
         )
         pip_process.start()
-        # Subprocess clears `process` when the process finishes, so the check below
-        # does not see pip's exit code. It is kept unchanged so production logs stay
-        # the same; callers that need the outcome use the return value.
-        if pip_process.process and pip_process.process.returncode != 0:
+        if pip_process.returncode != 0:
             subprocess_logger.error(
                 "ERROR: pip installation exited with a non-zero error code. This could "
                 "be the result of package conflict. Notice that MWAA enforces a list "

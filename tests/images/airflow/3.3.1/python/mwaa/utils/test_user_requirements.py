@@ -286,3 +286,25 @@ async def test_install_user_requirements_returns_the_pip_outcome(mock_environ, r
         mock_subprocess.return_value = mock_process
 
         assert await install_user_requirements("test-requirements", mock_environ) is expected
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("returncode,logs_error", [(0, False), (1, True), (-15, True)])
+async def test_install_user_requirements_logs_a_pip_failure(mock_environ, returncode, logs_error):
+    """The pip failure line follows the exit code Subprocess keeps after it clears its handle."""
+    with patch.dict(os.environ, mock_environ, clear=True), \
+            patch('os.path.isfile', return_value=True), \
+            patch('mwaa.utils.user_requirements._read_requirements_file', return_value="package1==1.0.0"), \
+            patch('mwaa.utils.user_requirements.Subprocess') as mock_subprocess, \
+            patch('mwaa.utils.user_requirements.CompositeLogger') as mock_logger:
+        mock_process = MagicMock()
+        mock_process.process = None
+        mock_process.returncode = returncode
+        mock_subprocess.return_value = mock_process
+        logger_instance = MagicMock()
+        mock_logger.return_value = logger_instance
+
+        await install_user_requirements("worker", mock_environ)
+
+        messages = [str(call.args[0]) for call in logger_instance.error.call_args_list]
+        assert any("pip installation exited with a non-zero error code" in m for m in messages) is logs_error
