@@ -658,6 +658,8 @@ def test_webserver_config_no_secret():
 
     assert result == {
         "AIRFLOW__FAB__CONFIG_FILE": "/python/mwaa/webserver/webserver_config.py",
+        "AIRFLOW__FAB__COOKIE_SECURE": "true",
+        "AIRFLOW__FAB__COOKIE_SAMESITE": "Lax",
     }
 
 def test_webserver_config_valid_secret(env_helper):
@@ -667,6 +669,8 @@ def test_webserver_config_valid_secret(env_helper):
 
     assert result == {
         "AIRFLOW__FAB__CONFIG_FILE": "/python/mwaa/webserver/webserver_config.py",
+        "AIRFLOW__FAB__COOKIE_SECURE": "true",
+        "AIRFLOW__FAB__COOKIE_SAMESITE": "Lax",
         "AIRFLOW__API__SECRET_KEY": "super-secret",
     }
 
@@ -677,6 +681,8 @@ def test_webserver_config_invalid_json(env_helper):
 
     assert result == {
         "AIRFLOW__FAB__CONFIG_FILE": "/python/mwaa/webserver/webserver_config.py",
+        "AIRFLOW__FAB__COOKIE_SECURE": "true",
+        "AIRFLOW__FAB__COOKIE_SAMESITE": "Lax",
     }
 
 def test_webserver_config_missing_secret_key(env_helper):
@@ -687,6 +693,8 @@ def test_webserver_config_missing_secret_key(env_helper):
     # KeyError is swallowed by broad except
     assert result == {
         "AIRFLOW__FAB__CONFIG_FILE": "/python/mwaa/webserver/webserver_config.py",
+        "AIRFLOW__FAB__COOKIE_SECURE": "true",
+        "AIRFLOW__FAB__COOKIE_SAMESITE": "Lax",
     }
 
 # ---------------------------
