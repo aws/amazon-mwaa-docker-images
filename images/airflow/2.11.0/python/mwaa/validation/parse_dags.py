@@ -361,15 +361,17 @@ def collect_plugin_import_errors(plugins_folder: str) -> List[Dict[str, Any]]:
 
 def warm_up() -> None:
     """
-    Import the modules Airflow's DAG processor has loaded before it parses a file.
+    Load what Airflow's DAG processor has loaded before it parses a file.
 
-    Their import-time warnings, for example Airflow 2.11's timer deprecation warning,
-    are then raised here and not charged to the first DAG file that imports them.
+    That is the modules in compat.WARM_UP_MODULES and, on Airflow 3, the providers' task
+    decorators. Their import-time warnings, for example Airflow 2.11's timer deprecation
+    warning, are then raised here and not charged to the first DAG file that loads them.
     """
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         for module in compat.WARM_UP_MODULES:
             importlib.import_module(module)
+        compat.warm_up_providers()
 
 
 def worker_timeout_seconds() -> float:

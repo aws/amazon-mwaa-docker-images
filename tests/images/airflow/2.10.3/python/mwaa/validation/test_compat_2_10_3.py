@@ -56,3 +56,8 @@ def test_warm_up_modules_are_importable():
     """Every warm-up module exists in this Airflow version."""
     for module in compat.WARM_UP_MODULES:
         importlib.import_module(module)
+
+
+def test_warm_up_providers_loads_nothing():
+    """Airflow 2 has no provider code to load before parsing."""
+    assert compat.warm_up_providers() == {}

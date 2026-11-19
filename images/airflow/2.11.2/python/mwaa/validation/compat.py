@@ -18,6 +18,15 @@ from airflow.utils.file import list_py_file_paths
 WARM_UP_MODULES = ["airflow.models.baseoperator", "airflow.models.dag"]
 
 
+def warm_up_providers() -> Dict[str, Any]:
+    """
+    Load nothing: Airflow 2 doesn't load provider code while it parses a ``@task`` DAG.
+
+    :returns: An empty dict, where Airflow 3 returns the providers' task decorators.
+    """
+    return {}
+
+
 def safe_mode() -> bool:
     """Return Airflow's [core] dag_discovery_safe_mode setting."""
     return conf.getboolean("core", "dag_discovery_safe_mode")

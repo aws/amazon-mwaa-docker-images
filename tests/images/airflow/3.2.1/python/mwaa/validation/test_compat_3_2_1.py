@@ -101,3 +101,8 @@ def test_warm_up_modules_are_importable():
     """Every warm-up module exists in this Airflow version."""
     for module in compat.WARM_UP_MODULES:
         importlib.import_module(module)
+
+
+def test_warm_up_providers_loads_the_task_decorators():
+    """warm_up_providers returns the decorators @task looks up, including python."""
+    assert "python" in compat.warm_up_providers()

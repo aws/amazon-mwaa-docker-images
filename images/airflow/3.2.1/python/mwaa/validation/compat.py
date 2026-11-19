@@ -18,6 +18,20 @@ from airflow.dag_processing.importers.base import get_importer_registry
 WARM_UP_MODULES = ["airflow.models.baseoperator", "airflow.models.dag", "airflow.sdk"]
 
 
+def warm_up_providers() -> Dict[str, Any]:
+    """
+    Load the providers' task decorators, as the first ``@task`` in a DAG file does.
+
+    Airflow loads them lazily, so without this each forked worker would load them again
+    while it parses its DAG file, and their import-time warnings would be charged to it.
+
+    :returns: The task decorators, by name.
+    """
+    from airflow.sdk.providers_manager_runtime import ProvidersManagerTaskRuntime
+
+    return ProvidersManagerTaskRuntime().taskflow_decorators
+
+
 def safe_mode() -> bool:
     """Return Airflow's [core] dag_discovery_safe_mode setting."""
     return conf.getboolean("core", "dag_discovery_safe_mode")

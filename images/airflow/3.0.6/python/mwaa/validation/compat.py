@@ -18,6 +18,23 @@ from airflow.utils.file import list_py_file_paths
 WARM_UP_MODULES = ["airflow.models.baseoperator", "airflow.models.dag", "airflow.sdk"]
 
 
+def warm_up_providers() -> Dict[str, Any]:
+    """
+    Load the providers' task decorators, as the first ``@task`` in a DAG file does.
+
+    Airflow loads them lazily, so without this each forked worker would load them again
+    while it parses its DAG file, and their import-time warnings would be charged to it.
+    On Airflow 3.0.6 this also loads the provider hooks, which import flask_appbuilder and
+    flask_sqlalchemy, so their Flask deprecation warnings would otherwise be charged to
+    the first DAG file in each worker that uses ``@task``.
+
+    :returns: The task decorators, by name.
+    """
+    from airflow.providers_manager import ProvidersManager
+
+    return ProvidersManager().taskflow_decorators
+
+
 def safe_mode() -> bool:
     """Return Airflow's [core] dag_discovery_safe_mode setting."""
     return conf.getboolean("core", "dag_discovery_safe_mode")

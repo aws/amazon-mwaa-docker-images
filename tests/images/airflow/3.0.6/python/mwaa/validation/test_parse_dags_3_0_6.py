@@ -3,6 +3,7 @@
 import json
 import os
 import sys
+import warnings
 
 import pytest
 
@@ -194,3 +195,20 @@ def test_main_sends_ready_before_parsing(monkeypatch, write_dag, dags_folder, go
     assert parse_dags.file_timeout_seconds() == (
         parse_dags.worker_timeout_seconds() + parse_dags.SUBPROCESS_STARTUP_SECONDS
     )
+
+
+def test_warm_up_loads_provider_decorators_without_warnings(monkeypatch):
+    """warm_up loads the providers' task decorators with their warnings ignored."""
+    calls = []
+
+    def fake_warm_up_providers():
+        calls.append(True)
+        warnings.warn("raised while loading providers", DeprecationWarning)
+        return {}
+
+    monkeypatch.setattr(parse_dags.compat, "warm_up_providers", fake_warm_up_providers)
+    with warnings.catch_warnings(record=True) as recorded:
+        warnings.simplefilter("always")
+        parse_dags.warm_up()
+    assert calls == [True]
+    assert [str(w.message) for w in recorded] == []
