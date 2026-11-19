@@ -3,6 +3,159 @@ set -e
 
 COMMAND=$1
 
+# The test-command flags below set these. Ignore values inherited from the caller's shell.
+unset MWAA_TEST_DAGS_PATH MWAA_TEST_PLUGINS_PATH MWAA_TEST_REQUIREMENTS_DIR \
+    MWAA_TEST_REQUIREMENTS_FILE MWAA_TEST_STARTUP_SCRIPT_PATH MWAA_TEST_REPORT_PATH
+
+# Exit code for invalid command-line usage (EX_USAGE in sysexits.h).
+EX_USAGE=64
+
+usage_error() {
+    echo "ERROR: $1" >&2
+    echo "Usage:" >&2
+    echo "  ./run.sh test-dags [--dags <dir>] [--plugins <dir or plugins.zip>] [--requirements <file>] [--startup-script <file>] [--report <file>]" >&2
+    echo "  ./run.sh test-requirements [--requirements <file>]" >&2
+    echo "  ./run.sh test-startup-script [--startup-script <file>]" >&2
+    exit "$EX_USAGE"
+}
+
+# Print the absolute path of the existing folder $1.
+absolute_dir() {
+    (cd "$1" && pwd)
+}
+
+# Print the absolute path of $1, whose parent folder must exist.
+absolute_path() {
+    echo "$(absolute_dir "$(dirname "$1")")/$(basename "$1")"
+}
+
+# Exit with a usage error if compose can't mount the path $1.
+require_mountable() {
+    [[ "$1" != *:* ]] || usage_error "Paths that contain ':' can't be mounted: $1"
+}
+
+# Exit with a usage error if anything, even a broken symlink, exists at the report path
+# $1. run.sh creates the report itself, so it never empties or changes a file you have.
+require_new_report() {
+    if [ -e "$1" ] || [ -L "$1" ]; then
+        usage_error "The report file already exists: $1. Pass a new path with --report, or delete the file."
+    fi
+}
+
+# Print the path $1 with every symlink resolved. The last part of $1 may not exist yet.
+physical_path() {
+    local path=$1 link hops=0
+    while [ -L "$path" ]; do
+        hops=$((hops + 1))
+        [ "$hops" -le 40 ] || return 1
+        link=$(readlink "$path")
+        case "$link" in
+            /*) path=$link ;;
+            *) path="$(dirname "$path")/$link" ;;
+        esac
+    done
+    if [ -d "$path" ]; then
+        (cd "$path" && pwd -P)
+    else
+        echo "$(cd "$(dirname "$path")" && pwd -P)/$(basename "$path")"
+    fi
+}
+
+# Print the folders Finch shares with its virtual machine, as Finch documents them: your
+# home folder and each additional_directories entry in ~/.finch/finch.yaml, with symlinks
+# resolved. Entries that don't exist are left out.
+finch_shared_dirs() {
+    local config="$HOME/.finch/finch.yaml" line dir in_list=false
+    (cd "$HOME" && pwd -P)
+    if [ ! -f "$config" ]; then
+        return 0
+    fi
+    while IFS= read -r line || [ -n "$line" ]; do
+        line=${line%%#*}
+        if [[ "$line" =~ ^additional_directories: ]]; then
+            in_list=true
+            continue
+        fi
+        if [[ "$line" =~ ^[^[:space:]] ]]; then
+            in_list=false
+        fi
+        if $in_list && [[ "$line" =~ ^[[:space:]]*(-[[:space:]]+)?path:[[:space:]]*(.*[^[:space:]]) ]]; then
+            dir=${BASH_REMATCH[2]}
+            dir=${dir#[\"\']}
+            dir=${dir%[\"\']}
+            if [[ "$dir" == "~"* ]]; then
+                dir="$HOME${dir#\~}"
+            fi
+            if [ -d "$dir" ]; then
+                (cd "$dir" && pwd -P)
+            fi
+        fi
+    done < "$config"
+    return 0
+}
+
+is_test_command() {
+    [ "$1" == "test-dags" ] || [ "$1" == "test-requirements" ] || [ "$1" == "test-startup-script" ]
+}
+
+# Input flags of the test commands. Each one sets a variable that
+# docker-compose-test-commands.yaml maps to a read-only volume. Unset variables fall
+# back to this folder's dags/, plugins/, requirements/ and startup/, as before.
+if is_test_command "$COMMAND"; then
+    shift
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --*=*) usage_error "Put a space between the option and its value: ${1%%=*} <value>" ;;
+        esac
+        [ $# -ge 2 ] || usage_error "$1 needs a value."
+        case "$COMMAND $1" in
+            "test-dags --dags")
+                [ -d "$2" ] || usage_error "--dags must be a folder: $2"
+                MWAA_TEST_DAGS_PATH=$(absolute_dir "$2")
+                require_mountable "$MWAA_TEST_DAGS_PATH"
+                export MWAA_TEST_DAGS_PATH
+                ;;
+            "test-dags --plugins")
+                if [ -d "$2" ] || { [ -f "$2" ] && [[ "$2" == *.zip ]]; }; then
+                    MWAA_TEST_PLUGINS_PATH=$(absolute_path "$2")
+                    require_mountable "$MWAA_TEST_PLUGINS_PATH"
+                    export MWAA_TEST_PLUGINS_PATH
+                else
+                    usage_error "--plugins must be a folder or a .zip file: $2"
+                fi
+                ;;
+            "test-dags --requirements" | "test-requirements --requirements")
+                [ -f "$2" ] || usage_error "--requirements must be a file: $2"
+                # Mount the file's folder, so -r and -c lines that name files next to it work.
+                MWAA_TEST_REQUIREMENTS_DIR=$(absolute_dir "$(dirname "$2")")
+                require_mountable "$MWAA_TEST_REQUIREMENTS_DIR"
+                MWAA_TEST_REQUIREMENTS_FILE=$(basename "$2")
+                export MWAA_TEST_REQUIREMENTS_DIR
+                ;;
+            "test-dags --startup-script" | "test-startup-script --startup-script")
+                [ -f "$2" ] || usage_error "--startup-script must be a file: $2"
+                MWAA_TEST_STARTUP_SCRIPT_PATH=$(absolute_path "$2")
+                require_mountable "$MWAA_TEST_STARTUP_SCRIPT_PATH"
+                export MWAA_TEST_STARTUP_SCRIPT_PATH
+                ;;
+            "test-dags --report")
+                [ -d "$(dirname "$2")" ] || usage_error "--report folder does not exist: $(dirname "$2")"
+                MWAA_TEST_REPORT_PATH=$(absolute_path "$2")
+                ;;
+            *)
+                usage_error "Unknown option for $COMMAND: $1"
+                ;;
+        esac
+        shift 2
+    done
+    if [ "$COMMAND" == "test-dags" ]; then
+        # A new report name for each run, so earlier reports are kept.
+        MWAA_TEST_REPORT_PATH="${MWAA_TEST_REPORT_PATH:-$PWD/validation-report-$(date +%Y%m%d-%H%M%S).json}"
+        require_mountable "$MWAA_TEST_REPORT_PATH"
+        require_new_report "$MWAA_TEST_REPORT_PATH"
+    fi
+fi
+
 # Check if 'podman' or 'finch' is available, otherwise use 'docker'
 if command -v finch &> /dev/null; then
     CONTAINER_RUNTIME="finch"
@@ -12,10 +165,47 @@ else
     CONTAINER_RUNTIME="docker"
 fi
 
+# Finch shares only some host folders with its virtual machine, and a path outside them
+# is mounted as an empty folder, so test-dags would check nothing and still exit 0.
+# Finch documents the shared folders as your home folder plus additional_directories in
+# ~/.finch/finch.yaml. Paths are resolved first, and compose gets the resolved path: the
+# virtual machine has its own /tmp, for example, while macOS's /tmp is /private/tmp.
+if [ "$CONTAINER_RUNTIME" == "finch" ] && is_test_command "$COMMAND"; then
+    finch_dirs=$(finch_shared_dirs)
+    # Print the path $2, given with the flag $1, with symlinks resolved. Exit with a usage
+    # error unless it's in a folder Finch shares.
+    finch_shared_path() {
+        local resolved dir
+        resolved=$(physical_path "$2") || usage_error "Could not resolve the $1 path: $2"
+        while IFS= read -r dir; do
+            case "$resolved/" in
+                "${dir%/}"/*) echo "$resolved"; return 0 ;;
+            esac
+        done <<< "$finch_dirs"
+        usage_error "With Finch, the $1 path must be in your home folder or in a folder listed under additional_directories in ~/.finch/finch.yaml, because Finch shares only those folders with its virtual machine: $2"
+    }
+    # Replace the path in the variable named $2, given with the flag $1, with its resolved form.
+    use_finch_shared_path() {
+        local resolved
+        [ -n "${!2:-}" ] || return 0
+        resolved=$(finch_shared_path "$1" "${!2}") || exit "$EX_USAGE"
+        printf -v "$2" '%s' "$resolved"
+    }
+    use_finch_shared_path --dags MWAA_TEST_DAGS_PATH
+    use_finch_shared_path --plugins MWAA_TEST_PLUGINS_PATH
+    if [ -n "${MWAA_TEST_REQUIREMENTS_DIR:-}" ]; then
+        # Check the file as well as its folder, because the file can be a symlink.
+        finch_shared_path --requirements "$MWAA_TEST_REQUIREMENTS_DIR/$MWAA_TEST_REQUIREMENTS_FILE" >/dev/null || exit "$EX_USAGE"
+        use_finch_shared_path --requirements MWAA_TEST_REQUIREMENTS_DIR
+    fi
+    use_finch_shared_path --startup-script MWAA_TEST_STARTUP_SCRIPT_PATH
+    use_finch_shared_path --report MWAA_TEST_REPORT_PATH
+fi
+
 # PLATFORM (linux/amd64 or linux/arm64) is read by build.sh and by
 # docker-compose-test-commands.yaml. The full local stack runs on the host's platform.
-if [ -n "${PLATFORM:-}" ] && [ "$COMMAND" != "test-requirements" ] && [ "$COMMAND" != "test-startup-script" ] && [ "$COMMAND" != "package-requirements" ]; then
-    echo "ERROR: PLATFORM is only supported with test-requirements, test-startup-script and package-requirements." >&2
+if [ -n "${PLATFORM:-}" ] && [ "$COMMAND" != "test-dags" ] && [ "$COMMAND" != "test-requirements" ] && [ "$COMMAND" != "test-startup-script" ] && [ "$COMMAND" != "package-requirements" ]; then
+    echo "ERROR: PLATFORM is only supported with test-dags, test-requirements, test-startup-script and package-requirements." >&2
     exit 1
 fi
 
@@ -90,7 +280,7 @@ MWAA_LOCAL_RUNNER="true"
 export MWAA_LOCAL_RUNNER
 
 # MWAA Configuration
-MWAA__CORE__REQUIREMENTS_PATH="/usr/local/airflow/requirements/requirements.txt"
+MWAA__CORE__REQUIREMENTS_PATH="/usr/local/airflow/requirements/${MWAA_TEST_REQUIREMENTS_FILE:-requirements.txt}"
 MWAA__CORE__STARTUP_SCRIPT_PATH="/usr/local/airflow/startup/startup.sh"
 # Logging values derived from USE_CLOUDWATCH_LOGS.
 case "$USE_CLOUDWATCH_LOGS" in
@@ -217,6 +407,30 @@ create_log_group_if_not_exists "Task" "$MWAA__LOGGING__AIRFLOW_TASK_LOGS_ENABLED
 create_log_group_if_not_exists "WebServer" "$MWAA__LOGGING__AIRFLOW_WEBSERVER_LOGS_ENABLED"
 create_log_group_if_not_exists "Worker" "$MWAA__LOGGING__AIRFLOW_WORKER_LOGS_ENABLED"
 
+# Keep a written report readable only by you, or remove the file if the run wrote nothing.
+finish_report() {
+    if [ -s "$MWAA_TEST_REPORT_PATH" ]; then
+        chmod 600 "$MWAA_TEST_REPORT_PATH" 2>/dev/null || true
+    else
+        rm -f "$MWAA_TEST_REPORT_PATH"
+    fi
+}
+
+# test-dags writes its report through a bind mount. Set this before .env is written,
+# so every runtime mounts the same file.
+if [ "$COMMAND" == "test-dags" ]; then
+    export MWAA_TEST_REPORT_PATH
+    # The container's airflow user writes the report in place. Create a new file first,
+    # so the bind mount is a file and not a folder. With set -C the shell refuses to
+    # create it if anything exists at that path by now.
+    if ! (set -C && : > "$MWAA_TEST_REPORT_PATH") 2>/dev/null; then
+        usage_error "Could not create the report file: $MWAA_TEST_REPORT_PATH"
+    fi
+    # Let the container write it for this run only.
+    chmod 666 "$MWAA_TEST_REPORT_PATH"
+    trap finish_report EXIT
+fi
+
 # Write the values the compose files read to .env. finch compose runs inside the Finch VM and
 # only receives the AWS credentials from this shell, but it reads .env from this directory.
 # Docker and Podman read .env too, and the values exported in this shell take precedence, so
@@ -248,6 +462,11 @@ write_compose_env_file \
     AWS_SECRET_ACCESS_KEY \
     AWS_SESSION_TOKEN \
     FERNET_KEY \
+    MWAA_TEST_DAGS_PATH \
+    MWAA_TEST_PLUGINS_PATH \
+    MWAA_TEST_REPORT_PATH \
+    MWAA_TEST_REQUIREMENTS_DIR \
+    MWAA_TEST_STARTUP_SCRIPT_PATH \
     MWAA__CORE__API_SERVER_URL \
     MWAA__CORE__KMS_KEY_ARN \
     MWAA__CORE__MWAA_SIGNAL_HANDLING_ENABLED \
@@ -277,7 +496,7 @@ write_compose_env_file \
     PLATFORM \
     REGION
 
-if [ "$COMMAND" == "test-requirements" ] || [ "$COMMAND" == "test-startup-script" ]; then
+if is_test_command "$COMMAND"; then
     COMPOSE=("$CONTAINER_RUNTIME" compose -f docker-compose-test-commands.yaml)
     # --force-recreate starts a fresh container on every run, so packages and plugins
     # installed by an earlier run can't change the result.

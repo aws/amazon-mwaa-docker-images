@@ -7,12 +7,20 @@ x-airflow-common: &airflow-common
   environment:
     AWS_REGION: "us-west-2"
     AWS_DEFAULT_REGION: "us-west-2"
+    # The test commands run customer code (the startup script, pip builds of source
+    # packages, plugins and DAGs) and need no AWS access, so keep boto3 and the AWS CLI
+    # from using the host's instance role through the EC2 instance metadata service.
+    AWS_EC2_METADATA_DISABLED: "true"
 
     # > MWAA Configurations
     # >> Core Configuration
     # Use this environment variable if you have custom requirements you want to install when the
     # container is up.
     MWAA__CORE__REQUIREMENTS_PATH: ${MWAA__CORE__REQUIREMENTS_PATH}
+    # test-dags prints this host path of its report in its summary.
+    MWAA_TEST_REPORT_DISPLAY_PATH: ${MWAA_TEST_REPORT_PATH:-}
+    # test-dags names this host path of the DAGs folder when it finds no DAG files.
+    MWAA_TEST_DAGS_DISPLAY_PATH: ${MWAA_TEST_DAGS_PATH:-./dags}
     MWAA__CORE__AUTH_TYPE: "testing"
     # Additional Airflow configuration can be passed here in JSON form.
     MWAA__CORE__CUSTOM_AIRFLOW_CONFIGS: "{}"
@@ -47,12 +55,36 @@ services:
     container_name: mwaa-2112-requirements
     # Test commands run once; a restart would hide their exit code.
     restart: "no"
+    volumes:
+      - ./dags:/usr/local/airflow/dags
+      - ./plugins:/usr/local/airflow/plugins
+      - ${MWAA_TEST_REQUIREMENTS_DIR:-./requirements}:/usr/local/airflow/requirements:ro
+      - ./startup:/usr/local/airflow/startup
 
   test-startup-script:
     <<: *airflow-common
     command: test-startup-script
     container_name: mwaa-2112-startup-script
     restart: "no"
+    volumes:
+      - ./dags:/usr/local/airflow/dags
+      - ./plugins:/usr/local/airflow/plugins
+      - ./requirements:/usr/local/airflow/requirements
+      - ${MWAA_TEST_STARTUP_SCRIPT_PATH:-./startup/startup.sh}:/usr/local/airflow/startup/startup.sh:ro
+
+  test-dags:
+    <<: *airflow-common
+    command: test-dags
+    container_name: mwaa-2112-test-dags
+    restart: "no"
+    volumes:
+      - ${MWAA_TEST_DAGS_PATH:-./dags}:/usr/local/airflow/dags:ro
+      # A plugins folder or a plugins.zip. test-dags copies or unzips it into
+      # /usr/local/airflow/plugins, as MWAA does.
+      - ${MWAA_TEST_PLUGINS_PATH:-./plugins}:/usr/local/airflow/plugins-input:ro
+      - ${MWAA_TEST_REQUIREMENTS_DIR:-./requirements}:/usr/local/airflow/requirements:ro
+      - ${MWAA_TEST_STARTUP_SCRIPT_PATH:-./startup/startup.sh}:/usr/local/airflow/startup/startup.sh:ro
+      - ${MWAA_TEST_REPORT_PATH:-./validation-report.json}:/usr/local/airflow/validation-report.json
 
   package-requirements:
     <<: *airflow-common
