@@ -376,13 +376,15 @@ async def test_main_test_dags_bad_plugins_skip_the_startup_script(mock_environ, 
             patch.object(sys, 'argv', ['script.py', 'test-dags']), \
             patch('mwaa.validation.run_dag_validation.prepare_plugins', return_value="bad plugins.zip"), \
             patch('mwaa.entrypoint.setup_environment_variables') as setup_env, \
-            patch('mwaa.validation.run_dag_validation.run_dag_validation', new=AsyncMock(return_value=1)) as validate:
+            patch('mwaa.validation.run_dag_validation.write_error_report', return_value=1) as write_error, \
+            patch('mwaa.validation.run_dag_validation.run_dag_validation', new=AsyncMock()) as validate:
         with pytest.raises(SystemExit) as exit_info:
             await main()
     assert exit_info.value.code == 1
     setup_env.assert_not_called()
-    validate.assert_awaited_once()
-    assert validate.await_args.kwargs == {"plugins_error": "bad plugins.zip"}
+    validate.assert_not_awaited()
+    write_error.assert_called_once()
+    assert write_error.call_args.args[1] == "bad plugins.zip"
 
 
 @pytest.mark.asyncio

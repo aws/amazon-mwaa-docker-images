@@ -133,18 +133,19 @@ def test_prepare_plugins_unzips_into_the_plugins_folder(paths, tmp_path):
     assert (tmp_path / "plugins" / "wheels" / "pkg-1.0-py3-none-any.whl").read_text() == "wheel"
 
 
-@pytest.mark.asyncio
-async def test_bad_plugins_input_is_a_top_level_error(paths, environ, tmp_path):
-    """A plugins error from prepare_plugins stops validation before install."""
-    (tmp_path / "requirements.txt").write_text("requests\n")
-    with patch.object(rdv, "install_user_requirements", AsyncMock()) as install, \
-            patch.object(rdv, "run_parser_child") as child:
-        assert await rdv.run_dag_validation(environ, paths, plugins_error="bad plugins input") == 1
-    install.assert_not_awaited()
-    child.assert_not_called()
+def test_write_error_report(paths, environ, capsys):
+    """An error before validation starts still gives a full report, a summary and exit code 1."""
+    environ["MWAA_TEST_REPORT_DISPLAY_PATH"] = "/home/me/report.json"
+    assert rdv.write_error_report(environ, "bad plugins input", paths) == 1
     report = _read_report(paths)
     assert report["error"] == "bad plugins input"
     assert report["requirements"]["status"] == "skipped"
+    assert report["airflow_version"] == environ["AIRFLOW_VERSION"]
+    assert report["dags"] == []
+    out = capsys.readouterr().out
+    assert "error: bad plugins input" in out
+    assert "report: /home/me/report.json" in out
+    assert "No DAG files found" not in out
 
 
 @pytest.mark.asyncio

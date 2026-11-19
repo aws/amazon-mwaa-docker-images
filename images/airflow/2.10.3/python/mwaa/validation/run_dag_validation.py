@@ -278,10 +278,46 @@ def write_report(report: Dict[str, Any], report_path: str) -> None:
         report_file.write("\n")
 
 
+def _finish(environ: Dict[str, str], paths: ValidationPaths, **fields: Any) -> int:
+    """
+    Build and write the report, print the summary and return the exit code.
+
+    :param environ: The container environment. It gives the Airflow version and the
+      host paths run.sh passes for the summary.
+    :param paths: The container paths.
+    :param fields: The report fields, as build_report takes them.
+    """
+    report = build_report(
+        airflow_version=environ.get("AIRFLOW_VERSION", "unknown"),
+        python_version=platform.python_version(),
+        **fields,
+    )
+    write_report(report, paths.report_path)
+    # run.sh passes the host paths of the report and the DAGs folder, which are the ones
+    # users can open.
+    display_path = environ.get("MWAA_TEST_REPORT_DISPLAY_PATH") or paths.report_path
+    dags_display = environ.get("MWAA_TEST_DAGS_DISPLAY_PATH") or paths.dags_folder
+    print(format_summary(report, display_path, dags_display), flush=True)
+    return exit_code(report)
+
+
+def write_error_report(
+    environ: Dict[str, str], error: str, paths: ValidationPaths = ValidationPaths()
+) -> int:
+    """
+    Write a report for a check that failed before validation started, and return 1.
+
+    The entrypoint uses this when prepare_plugins fails, before the startup script runs.
+
+    :param environ: The container environment.
+    :param error: Why the check failed. It becomes the report's top-level error.
+    :param paths: The container paths; tests pass temporary ones.
+    """
+    return _finish(environ, paths, requirements_status=REQUIREMENTS_SKIPPED, error=error)
+
+
 async def run_dag_validation(
-    environ: Dict[str, str],
-    paths: ValidationPaths = ValidationPaths(),
-    plugins_error: Optional[str] = None,
+    environ: Dict[str, str], paths: ValidationPaths = ValidationPaths()
 ) -> int:
     """
     Validate requirements, plugins and DAGs, write the report and return the exit code.
@@ -290,26 +326,11 @@ async def run_dag_validation(
 
     :param environ: The environment from setup_environment_variables.
     :param paths: The container paths; tests pass temporary ones.
-    :param plugins_error: The error prepare_plugins returned, if any. The report then
-      carries it, and nothing is installed or parsed.
     :returns: 0, 1 or 2, as decided by mwaa.validation.report.exit_code.
     """
-    airflow_version = environ.get("AIRFLOW_VERSION", "unknown")
-    python_version = platform.python_version()
 
     def finish(**fields: Any) -> int:
-        report = build_report(
-            airflow_version=airflow_version, python_version=python_version, **fields
-        )
-        write_report(report, paths.report_path)
-        # run.sh passes the report's path on the host, which is the one users can open.
-        display_path = environ.get("MWAA_TEST_REPORT_DISPLAY_PATH") or paths.report_path
-        dags_display = environ.get("MWAA_TEST_DAGS_DISPLAY_PATH") or paths.dags_folder
-        print(format_summary(report, display_path, dags_display), flush=True)
-        return exit_code(report)
-
-    if plugins_error:
-        return finish(requirements_status=REQUIREMENTS_SKIPPED, error=plugins_error)
+        return _finish(environ, paths, **fields)
 
     requirements_status = REQUIREMENTS_SKIPPED
     requirements_file = environ.get("MWAA__CORE__REQUIREMENTS_PATH", "")

@@ -285,13 +285,17 @@ async def main() -> None:
 
     if command == "test-dags":
         # Imported here so that production commands never load the validation package.
-        from mwaa.validation.run_dag_validation import prepare_plugins, run_dag_validation
+        from mwaa.validation.run_dag_validation import (
+            prepare_plugins,
+            run_dag_validation,
+            write_error_report,
+        )
         # MWAA unzips plugins.zip before it runs the startup script, which can use files
         # from it, so prepare the plugins first.
         plugins_error = prepare_plugins()
         if plugins_error:
-            # The check has already failed, so don't run the startup script.
-            sys.exit(await run_dag_validation(dict(os.environ), plugins_error=plugins_error))
+            # The check has already failed: write the report and skip the startup script.
+            sys.exit(write_error_report(dict(os.environ), plugins_error))
         environ = setup_environment_variables(command, executor_type)
         sys.exit(await run_dag_validation(environ))
 
