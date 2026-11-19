@@ -261,6 +261,7 @@ Without flags, each command uses this version folder's `dags/`, `plugins/`, `req
 - `--plugins` takes a folder or a `plugins.zip`. A zip is unzipped into the plugins folder, as MWAA does.
 - `--report` sets where the JSON report is written. It must be a new file: if anything already exists at that path, `run.sh` exits 64, so it never overwrites a file. The default is a new `./validation-report-YYYYMMDD-HHMMSS.json` in the current folder. The report is readable only by you, and if the check stops before writing it, the empty file is removed.
 - Each run starts a fresh container, so packages and plugins from an earlier run don't carry over.
+- With Finch, every path you pass must be in your home folder or in a folder listed under `additional_directories` in `~/.finch/finch.yaml`, because Finch shares only those folders with its virtual machine. A path anywhere else, including `/tmp` and `mktemp -d` folders, would be mounted as an empty folder, so `run.sh` exits 64 instead. Symlinks are resolved before the check. To use another folder, add it to `additional_directories` and run `finch vm stop && finch vm start`.
 
 `test-dags` does the following without starting Airflow or a database:
 
@@ -281,7 +282,7 @@ To see a report with problems in it, run the sample files in this repository fro
 | 0 | Requirements installed (or there are none), every plugin loaded and every DAG file parsed. Warnings don't change the code. |
 | 1 | At least one DAG import error or plugin import error, or the check couldn't finish (see `error` in the report). |
 | 2 | The requirements failed to install. DAGs aren't parsed. |
-| 64 | `run.sh` got an unknown flag, a path that doesn't exist, or a `--report` path that already exists. Nothing ran. |
+| 64 | `run.sh` got an unknown flag, a path that doesn't exist, a `--report` path that already exists, or, with Finch, a path in a folder Finch doesn't share. Nothing ran. |
 
 `test-requirements` returns 0 or 2. `test-startup-script` returns 0 unless the script times out or its environment variables can't be read.
 
@@ -347,7 +348,7 @@ To see a report with problems in it, run the sample files in this repository fro
 - **A build fails on `FROM localhost/...` or can't pull a `-base` image.** The derivative Dockerfiles start from the base image that `build.sh` builds and tags locally. Always build with `build.sh` (or `run.sh`), not with `docker build` on a single Dockerfile.
 - **A folder named `validation-report.json` appears.** Run the test commands through `run.sh`, not `docker compose` directly. `run.sh` creates the report file before the container starts; otherwise Docker creates a folder at that path.
 - **Apple Silicon.** A native build gives an arm64 image. To test against x86_64 packages, build and run with `PLATFORM=linux/amd64`, which uses emulation and is slower.
-- **Podman and Finch.** With Finch, `run.sh` reads the exit code from the stopped container, because `finch compose` has no `--exit-code-from`, and passes the flags' paths to `finch compose` through `.env`. Exit codes were verified with Docker Compose v2 and podman-compose. Finch was checked only with a stand-in for `finch compose`.
+- **Podman and Finch.** With Finch, `run.sh` reads the exit code from the stopped container, because `finch compose` has no `--exit-code-from`, and passes the flags' paths to `finch compose` through `.env`. Exit codes were verified with Docker Compose v2, podman-compose and Finch 1.19.0. If a Finch run exits 64 with a message about a folder Finch doesn't share, move the files into your home folder or add their folder to `additional_directories` in `~/.finch/finch.yaml`.
 - **Windows.** `run.ps1` and `build.ps1` don't have the new flags, `PLATFORM` or `test-dags` yet.
 
 ## Security
