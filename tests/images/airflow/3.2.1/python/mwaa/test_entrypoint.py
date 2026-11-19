@@ -345,10 +345,14 @@ def test_test_dags_is_an_available_test_command():
 
 @pytest.mark.asyncio
 async def test_main_test_dags_exits_with_the_validation_code(mock_environ, mock_db_utils):
-    """test-dags runs the validation and nothing that needs a database or a queue."""
+    """test-dags prepares plugins before the startup script, then runs the validation only."""
+    calls = []
     with patch.dict(os.environ, mock_environ), \
             patch.object(sys, 'argv', ['script.py', 'test-dags']), \
-            patch('mwaa.entrypoint.setup_environment_variables', return_value=mock_environ), \
+            patch('mwaa.validation.run_dag_validation.prepare_plugins',
+                  side_effect=lambda: calls.append("plugins")) as prepare, \
+            patch('mwaa.entrypoint.setup_environment_variables',
+                  side_effect=lambda *args: calls.append("startup") or mock_environ), \
             patch('mwaa.validation.run_dag_validation.run_dag_validation', new=AsyncMock(return_value=1)) as validate, \
             patch('mwaa.entrypoint.install_user_requirements') as mock_install_req, \
             patch('mwaa.entrypoint.create_queue') as mock_create_queue, \
@@ -356,10 +360,28 @@ async def test_main_test_dags_exits_with_the_validation_code(mock_environ, mock_
         with pytest.raises(SystemExit) as exit_info:
             await main()
     assert exit_info.value.code == 1
+    assert calls == ["plugins", "startup"]
+    prepare.assert_called_once_with()
     validate.assert_awaited_once_with(mock_environ)
     mock_install_req.assert_not_called()
     mock_create_queue.assert_not_called()
     mock_execute.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_main_test_dags_bad_plugins_skip_the_startup_script(mock_environ, mock_db_utils):
+    """If the plugins can't be prepared, the startup script doesn't run and the report has the error."""
+    with patch.dict(os.environ, mock_environ), \
+            patch.object(sys, 'argv', ['script.py', 'test-dags']), \
+            patch('mwaa.validation.run_dag_validation.prepare_plugins', return_value="bad plugins.zip"), \
+            patch('mwaa.entrypoint.setup_environment_variables') as setup_env, \
+            patch('mwaa.validation.run_dag_validation.run_dag_validation', new=AsyncMock(return_value=1)) as validate:
+        with pytest.raises(SystemExit) as exit_info:
+            await main()
+    assert exit_info.value.code == 1
+    setup_env.assert_not_called()
+    validate.assert_awaited_once()
+    assert validate.await_args.kwargs == {"plugins_error": "bad plugins.zip"}
 
 
 @pytest.mark.asyncio

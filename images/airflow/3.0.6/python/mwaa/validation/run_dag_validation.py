@@ -5,8 +5,9 @@ The command checks a customer's requirements, plugins and DAGs against this imag
 Airflow version without a metadata database:
 
 1. Copy the mounted plugins folder, or unzip a mounted plugins.zip, into the plugins
-   folder, as MWAA does. This happens first because packaged requirements install
-   from the plugins folder.
+   folder, as MWAA does (prepare_plugins). The entrypoint does this before it runs the
+   startup script, because MWAA's startup script can use files from plugins.zip, and
+   packaged requirements install from the plugins folder.
 2. Install the requirements with install_user_requirements, as test-requirements does.
 3. Load plugins and parse DAGs in a child process (mwaa.validation.parse_dags).
 4. Write the JSON report, print a summary and return the exit code.
@@ -26,7 +27,7 @@ import tempfile
 import time
 import zipfile
 from dataclasses import dataclass
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 from mwaa.utils.user_requirements import install_user_requirements
 from mwaa.validation.report import (
@@ -101,6 +102,21 @@ def materialize_plugins(source: str, destination: str) -> None:
         _extract_zip(source, destination)
     else:
         raise ValidationInputError(f"Plugins input {source} is neither a folder nor a zip file.")
+
+
+def prepare_plugins(paths: ValidationPaths = ValidationPaths()) -> Optional[str]:
+    """
+    Copy or unzip the mounted plugins input into the plugins folder.
+
+    :param paths: The container paths; tests pass temporary ones.
+    :returns: None, or an error message if the plugins input can't be used.
+    """
+    try:
+        materialize_plugins(paths.plugins_input, paths.plugins_folder)
+    except (ValidationInputError, OSError, zipfile.BadZipFile) as error:
+        logger.error("Could not prepare the plugins folder: %s", error)
+        return str(error)
+    return None
 
 
 def parser_environment(environ: Dict[str, str], paths: ValidationPaths) -> Dict[str, str]:
@@ -263,13 +279,19 @@ def write_report(report: Dict[str, Any], report_path: str) -> None:
 
 
 async def run_dag_validation(
-    environ: Dict[str, str], paths: ValidationPaths = ValidationPaths()
+    environ: Dict[str, str],
+    paths: ValidationPaths = ValidationPaths(),
+    plugins_error: Optional[str] = None,
 ) -> int:
     """
     Validate requirements, plugins and DAGs, write the report and return the exit code.
 
+    Call prepare_plugins first.
+
     :param environ: The environment from setup_environment_variables.
     :param paths: The container paths; tests pass temporary ones.
+    :param plugins_error: The error prepare_plugins returned, if any. The report then
+      carries it, and nothing is installed or parsed.
     :returns: 0, 1 or 2, as decided by mwaa.validation.report.exit_code.
     """
     airflow_version = environ.get("AIRFLOW_VERSION", "unknown")
@@ -282,14 +304,12 @@ async def run_dag_validation(
         write_report(report, paths.report_path)
         # run.sh passes the report's path on the host, which is the one users can open.
         display_path = environ.get("MWAA_TEST_REPORT_DISPLAY_PATH") or paths.report_path
-        print(format_summary(report, display_path), flush=True)
+        dags_display = environ.get("MWAA_TEST_DAGS_DISPLAY_PATH") or paths.dags_folder
+        print(format_summary(report, display_path, dags_display), flush=True)
         return exit_code(report)
 
-    try:
-        materialize_plugins(paths.plugins_input, paths.plugins_folder)
-    except (ValidationInputError, OSError, zipfile.BadZipFile) as error:
-        logger.error("Could not prepare the plugins folder: %s", error)
-        return finish(requirements_status=REQUIREMENTS_SKIPPED, error=str(error))
+    if plugins_error:
+        return finish(requirements_status=REQUIREMENTS_SKIPPED, error=plugins_error)
 
     requirements_status = REQUIREMENTS_SKIPPED
     requirements_file = environ.get("MWAA__CORE__REQUIREMENTS_PATH", "")

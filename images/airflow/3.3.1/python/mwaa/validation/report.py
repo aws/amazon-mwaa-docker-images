@@ -129,12 +129,28 @@ def _count(number: int, noun: str) -> str:
     return f"{number} {noun}" if number == 1 else f"{number} {noun}s"
 
 
-def format_summary(report: Dict[str, Any], report_path: str) -> str:
+def no_dag_files_hint(dags_folder: str) -> str:
+    """
+    Explain why a DAGs folder can yield no DAG files.
+
+    :param dags_folder: The DAGs folder, as the user gave it.
+    """
+    return (
+        f"No DAG files found in {dags_folder}. Airflow skips files matched by "
+        ".airflowignore and, in safe mode (the default), files that don't contain both "
+        '"airflow" and "dag" (in any case).'
+    )
+
+
+def format_summary(
+    report: Dict[str, Any], report_path: str, dags_folder: Optional[str] = None
+) -> str:
     """
     Format a short human-readable summary of a report for stdout.
 
     :param report: A report produced by build_report.
     :param report_path: Where the report was written.
+    :param dags_folder: The DAGs folder to name when no DAG files were found.
     :returns: The summary text, without a trailing newline.
     """
     requirements = report["requirements"]
@@ -154,6 +170,9 @@ def format_summary(report: Dict[str, Any], report_path: str) -> str:
         f"{_count(summary['import_errors'], 'import error')}, "
         f"{_count(summary['warnings'], 'warning')}"
     )
+    parsed = not report["error"] and requirements["status"] != REQUIREMENTS_FAILED
+    if parsed and summary["files"] == 0:
+        lines.append(f"  {no_dag_files_hint(dags_folder or 'the DAGs folder')}")
     for dag in report["dags"]:
         if dag["import_error"]:
             lines.append(f"  FAIL {dag['file']}: {dag['import_error']}")

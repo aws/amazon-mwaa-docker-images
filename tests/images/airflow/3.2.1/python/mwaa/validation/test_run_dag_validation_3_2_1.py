@@ -119,19 +119,43 @@ async def test_report_is_written_in_place(paths, environ):
     assert _read_report(paths)["schema_version"] == 1
 
 
+def test_prepare_plugins_reports_a_bad_input(paths, tmp_path):
+    """A plugins input that is neither a folder nor a zip is returned as an error."""
+    (tmp_path / "plugins-input").write_text("not a zip")
+    assert "neither a folder nor a zip file" in rdv.prepare_plugins(paths)
+
+
+def test_prepare_plugins_unzips_into_the_plugins_folder(paths, tmp_path):
+    """A good plugins.zip is unzipped, so a startup script that runs next can use its files."""
+    with zipfile.ZipFile(tmp_path / "plugins-input", "w") as archive:
+        archive.writestr("wheels/pkg-1.0-py3-none-any.whl", "wheel")
+    assert rdv.prepare_plugins(paths) is None
+    assert (tmp_path / "plugins" / "wheels" / "pkg-1.0-py3-none-any.whl").read_text() == "wheel"
+
+
 @pytest.mark.asyncio
 async def test_bad_plugins_input_is_a_top_level_error(paths, environ, tmp_path):
-    """A plugins input that is neither a folder nor a zip stops validation before install."""
-    (tmp_path / "plugins-input").write_text("not a zip")
+    """A plugins error from prepare_plugins stops validation before install."""
     (tmp_path / "requirements.txt").write_text("requests\n")
     with patch.object(rdv, "install_user_requirements", AsyncMock()) as install, \
             patch.object(rdv, "run_parser_child") as child:
-        assert await rdv.run_dag_validation(environ, paths) == 1
+        assert await rdv.run_dag_validation(environ, paths, plugins_error="bad plugins input") == 1
     install.assert_not_awaited()
     child.assert_not_called()
     report = _read_report(paths)
-    assert "neither a folder nor a zip file" in report["error"]
+    assert report["error"] == "bad plugins input"
     assert report["requirements"]["status"] == "skipped"
+
+
+@pytest.mark.asyncio
+async def test_summary_explains_an_empty_dags_folder(paths, environ, capsys):
+    """With no DAG files, the summary names the host DAGs folder and the reasons files are skipped."""
+    environ["MWAA_TEST_DAGS_DISPLAY_PATH"] = "/home/me/dags"
+    with patch.object(rdv, "run_parser_child", return_value=_child_result()):
+        assert await rdv.run_dag_validation(environ, paths) == 0
+    out = capsys.readouterr().out
+    assert "No DAG files found in /home/me/dags." in out
+    assert ".airflowignore" in out
 
 
 def test_plugins_folder_is_copied(tmp_path):

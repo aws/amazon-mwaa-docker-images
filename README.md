@@ -265,11 +265,11 @@ Without flags, each command uses this version folder's `dags/`, `plugins/`, `req
 
 `test-dags` does the following without starting Airflow or a database:
 
-1. Runs the startup script, if there is one.
-2. Copies or unzips the plugins.
+1. Copies or unzips the plugins.
+2. Runs the startup script, if there is one. As on MWAA, the script can use files from the plugins folder.
 3. Installs the requirements, the same way `test-requirements` does.
 4. Loads the plugins, then parses each DAG file in its own process with Python's default warning filters, so deprecation warnings are shown.
-5. Writes the report and prints a summary.
+5. Writes the report and prints a summary. If no DAG files were found, the summary says so, because a wrong `--dags` folder or files skipped by safe mode still exit 0.
 
 Two time limits keep a run from hanging. Starting Airflow and loading the plugins must finish within 5 minutes. Each DAG file must finish parsing within `dagbag_import_timeout` (30 seconds in these images) plus 10 seconds, or it's reported with an import error. If the 5-minute limit runs out, the run exits 1 with `error` set in the report.
 
@@ -333,7 +333,7 @@ To see a report with problems in it, run the sample files in this repository fro
 - Errors from commands in a startup script. MWAA doesn't treat them as fatal, so `test-startup-script` still returns 0. Read its output.
 - On Airflow 3.2 and later, warnings raised in a DAG file before it fails to import aren't reported, because Airflow's importer drops them.
 - Airflow configuration overrides from your environment aren't applied. The check uses this image's defaults, for example for `dag_discovery_safe_mode` and `dagbag_import_timeout`.
-- Code that calls AWS while a DAG file or plugin is imported. DAG and plugin code gets no AWS credentials during the check, so the call fails and the file gets an import error, for example `NoCredentialsError`. On MWAA the same call would use the execution role. boto3 and the AWS CLI also skip the EC2 instance metadata service, but code that calls that service directly isn't blocked.
+- Code that calls AWS during the check. The test commands run without AWS credentials: the test containers don't get the credentials from `run.sh`, and boto3 and the AWS CLI don't use the host's instance role, because `AWS_EC2_METADATA_DISABLED` is set. DAG and plugin code also gets no `AWS_*` variables other than the region, even ones a startup script sets. So a DAG file or plugin that calls AWS while it's imported gets an import error, for example `NoCredentialsError`, where on MWAA it would use the execution role. A startup script that calls AWS, for example to get a CodeArtifact token for `requirements.txt`, fails the same way. Code that calls the instance metadata service directly over HTTP isn't blocked.
 - Files the container can't read. It runs as uid 1000, so DAG and plugin files must be readable by that user.
 
 ### Troubleshooting

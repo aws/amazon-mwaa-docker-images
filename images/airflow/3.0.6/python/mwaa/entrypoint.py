@@ -280,17 +280,25 @@ async def main() -> None:
 
     # Get executor type
     executor_type = os.environ.get("MWAA__CORE__EXECUTOR_TYPE", "CeleryExecutor")
+
+    if command == "test-dags":
+        # Imported here so that production commands never load the validation package.
+        from mwaa.validation.run_dag_validation import prepare_plugins, run_dag_validation
+        # MWAA unzips plugins.zip before it runs the startup script, which can use files
+        # from it, so prepare the plugins first.
+        plugins_error = prepare_plugins()
+        if plugins_error:
+            # The check has already failed, so don't run the startup script.
+            sys.exit(await run_dag_validation(dict(os.environ), plugins_error=plugins_error))
+        environ = setup_environment_variables(command, executor_type)
+        sys.exit(await run_dag_validation(environ))
+
     environ = setup_environment_variables(command, executor_type)
 
     if command == "test-startup-script":
         # setup_environment_variables has already run the startup script.
         print("Finished testing startup script")
         return
-
-    if command == "test-dags":
-        # Imported here so that production commands never load the validation package.
-        from mwaa.validation.run_dag_validation import run_dag_validation
-        sys.exit(await run_dag_validation(environ))
 
     if command == "migrate-db":
         await airflow_db_migrate(environ)

@@ -15,6 +15,7 @@ from mwaa.validation.report import (
     error_summary,
     exit_code,
     format_summary,
+    no_dag_files_hint,
 )
 
 
@@ -146,3 +147,20 @@ def test_format_summary_shows_requirement_and_top_level_errors():
     assert "error: boom" in lines
     assert "plugins: 0 import errors" in lines
     assert lines[-1] == "exit code: 2"
+
+
+def test_format_summary_explains_no_dag_files():
+    """When parsing found no files, the summary says why that can happen."""
+    lines = format_summary(_report(), "/r.json", "/home/me/dags").splitlines()
+    assert lines[lines.index("dags: 0 files, 0 DAGs, 0 import errors, 0 warnings") + 1] == "  " + no_dag_files_hint("/home/me/dags")
+    assert "No DAG files found in /home/me/dags." in no_dag_files_hint("/home/me/dags")
+
+
+@pytest.mark.parametrize("fields", [
+    {"dags": [{"file": "good.py", "dag_ids": ["good"], "import_error": None, "import_error_traceback": None, "warnings": []}]},
+    {"requirements_status": REQUIREMENTS_FAILED, "requirements_error": "pip install failed"},
+    {"error": "DAG parser exited with code 1"},
+])
+def test_format_summary_has_no_hint_when_files_were_found_or_parsing_did_not_run(fields):
+    """The hint appears only when parsing ran and found nothing."""
+    assert "No DAG files found" not in format_summary(_report(**fields), "/r.json", "/home/me/dags")
