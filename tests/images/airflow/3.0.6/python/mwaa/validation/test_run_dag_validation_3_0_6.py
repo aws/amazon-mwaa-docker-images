@@ -3,6 +3,8 @@
 import json
 import os
 import subprocess
+import sys
+import time
 import zipfile
 from unittest.mock import AsyncMock, patch
 
@@ -168,35 +170,135 @@ def test_missing_plugins_input_leaves_an_empty_plugins_folder(tmp_path):
     assert list((tmp_path / "out").iterdir()) == []
 
 
-def test_run_parser_child_runs_parse_dags_with_warnings_enabled(paths, environ):
-    """The child runs with -W default and with Airflow pointed at the test folders."""
+# A stand-in for mwaa.validation.parse_dags. It gets the same arguments, so it can send
+# the ready message and write the result the way the real parser does.
+FAKE_PARSER = """
+import json, os, sys, time
+args = sys.argv[1:]
+output = args[args.index("--output") + 1]
+ready_fd = int(args[args.index("--ready-fd") + 1])
+
+def ready(files=1, per_file=1.0):
+    os.write(ready_fd, (json.dumps({"files": files, "file_timeout_seconds": per_file}) + "\\n").encode())
+    os.close(ready_fd)
+
+def result(payload):
+    with open(output, "w") as result_file:
+        json.dump(payload, result_file)
+"""
+
+
+@pytest.fixture
+def fake_parser(monkeypatch):
+    """Run the given script body in place of parse_dags; return what Popen was called with."""
+    real_popen = subprocess.Popen
     seen = {}
 
-    def fake_run(command, env, check):
-        seen.update(command=command, env=env)
-        with open(command[command.index("--output") + 1], "w") as output:
-            json.dump(_child_result(GOOD_ENTRY), output)
-        return subprocess.CompletedProcess(command, 0)
+    def use(body):
+        def popen(command, env, pass_fds):
+            seen.update(command=command, env=env, pass_fds=pass_fds)
+            script = FAKE_PARSER + body
+            return real_popen([sys.executable, "-c", script, *command[5:]], env=env, pass_fds=pass_fds)
 
-    with patch.object(rdv.subprocess, "run", side_effect=fake_run):
-        assert rdv.run_parser_child(environ, paths) == _child_result(GOOD_ENTRY)
-    assert seen["command"][1:5] == ["-W", "default", "-m", "mwaa.validation.parse_dags"]
+        monkeypatch.setattr(rdv.subprocess, "Popen", popen)
+        return seen
+
+    return use
+
+
+def test_run_parser_child_runs_parse_dags_with_warnings_enabled(paths, environ, fake_parser):
+    """The child runs with -W default, a ready pipe, and Airflow pointed at the test folders."""
+    seen = fake_parser(f"ready(); result({_child_result(GOOD_ENTRY)!r})")
+    assert rdv.run_parser_child(environ, paths) == _child_result(GOOD_ENTRY)
+    command = seen["command"]
+    assert command[1:5] == ["-W", "default", "-m", "mwaa.validation.parse_dags"]
+    assert seen["pass_fds"] == (int(command[command.index("--ready-fd") + 1]),)
     assert seen["env"]["AIRFLOW__CORE__DAGS_FOLDER"] == paths.dags_folder
     assert seen["env"]["AIRFLOW__CORE__PLUGINS_FOLDER"] == paths.plugins_folder
     assert seen["env"]["AIRFLOW__CORE__LOAD_EXAMPLES"] == "False"
     assert seen["env"]["PYTHONDONTWRITEBYTECODE"] == "1"
-    assert seen["env"]["AIRFLOW_VERSION"] == "3.3.1"
+    assert seen["env"]["AIRFLOW_VERSION"] == environ["AIRFLOW_VERSION"]
 
 
-def test_run_parser_child_non_zero_exit(paths, environ):
+def test_parser_environment_has_no_aws_credentials(paths):
+    """DAG and plugin code gets the region but no AWS credentials or metadata service."""
+    environ = {
+        "AWS_ACCESS_KEY_ID": "key",
+        "AWS_SECRET_ACCESS_KEY": "secret",
+        "AWS_SESSION_TOKEN": "token",
+        "AWS_PROFILE": "profile",
+        "AWS_CONTAINER_CREDENTIALS_RELATIVE_URI": "/v2/credentials",
+        "AWS_EC2_METADATA_DISABLED": "false",
+        "AWS_REGION": "us-west-2",
+        "AWS_DEFAULT_REGION": "us-west-2",
+        "AIRFLOW_VERSION": "3.3.1",
+    }
+    env = rdv.parser_environment(environ, paths)
+    assert sorted(name for name in env if name.startswith("AWS_")) == [
+        "AWS_DEFAULT_REGION", "AWS_EC2_METADATA_DISABLED", "AWS_REGION",
+    ]
+    assert env["AWS_EC2_METADATA_DISABLED"] == "true"
+    assert env["AWS_REGION"] == env["AWS_DEFAULT_REGION"] == "us-west-2"
+    assert env["AIRFLOW_VERSION"] == "3.3.1"
+
+
+def test_run_parser_child_non_zero_exit(paths, environ, fake_parser):
     """A child that exits non-zero is a parser error."""
-    with patch.object(rdv.subprocess, "run", return_value=subprocess.CompletedProcess([], 3)):
-        with pytest.raises(rdv.ParserChildError, match="exited with code 3"):
-            rdv.run_parser_child(environ, paths)
+    fake_parser("ready(); sys.exit(3)")
+    with pytest.raises(rdv.ParserChildError, match="exited with code 3"):
+        rdv.run_parser_child(environ, paths)
 
 
-def test_run_parser_child_without_output(paths, environ):
+def test_run_parser_child_exits_during_setup(paths, environ, fake_parser):
+    """A child that exits before it is ready is reported with its exit code, right away."""
+    fake_parser("sys.exit(4)")
+    started = time.monotonic()
+    with pytest.raises(rdv.ParserChildError, match="exited with code 4"):
+        rdv.run_parser_child(environ, paths)
+    assert time.monotonic() - started < 30
+
+
+def test_run_parser_child_without_output(paths, environ, fake_parser):
     """A child that exits 0 without writing its result is a parser error."""
-    with patch.object(rdv.subprocess, "run", return_value=subprocess.CompletedProcess([], 0)):
-        with pytest.raises(rdv.ParserChildError, match="did not write a valid result"):
-            rdv.run_parser_child(environ, paths)
+    fake_parser("ready()")
+    with pytest.raises(rdv.ParserChildError, match="did not write a valid result"):
+        rdv.run_parser_child(environ, paths)
+
+
+def test_run_parser_child_setup_time_limit(paths, environ, fake_parser, monkeypatch):
+    """A child that never becomes ready, like a plugin that hangs, is stopped."""
+    monkeypatch.setattr(rdv, "PARSER_SETUP_TIMEOUT_SECONDS", 0.5)
+    fake_parser("time.sleep(60)")
+    started = time.monotonic()
+    with pytest.raises(rdv.ParserChildError, match="did not finish within 0.5s"):
+        rdv.run_parser_child(environ, paths)
+    assert time.monotonic() - started < 30
+
+
+def test_run_parser_child_parse_time_limit(paths, environ, fake_parser, monkeypatch):
+    """Parsing gets the per-file limit for each file it reported, plus the margin."""
+    monkeypatch.setattr(rdv, "PARSER_FINISH_MARGIN_SECONDS", 0.25)
+    fake_parser("ready(files=2, per_file=0.25); time.sleep(60)")
+    started = time.monotonic()
+    with pytest.raises(rdv.ParserChildError, match="Parsing the DAG files did not finish within 0.75s"):
+        rdv.run_parser_child(environ, paths)
+    assert time.monotonic() - started < 30
+
+
+@pytest.mark.parametrize("message", ["b'not json\\n'", "b'{\"files\": 1}\\n'", "b'partial'"])
+def test_run_parser_child_invalid_ready_message(paths, environ, fake_parser, message):
+    """A ready message that can't be read stops the child."""
+    fake_parser(f"os.write(ready_fd, {message}); os.close(ready_fd); time.sleep(60)")
+    started = time.monotonic()
+    with pytest.raises(rdv.ParserChildError, match="invalid ready message"):
+        rdv.run_parser_child(environ, paths)
+    assert time.monotonic() - started < 30
+
+
+@pytest.mark.asyncio
+async def test_summary_shows_the_host_report_path(paths, environ, capsys):
+    """The summary names the report's path on the host when run.sh passes it."""
+    environ["MWAA_TEST_REPORT_DISPLAY_PATH"] = "/home/me/validation-report-20261119-010203.json"
+    with patch.object(rdv, "run_parser_child", return_value=_child_result(GOOD_ENTRY)):
+        assert await rdv.run_dag_validation(environ, paths) == 0
+    assert "report: /home/me/validation-report-20261119-010203.json" in capsys.readouterr().out

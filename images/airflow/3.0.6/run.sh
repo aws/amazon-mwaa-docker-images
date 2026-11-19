@@ -34,6 +34,14 @@ require_mountable() {
     [[ "$1" != *:* ]] || usage_error "Paths that contain ':' can't be mounted: $1"
 }
 
+# Exit with a usage error if anything, even a broken symlink, exists at the report path
+# $1. run.sh creates the report itself, so it never empties or changes a file you have.
+require_new_report() {
+    if [ -e "$1" ] || [ -L "$1" ]; then
+        usage_error "The report file already exists: $1. Pass a new path with --report, or delete the file."
+    fi
+}
+
 is_test_command() {
     [ "$1" == "test-dags" ] || [ "$1" == "test-requirements" ] || [ "$1" == "test-startup-script" ]
 }
@@ -80,9 +88,7 @@ if is_test_command "$COMMAND"; then
                 ;;
             "test-dags --report")
                 [ -d "$(dirname "$2")" ] || usage_error "--report folder does not exist: $(dirname "$2")"
-                [ ! -d "$2" ] || usage_error "--report must be a file path, not a folder: $2"
                 MWAA_TEST_REPORT_PATH=$(absolute_path "$2")
-                require_mountable "$MWAA_TEST_REPORT_PATH"
                 ;;
             *)
                 usage_error "Unknown option for $COMMAND: $1"
@@ -90,6 +96,12 @@ if is_test_command "$COMMAND"; then
         esac
         shift 2
     done
+    if [ "$COMMAND" == "test-dags" ]; then
+        # A new report name for each run, so earlier reports are kept.
+        MWAA_TEST_REPORT_PATH="${MWAA_TEST_REPORT_PATH:-$PWD/validation-report-$(date +%Y%m%d-%H%M%S).json}"
+        require_mountable "$MWAA_TEST_REPORT_PATH"
+        require_new_report "$MWAA_TEST_REPORT_PATH"
+    fi
 fi
 
 # Check if 'podman' or 'finch' is available, otherwise use 'docker'
@@ -306,17 +318,28 @@ create_log_group_if_not_exists "Task" "$MWAA__LOGGING__AIRFLOW_TASK_LOGS_ENABLED
 create_log_group_if_not_exists "WebServer" "$MWAA__LOGGING__AIRFLOW_WEBSERVER_LOGS_ENABLED"
 create_log_group_if_not_exists "Worker" "$MWAA__LOGGING__AIRFLOW_WORKER_LOGS_ENABLED"
 
+# Keep a written report readable only by you, or remove the file if the run wrote nothing.
+finish_report() {
+    if [ -s "$MWAA_TEST_REPORT_PATH" ]; then
+        chmod 600 "$MWAA_TEST_REPORT_PATH" 2>/dev/null || true
+    else
+        rm -f "$MWAA_TEST_REPORT_PATH"
+    fi
+}
+
 # test-dags writes its report through a bind mount. Set this before .env is written,
 # so every runtime mounts the same file.
 if [ "$COMMAND" == "test-dags" ]; then
-    # The container's airflow user writes the report in place. Create the file first,
-    # so the bind mount is a file and not a folder, and open it up only for this run.
-    MWAA_TEST_REPORT_PATH="${MWAA_TEST_REPORT_PATH:-$PWD/validation-report.json}"
     export MWAA_TEST_REPORT_PATH
-    : > "$MWAA_TEST_REPORT_PATH"
+    # The container's airflow user writes the report in place. Create a new file first,
+    # so the bind mount is a file and not a folder. With set -C the shell refuses to
+    # create it if anything exists at that path by now.
+    if ! (set -C && : > "$MWAA_TEST_REPORT_PATH") 2>/dev/null; then
+        usage_error "Could not create the report file: $MWAA_TEST_REPORT_PATH"
+    fi
+    # Let the container write it for this run only.
     chmod 666 "$MWAA_TEST_REPORT_PATH"
-    # Restore the mode however this script ends.
-    trap 'chmod 644 "$MWAA_TEST_REPORT_PATH" 2>/dev/null || true' EXIT
+    trap finish_report EXIT
 fi
 
 # Write the values the compose files read to .env. finch compose runs inside the Finch VM and

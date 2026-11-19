@@ -13,6 +13,8 @@ x-airflow-common: &airflow-common
     # Use this environment variable if you have custom requirements you want to install when the
     # container is up.
     MWAA__CORE__REQUIREMENTS_PATH: ${MWAA__CORE__REQUIREMENTS_PATH}
+    # test-dags prints this host path of its report in its summary.
+    MWAA_TEST_REPORT_DISPLAY_PATH: ${MWAA_TEST_REPORT_PATH:-}
     MWAA__CORE__AUTH_TYPE: "testing"
     # Additional Airflow configuration can be passed here in JSON form.
     MWAA__CORE__CUSTOM_AIRFLOW_CONFIGS: "{}"

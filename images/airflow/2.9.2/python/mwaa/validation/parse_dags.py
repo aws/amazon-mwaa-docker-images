@@ -4,7 +4,7 @@ Parse DAG files one at a time and record import errors and warnings.
 The test-dags command runs this module as a child process::
 
     python3 -W default -m mwaa.validation.parse_dags \
-        --dags-folder DIR --plugins-folder DIR --output FILE
+        --dags-folder DIR --plugins-folder DIR --output FILE --ready-fd FD
 
 ``-W default`` must be on the command line. It puts an entry in ``sys.warnoptions``
 before Airflow is imported, so ``airflow/configuration.py`` does not install its own
@@ -377,6 +377,36 @@ def worker_timeout_seconds() -> float:
     return conf.getfloat("core", "dagbag_import_timeout") + WORKER_TIMEOUT_MARGIN_SECONDS
 
 
+def file_timeout_seconds() -> float:
+    """
+    Return the longest one DAG file can take, in either parse mode.
+
+    A file parsed in a fresh interpreter also gets SUBPROCESS_STARTUP_SECONDS.
+    """
+    return worker_timeout_seconds() + SUBPROCESS_STARTUP_SECONDS
+
+
+def send_ready(ready_fd: int, file_count: int) -> None:
+    """
+    Tell the test-dags process that setup is done, then close the descriptor.
+
+    The message holds the number of DAG files and the per-file limit, from which the
+    test-dags process works out how long parsing may take. Closing the descriptor
+    keeps the forked workers from inheriting it.
+
+    :param ready_fd: The write end of the pipe from the test-dags process.
+    :param file_count: How many DAG files will be parsed.
+    """
+    message = json.dumps(
+        {"files": file_count, "file_timeout_seconds": file_timeout_seconds()}
+    ).encode() + b"\n"
+    try:
+        while message:
+            message = message[os.write(ready_fd, message):]
+    finally:
+        os.close(ready_fd)
+
+
 def _write_json(path: str, payload: Any) -> None:
     with open(path, "w", encoding="utf-8") as output:
         json.dump(payload, output)
@@ -388,6 +418,9 @@ def _parse_args(argv: Optional[Sequence[str]]) -> argparse.Namespace:
     parser.add_argument("--plugins-folder", default="")
     parser.add_argument("--output", required=True)
     parser.add_argument("--one", help="Parse only this file in this process.")
+    parser.add_argument(
+        "--ready-fd", type=int, help="Write the ready message to this file descriptor."
+    )
     return parser.parse_args(argv)
 
 
@@ -410,6 +443,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         _write_json(args.output, parse_one_file(os.path.abspath(args.one), dags_folder))
         return 0
     dag_files = compat.list_dag_files(dags_folder)
+    if args.ready_fd is not None:
+        send_ready(args.ready_fd, len(dag_files))
     entries, parse_mode = parse_all(dag_files, dags_folder, worker_timeout_seconds())
     _write_json(
         args.output,

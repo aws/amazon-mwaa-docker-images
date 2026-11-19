@@ -259,7 +259,7 @@ Without flags, each command uses this version folder's `dags/`, `plugins/`, `req
 
 - `--requirements` mounts the file's folder, so `-r` and `-c` lines that name files next to it keep working.
 - `--plugins` takes a folder or a `plugins.zip`. A zip is unzipped into the plugins folder, as MWAA does.
-- `--report` sets where the JSON report is written. The default is `./validation-report.json`. An existing file is overwritten.
+- `--report` sets where the JSON report is written. It must be a new file: if anything already exists at that path, `run.sh` exits 64, so it never overwrites a file. The default is a new `./validation-report-YYYYMMDD-HHMMSS.json` in the current folder. The report is readable only by you, and if the check stops before writing it, the empty file is removed.
 - Each run starts a fresh container, so packages and plugins from an earlier run don't carry over.
 
 `test-dags` does the following without starting Airflow or a database:
@@ -270,6 +270,8 @@ Without flags, each command uses this version folder's `dags/`, `plugins/`, `req
 4. Loads the plugins, then parses each DAG file in its own process with Python's default warning filters, so deprecation warnings are shown.
 5. Writes the report and prints a summary.
 
+Two time limits keep a run from hanging. Starting Airflow and loading the plugins must finish within 5 minutes. Each DAG file must finish parsing within `dagbag_import_timeout` (30 seconds in these images) plus 10 seconds, or it's reported with an import error. If the 5-minute limit runs out, the run exits 1 with `error` set in the report.
+
 To see a report with problems in it, run the sample files in this repository from a version folder: `./run.sh test-dags --dags ../../../tests/fixtures/dag_validation/dags --plugins ../../../tests/fixtures/dag_validation/plugins`. It exits 1 and reports each problem.
 
 ### Exit codes
@@ -279,7 +281,7 @@ To see a report with problems in it, run the sample files in this repository fro
 | 0 | Requirements installed (or there are none), every plugin loaded and every DAG file parsed. Warnings don't change the code. |
 | 1 | At least one DAG import error or plugin import error, or the check couldn't finish (see `error` in the report). |
 | 2 | The requirements failed to install. DAGs aren't parsed. |
-| 64 | `run.sh` got an unknown flag or a path that doesn't exist. Nothing ran. |
+| 64 | `run.sh` got an unknown flag, a path that doesn't exist, or a `--report` path that already exists. Nothing ran. |
 
 `test-requirements` returns 0 or 2. `test-startup-script` returns 0 unless the script times out or its environment variables can't be read.
 
@@ -330,6 +332,7 @@ To see a report with problems in it, run the sample files in this repository fro
 - Errors from commands in a startup script. MWAA doesn't treat them as fatal, so `test-startup-script` still returns 0. Read its output.
 - On Airflow 3.2 and later, warnings raised in a DAG file before it fails to import aren't reported, because Airflow's importer drops them.
 - Airflow configuration overrides from your environment aren't applied. The check uses this image's defaults, for example for `dag_discovery_safe_mode` and `dagbag_import_timeout`.
+- Code that calls AWS while a DAG file or plugin is imported. DAG and plugin code gets no AWS credentials during the check, so the call fails and the file gets an import error, for example `NoCredentialsError`. On MWAA the same call would use the execution role. boto3 and the AWS CLI also skip the EC2 instance metadata service, but code that calls that service directly isn't blocked.
 - Files the container can't read. It runs as uid 1000, so DAG and plugin files must be readable by that user.
 
 ### Troubleshooting

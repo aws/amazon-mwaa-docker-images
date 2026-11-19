@@ -169,3 +169,28 @@ def test_main_one_file_mode(monkeypatch, write_dag, dags_folder, good_dag_source
     output = tmp_path / "entry.json"
     assert parse_dags.main(["--dags-folder", str(dags_folder), "--one", path, "--output", str(output)]) == 0
     assert json.loads(output.read_text())["dag_ids"] == ["good"]
+
+
+def test_main_sends_ready_before_parsing(monkeypatch, write_dag, dags_folder, good_dag_source, tmp_path):
+    """With --ready-fd, main sends the file count and per-file limit before parsing, then closes it."""
+    write_dag("good.py", good_dag_source)
+    monkeypatch.setattr(sys, "path", list(sys.path))
+    monkeypatch.setattr(parse_dags.compat, "plugin_import_errors", lambda: {})
+    read_fd, write_fd = os.pipe()
+    seen = {}
+
+    def fake_parse_all(files, folder, timeout):
+        seen["ready"] = os.read(read_fd, 4096)
+        return [], "fork"
+
+    monkeypatch.setattr(parse_dags, "parse_all", fake_parse_all)
+    argv = ["--dags-folder", str(dags_folder), "--output", str(tmp_path / "out.json"), "--ready-fd", str(write_fd)]
+    try:
+        assert parse_dags.main(argv) == 0
+        assert os.read(read_fd, 1) == b""
+    finally:
+        os.close(read_fd)
+    assert json.loads(seen["ready"]) == {"files": 1, "file_timeout_seconds": parse_dags.file_timeout_seconds()}
+    assert parse_dags.file_timeout_seconds() == (
+        parse_dags.worker_timeout_seconds() + parse_dags.SUBPROCESS_STARTUP_SECONDS
+    )

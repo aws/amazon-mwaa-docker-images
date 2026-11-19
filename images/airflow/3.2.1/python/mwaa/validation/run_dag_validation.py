@@ -18,13 +18,15 @@ import json
 import logging
 import os
 import platform
+import select
 import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import zipfile
 from dataclasses import dataclass
-from typing import Any, Dict
+from typing import Any, Dict, Tuple
 
 from mwaa.utils.user_requirements import install_user_requirements
 from mwaa.validation.report import (
@@ -40,6 +42,15 @@ logger = logging.getLogger(__name__)
 
 AIRFLOW_HOME = "/usr/local/airflow"
 REQUIREMENTS_FAILED_MESSAGE = "pip install failed; see the pip output in the container log"
+
+# How long the parser may take to start, import Airflow, load plugins and list the DAG
+# files. It then reports how many files it found and how long one file may take.
+PARSER_SETUP_TIMEOUT_SECONDS = 300.0
+# Extra time the parser gets beyond its per-file limits, to write its result.
+PARSER_FINISH_MARGIN_SECONDS = 60.0
+# The only AWS variables DAG and plugin code sees while it is parsed. A region lets code
+# create AWS clients at import; credentials are left out so it can't call AWS.
+PARSER_AWS_VARIABLES = ("AWS_DEFAULT_REGION", "AWS_REGION")
 
 
 @dataclass(frozen=True)
@@ -92,6 +103,80 @@ def materialize_plugins(source: str, destination: str) -> None:
         raise ValidationInputError(f"Plugins input {source} is neither a folder nor a zip file.")
 
 
+def parser_environment(environ: Dict[str, str], paths: ValidationPaths) -> Dict[str, str]:
+    """
+    Return the environment for the parser child.
+
+    DAG and plugin code runs in the child, so it gets no AWS credentials: every AWS_*
+    variable except the region is removed, and boto3 is told not to fetch credentials
+    from the EC2 instance metadata service, which would give it the host's role.
+
+    :param environ: The environment from setup_environment_variables.
+    :param paths: The container paths.
+    """
+    env = {
+        name: value
+        for name, value in environ.items()
+        if not name.startswith("AWS_") or name in PARSER_AWS_VARIABLES
+    }
+    env.update(
+        {
+            "AWS_EC2_METADATA_DISABLED": "true",
+            "AIRFLOW__CORE__DAGS_FOLDER": paths.dags_folder,
+            "AIRFLOW__CORE__PLUGINS_FOLDER": paths.plugins_folder,
+            "AIRFLOW__CORE__LOAD_EXAMPLES": "False",
+            # The DAGs folder is mounted read-only.
+            "PYTHONDONTWRITEBYTECODE": "1",
+        }
+    )
+    return env
+
+
+def _read_line(read_fd: int, timeout_seconds: float) -> Tuple[bytes, bool]:
+    """
+    Read from read_fd until a newline, end of file or the timeout.
+
+    :returns: The bytes read, and whether the timeout ran out first.
+    """
+    deadline = time.monotonic() + timeout_seconds
+    data = b""
+    while b"\n" not in data:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0 or not select.select([read_fd], [], [], remaining)[0]:
+            return data, True
+        chunk = os.read(read_fd, 4096)
+        if not chunk:
+            break
+        data += chunk
+    return data, False
+
+
+def _stop(child: subprocess.Popen[bytes]) -> None:
+    # The parser's workers run in their own sessions. They stop with the container,
+    # which exits right after test-dags returns.
+    child.kill()
+    child.wait()
+
+
+def _parse_timeout_seconds(ready_line: bytes) -> float:
+    """
+    Return how long the parser may take after it is ready.
+
+    :param ready_line: The parser's ready message, or b"" if it exited before sending one.
+    :raises ParserChildError: If the message is not valid.
+    """
+    if not ready_line:
+        # The parser exited during setup; waiting for it returns right away.
+        return PARSER_FINISH_MARGIN_SECONDS
+    try:
+        ready = json.loads(ready_line)
+        return PARSER_FINISH_MARGIN_SECONDS + float(ready["files"]) * float(
+            ready["file_timeout_seconds"]
+        )
+    except (ValueError, KeyError, TypeError) as error:
+        raise ParserChildError(f"DAG parser sent an invalid ready message: {error}") from error
+
+
 def run_parser_child(environ: Dict[str, str], paths: ValidationPaths) -> Dict[str, Any]:
     """
     Run mwaa.validation.parse_dags in a child process and return its result.
@@ -99,30 +184,61 @@ def run_parser_child(environ: Dict[str, str], paths: ValidationPaths) -> Dict[st
     The child is started with ``-W default`` so Airflow does not install its own
     warning filters. Its stdout and stderr go to the container log.
 
+    The child gets two time limits. Starting, importing Airflow, loading plugins and
+    listing the DAG files must finish within PARSER_SETUP_TIMEOUT_SECONDS. The child
+    then reports how many files it found and how long one file may take, and parsing
+    must finish within that many per-file limits plus PARSER_FINISH_MARGIN_SECONDS.
+
     :param environ: The environment from setup_environment_variables.
     :param paths: The container paths.
-    :raises ParserChildError: If the child fails or writes no valid result.
+    :raises ParserChildError: If the child fails, runs out of time or writes no valid
+      result.
     """
     with tempfile.TemporaryDirectory(prefix="mwaa-test-dags-") as tmp_dir:
         output = os.path.join(tmp_dir, "result.json")
-        env = {
-            **environ,
-            "AIRFLOW__CORE__DAGS_FOLDER": paths.dags_folder,
-            "AIRFLOW__CORE__PLUGINS_FOLDER": paths.plugins_folder,
-            "AIRFLOW__CORE__LOAD_EXAMPLES": "False",
-            # The DAGs folder is mounted read-only.
-            "PYTHONDONTWRITEBYTECODE": "1",
-        }
+        read_fd, write_fd = os.pipe()
         command = [
             sys.executable, "-W", "default", "-m", "mwaa.validation.parse_dags",
             "--dags-folder", paths.dags_folder,
             "--plugins-folder", paths.plugins_folder,
             "--output", output,
+            "--ready-fd", str(write_fd),
         ]
-        completed = subprocess.run(command, env=env, check=False)
-        if completed.returncode != 0:
+        try:
+            child = subprocess.Popen(
+                command, env=parser_environment(environ, paths), pass_fds=(write_fd,)
+            )
+        except BaseException:
+            os.close(read_fd)
+            raise
+        finally:
+            os.close(write_fd)
+        try:
+            ready_line, timed_out = _read_line(read_fd, PARSER_SETUP_TIMEOUT_SECONDS)
+        finally:
+            os.close(read_fd)
+        if timed_out:
+            _stop(child)
             raise ParserChildError(
-                f"DAG parser exited with code {completed.returncode}; see the container log."
+                "Starting Airflow and loading plugins did not finish within "
+                f"{PARSER_SETUP_TIMEOUT_SECONDS:g}s; see the container log."
+            )
+        try:
+            parse_timeout = _parse_timeout_seconds(ready_line)
+        except ParserChildError:
+            _stop(child)
+            raise
+        try:
+            returncode = child.wait(timeout=parse_timeout)
+        except subprocess.TimeoutExpired as error:
+            _stop(child)
+            raise ParserChildError(
+                f"Parsing the DAG files did not finish within {parse_timeout:g}s; "
+                "see the container log."
+            ) from error
+        if returncode != 0:
+            raise ParserChildError(
+                f"DAG parser exited with code {returncode}; see the container log."
             )
         try:
             with open(output, encoding="utf-8") as result_file:
@@ -164,7 +280,9 @@ async def run_dag_validation(
             airflow_version=airflow_version, python_version=python_version, **fields
         )
         write_report(report, paths.report_path)
-        print(format_summary(report, paths.report_path), flush=True)
+        # run.sh passes the report's path on the host, which is the one users can open.
+        display_path = environ.get("MWAA_TEST_REPORT_DISPLAY_PATH") or paths.report_path
+        print(format_summary(report, display_path), flush=True)
         return exit_code(report)
 
     try:
