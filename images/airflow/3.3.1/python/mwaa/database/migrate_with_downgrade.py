@@ -16,6 +16,7 @@ import logging
 import logging.config
 import os
 import sys
+import time
 
 from mwaa.config.database import get_db_connection_string
 from mwaa.config.rds_iam_credentials import (
@@ -32,6 +33,11 @@ from airflow.cli.commands import db_command as airflow_db_command
 DB_IAM_USERNAME = "airflow_user"
 DB_ADMIN_USERNAME = "adminuser"
 DB_NAME = "AirflowMetadata"
+
+# Table used to detect missing planner statistics after a major version upgrade.
+STATS_PROBE_TABLE = "task_instance"
+# Upper bound for ANALYZE so it cannot hold migrate-db past its own timeout.
+ANALYZE_STATEMENT_TIMEOUT_MS = 300_000
 
 # Usually, we pass the `__name__` variable instead as that defaults to the module path,
 # i.e. `mwaa.entrypoint` in this case. However, since this is a script, `__name__` will
@@ -459,6 +465,79 @@ def _check_downgrade_db():
             _fix_fab_sequence_defaults()
 
 
+def _refresh_planner_statistics():
+    """
+    Run ANALYZE on the metadata database when its planner statistics are missing.
+
+    pg_upgrade does not carry planner statistics over, so after an Aurora PostgreSQL
+    major version upgrade every table looks "never analyzed" until autovacuum gets to
+    it, which can take days. Without statistics the planner turns the triggerer's
+    `UPDATE task_instance ... WHERE trigger_id IS NOT NULL` into a full table scan
+    and pins the writer's CPU. AWS lists ANALYZE as the post-upgrade step to run.
+
+    migrate-db runs after the upgrade and before the Airflow components start, so this
+    is the first point where the statistics can be rebuilt. `task_instance` is the
+    probe: it only runs ANALYZE when that table has rows but no statistics, so on any
+    other run (including every non-upgrade stack update) it costs two small queries.
+
+    Best-effort: a failure here leaves the environment as it is today, so it is logged
+    and counted but never fails migrate-db.
+    """
+    try:
+        engine = create_engine(get_db_connection_string(), **MAINTENANCE_ENGINE_KWARGS)
+        # ANALYZE writes pg_statistic transactionally; with SQLAlchemy 2.0 a plain
+        # connect() would roll it back on close, so run outside a transaction.
+        with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+            if not _stats_missing(conn):
+                logger.info("Planner statistics present, skipping ANALYZE.")
+                return
+
+            logger.info(
+                "No planner statistics for %s, running ANALYZE (timeout %d ms).",
+                STATS_PROBE_TABLE,
+                ANALYZE_STATEMENT_TIMEOUT_MS,
+            )
+            conn.execute(text(f"SET statement_timeout = {ANALYZE_STATEMENT_TIMEOUT_MS}"))
+            started = time.monotonic()
+            conn.execute(text("ANALYZE"))
+            elapsed = time.monotonic() - started
+
+            # ANALYZE skips tables the current user does not own with only a WARNING,
+            # so check that it actually produced statistics.
+            if _stats_missing(conn):
+                logger.warning(
+                    "ANALYZE finished in %.1f s but %s still has no statistics.",
+                    elapsed,
+                    STATS_PROBE_TABLE,
+                )
+                _report_migrate_db_metric("PlannerStatisticsRefreshError")
+                return
+
+            logger.info("ANALYZE rebuilt planner statistics in %.1f s.", elapsed)
+            _report_migrate_db_metric("PlannerStatisticsRefreshed")
+    except Exception as e:
+        logger.warning("Error while refreshing planner statistics, skipping. %s", e)
+        _report_migrate_db_metric("PlannerStatisticsRefreshError")
+
+
+def _stats_missing(conn) -> bool:
+    """True when the probe table has rows but no planner statistics."""
+    has_stats = conn.execute(
+        text(
+            "SELECT 1 FROM pg_stats "
+            "WHERE schemaname = 'public' AND tablename = :table_name LIMIT 1"
+        ),
+        {"table_name": STATS_PROBE_TABLE},
+    ).fetchone()
+    if has_stats:
+        return False
+    # An empty table never gets pg_stats rows, even after ANALYZE.
+    has_rows = conn.execute(
+        text(f"SELECT 1 FROM {STATS_PROBE_TABLE} LIMIT 1")
+    ).fetchone()
+    return has_rows is not None
+
+
 def _create_default_connections():
     # A failure here only means a default connection is missing, which can be created by hand, so
     # it must not fail the migration and with it the environment.
@@ -470,11 +549,15 @@ def _create_default_connections():
 
 
 def _report_default_connections_error():
+    _report_migrate_db_metric("DefaultConnectionsCreationError")
+
+
+def _report_migrate_db_metric(metric_name: str):
     # migrate-db has no sidecar for StatsD, so print the metric in the sidecar's plog format.
     # StatisticValues, not Value, is what the service's processor reads.
     metric_data = [
         {
-            "MetricName": "DefaultConnectionsCreationError",
+            "MetricName": metric_name,
             "Dimensions": [{"Name": "AirflowComponent", "Value": "MigrateDb"}],
             "Timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "StatisticValues": {"SampleCount": 1, "Sum": 1, "Minimum": 1, "Maximum": 1},
@@ -493,6 +576,7 @@ def _main():
     _verify_environ()
     _ensure_rds_iam_user()
     _migrate_db()
+    _refresh_planner_statistics()
     _create_default_connections()
 
 
