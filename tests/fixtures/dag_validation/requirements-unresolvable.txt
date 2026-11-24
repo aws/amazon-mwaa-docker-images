@@ -1,0 +1,2 @@
+# No release of requests has this version, so pip cannot resolve it.
+requests==0.0.0

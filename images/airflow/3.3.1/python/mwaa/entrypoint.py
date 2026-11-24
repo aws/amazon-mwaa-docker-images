@@ -140,15 +140,13 @@ AVAILABLE_COMMANDS = [
     "spy",
     "test-requirements",
     "test-startup-script",
+    "test-dags",
     "package-requirements",
 ]
 
 # Commands that only check customer inputs locally. They never start Airflow, and a
 # fatal error ends them right away instead of waiting out the health check grace period.
-TEST_COMMANDS = ["test-requirements", "test-startup-script"]
-
-# Exit code of test-requirements when the requirements fail to install.
-EXIT_REQUIREMENTS_FAILED = 2
+TEST_COMMANDS = ["test-requirements", "test-startup-script", "test-dags"]
 
 # Save the start time of the container. This is used later to with the sidecar
 # monitoring because we need to have a grace period before we start reporting timeouts
@@ -284,6 +282,23 @@ async def main() -> None:
 
     # Get executor type
     executor_type = os.environ.get("MWAA__CORE__EXECUTOR_TYPE", "CeleryExecutor")
+
+    if command == "test-dags":
+        # Imported here so that production commands never load the validation package.
+        from mwaa.validation.run_dag_validation import (
+            prepare_plugins,
+            run_dag_validation,
+            write_error_report,
+        )
+        # MWAA unzips plugins.zip before it runs the startup script, which can use files
+        # from it, so prepare the plugins first.
+        plugins_error = prepare_plugins()
+        if plugins_error:
+            # The check has already failed: write the report and skip the startup script.
+            sys.exit(write_error_report(dict(os.environ), plugins_error))
+        environ = setup_environment_variables(command, executor_type)
+        sys.exit(await run_dag_validation(environ))
+
     environ = setup_environment_variables(command, executor_type)
 
     if command == "test-startup-script":
@@ -307,6 +322,8 @@ async def main() -> None:
 
     if command == "test-requirements":
         if not requirements_installed:
+            from mwaa.validation.report import EXIT_REQUIREMENTS_FAILED
+
             print("Requirements installation failed")
             sys.exit(EXIT_REQUIREMENTS_FAILED)
         print("Finished testing requirements")
