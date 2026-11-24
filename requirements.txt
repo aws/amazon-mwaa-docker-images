@@ -11,7 +11,7 @@ pip==26.3
 pydocstyle==6.3.0
 pyright==1.1.414
 psycopg2-binary==2.9.13
-pytest==8.4.1
+pytest==9.2.0
 pytest-asyncio==1.5.0
 pytest-cov==6.2.1
 pytest-mock==3.17.0
