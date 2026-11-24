@@ -251,3 +251,166 @@ def test_iam_fallback_succeeds_and_applies_grants():
 
     # Reached the role query via the IAM engine.
     assert any("current_user" in s for s in _executed_statements(conn))
+
+
+# --- _refresh_planner_statistics (ANALYZE after a Postgres major version upgrade) ---
+
+_STATS_ENV = {
+    "MWAA__DB__POSTGRES_HOST": "test.rds.amazonaws.com",
+    "MWAA__DB__POSTGRES_PORT": "5432",
+    "MWAA__DB__POSTGRES_DB": "AirflowMetadata",
+    "MWAA__DB__POSTGRES_SSLMODE": "require",
+    "MWAA__DB__CREDENTIALS": '{"username": "adminuser", "password": "pw"}',
+    "AWS_EXECUTION_ENV": "Amazon_MWAA_test",
+}
+
+
+def _stats_engine(stats_before, has_rows=True, stats_after=None, fail_on=None):
+    """Build a mock engine for _refresh_planner_statistics.
+
+    :param stats_before: whether pg_stats has task_instance rows before ANALYZE.
+    :param has_rows: whether task_instance has any rows.
+    :param stats_after: whether pg_stats has rows after ANALYZE (defaults to True).
+    :param fail_on: substring of a statement that should raise.
+    """
+    analyzed = {"done": False}
+    after = True if stats_after is None else stats_after
+
+    def execute(statement, params=None):
+        sql = str(statement)
+        if fail_on and fail_on in sql:
+            raise Exception(f"failed executing {fail_on}")
+        result = MagicMock()
+        if "pg_stats" in sql:
+            present = after if analyzed["done"] else stats_before
+            result.fetchone.return_value = (1,) if present else None
+        elif "FROM task_instance" in sql:
+            result.fetchone.return_value = (1,) if has_rows else None
+        elif sql.strip() == "ANALYZE":
+            analyzed["done"] = True
+        return result
+
+    conn = MagicMock()
+    conn.execute.side_effect = execute
+    engine = MagicMock()
+    engine.connect.return_value.execution_options.return_value.__enter__.return_value = conn
+    return engine, conn
+
+
+def _stats_statements(conn):
+    return [str(call.args[0]) for call in conn.execute.call_args_list]
+
+
+def _stats_metric_name(capsys):
+    """Return the MetricName of the single metric plog printed, or None."""
+    import json
+
+    # Some images also log to stdout, so keep only the plog lines.
+    plogs = [
+        json.loads(line)
+        for line in capsys.readouterr().out.splitlines()
+        if '"signature": "mwaa_plog_v1"' in line
+    ]
+    if not plogs:
+        return None
+    [plog] = plogs
+    assert plog["logsProcessorName"] == "AirflowMetricsLogsProcessor"
+    prefix = "Metric data: "
+    assert plog["message"].startswith(prefix)
+    [datum] = json.loads(plog["message"][len(prefix):])
+    assert datum["Dimensions"] == [{"Name": "AirflowComponent", "Value": "MigrateDb"}]
+    return datum["MetricName"]
+
+
+def _run_refresh(engine):
+    with patch.dict("os.environ", _STATS_ENV):
+        module = _load_module()
+        with patch.object(module, "create_engine", return_value=engine):
+            module._refresh_planner_statistics()
+    return module
+
+
+def test_analyze_runs_when_statistics_are_missing(capsys):
+    """Rows but no statistics (the post-upgrade state) runs a bounded ANALYZE."""
+    engine, conn = _stats_engine(stats_before=False)
+
+    _run_refresh(engine)
+
+    engine.connect.return_value.execution_options.assert_called_once_with(
+        isolation_level="AUTOCOMMIT"
+    )
+    statements = _stats_statements(conn)
+    assert "SET statement_timeout = 300000" in statements
+    assert "ANALYZE" in statements
+    assert statements.index("SET statement_timeout = 300000") < statements.index("ANALYZE")
+    assert _stats_metric_name(capsys) == "PlannerStatisticsRefreshed"
+
+
+def test_analyze_skipped_when_statistics_present(capsys):
+    """The normal case: statistics exist, nothing runs and nothing is published."""
+    engine, conn = _stats_engine(stats_before=True)
+
+    _run_refresh(engine)
+
+    assert "ANALYZE" not in _stats_statements(conn)
+    assert _stats_metric_name(capsys) is None
+
+
+def test_analyze_skipped_when_table_is_empty(capsys):
+    """An empty task_instance never has pg_stats rows, so it is not a signal."""
+    engine, conn = _stats_engine(stats_before=False, has_rows=False)
+
+    _run_refresh(engine)
+
+    assert "ANALYZE" not in _stats_statements(conn)
+    assert _stats_metric_name(capsys) is None
+
+
+def test_statistics_still_missing_after_analyze_is_reported(capsys):
+    """ANALYZE silently skips tables the user does not own; that must be visible."""
+    engine, _ = _stats_engine(stats_before=False, stats_after=False)
+
+    _run_refresh(engine)
+
+    assert _stats_metric_name(capsys) == "PlannerStatisticsRefreshError"
+
+
+def test_analyze_failure_does_not_fail_migration(capsys):
+    """A timeout or error is logged and counted, never raised."""
+    engine, _ = _stats_engine(stats_before=False, fail_on="ANALYZE")
+
+    _run_refresh(engine)
+
+    assert _stats_metric_name(capsys) == "PlannerStatisticsRefreshError"
+
+
+def test_stats_connection_failure_does_not_fail_migration(capsys):
+    """No connection at all is also best-effort."""
+    with patch.dict("os.environ", _STATS_ENV):
+        module = _load_module()
+        with patch.object(
+            module, "create_engine", side_effect=Exception("db unavailable")
+        ):
+            module._refresh_planner_statistics()
+
+    assert _stats_metric_name(capsys) == "PlannerStatisticsRefreshError"
+
+
+def test_main_refreshes_statistics_after_migrating():
+    """_main rebuilds statistics only after the migration has run."""
+    with patch.dict("os.environ", _STATS_ENV):
+        module = _load_module()
+
+        calls = MagicMock()
+        with patch.object(module, "_verify_environ", calls.verify), \
+                patch.object(module, "_ensure_rds_iam_user", calls.ensure_user), \
+                patch.object(module, "_migrate_db", calls.migrate), \
+                patch.object(module, "_refresh_planner_statistics", calls.refresh_stats):
+            module._main()
+
+        assert [c[0] for c in calls.mock_calls] == [
+            "verify",
+            "ensure_user",
+            "migrate",
+            "refresh_stats",
+        ]

@@ -435,6 +435,7 @@ def test_main_creates_default_connections_after_migrating():
         with patch.object(module, "_verify_environ", calls.verify), \
                 patch.object(module, "_ensure_rds_iam_user", calls.ensure_user), \
                 patch.object(module, "_migrate_db", calls.migrate), \
+                patch.object(module, "_refresh_planner_statistics", calls.refresh_stats), \
                 patch.object(
                     module, "_create_default_connections", calls.create_connections
                 ):
@@ -444,5 +445,113 @@ def test_main_creates_default_connections_after_migrating():
             "verify",
             "ensure_user",
             "migrate",
+            "refresh_stats",
             "create_connections",
         ]
+
+
+def _stats_engine(stats_before, has_rows=True, stats_after=None, fail_on=None):
+    """Build a mock engine for _refresh_planner_statistics.
+
+    :param stats_before: whether pg_stats has task_instance rows before ANALYZE.
+    :param has_rows: whether task_instance has any rows.
+    :param stats_after: whether pg_stats has rows after ANALYZE (defaults to True).
+    :param fail_on: substring of a statement that should raise.
+    """
+    analyzed = {"done": False}
+    after = True if stats_after is None else stats_after
+
+    def execute(statement, params=None):
+        sql = str(statement)
+        if fail_on and fail_on in sql:
+            raise Exception(f"failed executing {fail_on}")
+        result = MagicMock()
+        if "pg_stats" in sql:
+            present = after if analyzed["done"] else stats_before
+            result.fetchone.return_value = (1,) if present else None
+        elif "FROM task_instance" in sql:
+            result.fetchone.return_value = (1,) if has_rows else None
+        elif sql.strip() == "ANALYZE":
+            analyzed["done"] = True
+        return result
+
+    conn = MagicMock()
+    conn.execute.side_effect = execute
+    engine = MagicMock()
+    engine.connect.return_value.execution_options.return_value.__enter__.return_value = conn
+    return engine, conn
+
+
+def _run_refresh(engine):
+    with patch.dict("os.environ", _BASE_ENV):
+        module = _load_module()
+        with patch.object(module, "create_engine", return_value=engine):
+            module._refresh_planner_statistics()
+    return module
+
+
+def test_analyze_runs_when_statistics_are_missing(capsys):
+    """Rows but no statistics (the post-upgrade state) runs a bounded ANALYZE."""
+    engine, conn = _stats_engine(stats_before=False)
+
+    _run_refresh(engine)
+
+    engine.connect.return_value.execution_options.assert_called_once_with(
+        isolation_level="AUTOCOMMIT"
+    )
+    statements = _executed_statements(conn)
+    assert "SET statement_timeout = 300000" in statements
+    assert "ANALYZE" in statements
+    assert statements.index("SET statement_timeout = 300000") < statements.index("ANALYZE")
+    assert _printed_metric(capsys)["MetricName"] == "PlannerStatisticsRefreshed"
+
+
+def test_analyze_skipped_when_statistics_present(capsys):
+    """The normal case: statistics exist, nothing runs and nothing is published."""
+    engine, conn = _stats_engine(stats_before=True)
+
+    _run_refresh(engine)
+
+    assert "ANALYZE" not in _executed_statements(conn)
+    assert capsys.readouterr().out == ""
+
+
+def test_analyze_skipped_when_table_is_empty(capsys):
+    """An empty task_instance never has pg_stats rows, so it is not a signal."""
+    engine, conn = _stats_engine(stats_before=False, has_rows=False)
+
+    _run_refresh(engine)
+
+    assert "ANALYZE" not in _executed_statements(conn)
+    assert capsys.readouterr().out == ""
+
+
+def test_statistics_still_missing_after_analyze_is_reported(capsys):
+    """ANALYZE silently skips tables the user does not own; that must be visible."""
+    engine, _ = _stats_engine(stats_before=False, stats_after=False)
+
+    _run_refresh(engine)
+
+    assert _printed_metric(capsys)["MetricName"] == "PlannerStatisticsRefreshError"
+
+
+def test_analyze_failure_does_not_fail_migration(capsys):
+    """A timeout or error is logged and counted, never raised."""
+    engine, _ = _stats_engine(stats_before=False, fail_on="ANALYZE")
+
+    module = _run_refresh(engine)
+
+    assert module is not None
+    assert _printed_metric(capsys)["MetricName"] == "PlannerStatisticsRefreshError"
+
+
+def test_connection_failure_does_not_fail_migration(capsys):
+    """No connection at all is also best-effort."""
+    with patch.dict("os.environ", _BASE_ENV):
+        module = _load_module()
+        with patch.object(
+            module, "create_engine", side_effect=Exception("db unavailable")
+        ):
+            module._refresh_planner_statistics()
+
+    assert _printed_metric(capsys)["MetricName"] == "PlannerStatisticsRefreshError"
