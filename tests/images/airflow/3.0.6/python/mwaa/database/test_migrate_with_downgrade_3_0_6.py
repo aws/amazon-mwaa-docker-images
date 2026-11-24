@@ -305,10 +305,15 @@ def _stats_metric_name(capsys):
     """Return the MetricName of the single metric plog printed, or None."""
     import json
 
-    out = capsys.readouterr().out
-    if not out:
+    # Some images also log to stdout, so keep only the plog lines.
+    plogs = [
+        json.loads(line)
+        for line in capsys.readouterr().out.splitlines()
+        if '"signature": "mwaa_plog_v1"' in line
+    ]
+    if not plogs:
         return None
-    plog = json.loads(out)
+    [plog] = plogs
     assert plog["logsProcessorName"] == "AirflowMetricsLogsProcessor"
     prefix = "Metric data: "
     assert plog["message"].startswith(prefix)
